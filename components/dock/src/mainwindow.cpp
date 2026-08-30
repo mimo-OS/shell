@@ -72,7 +72,6 @@ MainWindow::MainWindow(QQmlEngine *engine)
     connect(m_settings, &DockSettings::directionChanged, this, &MainWindow::onPositionChanged);
     connect(m_settings, &DockSettings::iconSizeChanged, this, &MainWindow::onIconSizeChanged);
     connect(m_settings, &DockSettings::visibilityChanged, this, &MainWindow::onVisibilityChanged);
-    connect(m_settings, &DockSettings::styleChanged, this, &MainWindow::resizeWindow);
 }
 
 MainWindow::~MainWindow()
@@ -124,16 +123,6 @@ void MainWindow::setVisibility(int visibility)
     DockSettings::self()->setVisibility(static_cast<DockSettings::Visibility>(visibility));
 }
 
-int MainWindow::style() const
-{
-    return DockSettings::self()->style();
-}
-
-void MainWindow::setStyle(int style)
-{
-    DockSettings::self()->setStyle(static_cast<DockSettings::Style>(style));
-}
-
 void MainWindow::updateSize()
 {
     resizeWindow();
@@ -172,53 +161,23 @@ QRect MainWindow::windowRect() const
         length = appCount * iconSize + edgePadding * 2;
     }
 
-    switch (m_settings->style()) {
-    case DockSettings::Round: {
-        switch (m_settings->direction()) {
-        case DockSettings::Left:
-            newSize = QSize(iconSize, length);
-            position.setX(screenGeometry.x() + margins);
-            // Handle the top statusbar.
-            position.setY(availableGeometry.y() + (availableGeometry.height() - newSize.height()) / 2);
-            break;
-        case DockSettings::Bottom:
-            newSize = QSize(length, iconSize + edgePadding * 2);
-            position.setX(screenGeometry.x() + (screenGeometry.width() - newSize.width()) / 2);
-            position.setY(screenGeometry.y() + screenGeometry.height() - newSize.height() - margins);
-            break;
-        case DockSettings::Right:
-            newSize = QSize(iconSize, length);
-            position.setX(screenGeometry.x() + screenGeometry.width() - newSize.width() - margins);
-            position.setY(availableGeometry.y() + (availableGeometry.height() - newSize.height()) / 2);
-            break;
-        default:
-            break;
-        }
-
+    switch (m_settings->direction()) {
+    case DockSettings::Left:
+        newSize = QSize(iconSize, length);
+        position.setX(screenGeometry.x() + margins);
+        // Handle the top statusbar.
+        position.setY(availableGeometry.y() + (availableGeometry.height() - newSize.height()) / 2);
         break;
-    }
-    case DockSettings::Straight: {
-        switch (m_settings->direction()) {
-        case DockSettings::Left:
-            newSize = QSize(iconSize, screenGeometry.height());
-            position.setX(screenGeometry.x());
-            position.setY(screenGeometry.y());
-            break;
-        case DockSettings::Bottom:
-            newSize = QSize(screenGeometry.width(), iconSize + edgePadding * 2);
-            position.setX(screenGeometry.x());
-            position.setY(screenGeometry.y() + screenGeometry.height() - newSize.height());
-            break;
-        case DockSettings::Right:
-            newSize = QSize(iconSize, screenGeometry.height());
-            position.setX(screenGeometry.x() + screenGeometry.width() - newSize.width());
-            position.setY(screenGeometry.y() + screenGeometry.height() - newSize.height());
-            break;
-        default:
-            break;
-        }
+    case DockSettings::Bottom:
+        newSize = QSize(length, iconSize + edgePadding * 2);
+        position.setX(screenGeometry.x() + (screenGeometry.width() - newSize.width()) / 2);
+        position.setY(screenGeometry.y() + screenGeometry.height() - newSize.height() - margins);
         break;
-    }
+    case DockSettings::Right:
+        newSize = QSize(iconSize, length);
+        position.setX(screenGeometry.x() + screenGeometry.width() - newSize.width() - margins);
+        position.setY(availableGeometry.y() + (availableGeometry.height() - newSize.height()) / 2);
+        break;
     default:
         break;
     }

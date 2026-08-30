@@ -59,7 +59,7 @@ Item {
                                                                                                                            : Qt.rgba(0, 0, 0, 0.15)
 
         anchors.fill: parent
-        radius: root.compositing && Settings.style === 0 ? windowRadius : 0
+        radius: root.compositing ? windowRadius : 0
         color: FishUI.Theme.darkMode ? "#666666" : "#E6E6E6"
         opacity: root.compositing ? FishUI.Theme.darkMode ? 0.5 : 0.5 : 0.9
         border.width: 1 / FishUI.Units.devicePixelRatio
@@ -104,9 +104,6 @@ Item {
         anchors.leftMargin: root.edgePadding
         anchors.rightMargin: root.edgePadding
         anchors.topMargin: root.edgePadding
-                           + (Settings.style === 1
-                              && (Settings.direction === 0 || Settings.direction === 2)
-                              ? 28 : 0)
         anchors.bottomMargin: root.edgePadding
         flow: isHorizontal ? Grid.LeftToRight : Grid.TopToBottom
         columnSpacing: 0

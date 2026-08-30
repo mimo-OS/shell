@@ -11,7 +11,6 @@ class DockSettings : public QObject
     Q_PROPERTY(int iconSize READ iconSize WRITE setIconSize NOTIFY iconSizeChanged)
     Q_PROPERTY(int edgeMargins READ edgeMargins WRITE setEdgeMargins)
     Q_PROPERTY(bool roundedWindowEnabled READ roundedWindowEnabled WRITE setRoundedWindowEnabled NOTIFY roundedWindowEnabledChanged)
-    Q_PROPERTY(Style style READ style WRITE setStyle NOTIFY styleChanged)
 
 public:
     enum Direction {
@@ -28,12 +27,6 @@ public:
         IntellHide
     };
     Q_ENUMS(Visibility)
-
-    enum Style {
-        Round = 0,
-        Straight
-    };
-    Q_ENUMS(Style)
 
     static DockSettings *self();
     explicit DockSettings(QObject *parent = nullptr);
@@ -53,15 +46,11 @@ public:
     bool roundedWindowEnabled() const;
     void setRoundedWindowEnabled(bool enabled);
 
-    Style style() const;
-    void setStyle(const Style &style);
-
 signals:
     void iconSizeChanged();
     void directionChanged();
     void visibilityChanged();
     void roundedWindowEnabledChanged();
-    void styleChanged();
 
 private:
     int m_iconSize;
@@ -69,7 +58,6 @@ private:
     bool m_roundedWindowEnabled;
     Direction m_direction;
     Visibility m_visibility;
-    Style m_style;
     QSettings *m_settings;
 };
 
