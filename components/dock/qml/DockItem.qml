@@ -59,6 +59,22 @@ Item {
     signal doubleClicked(var mouse)
     signal dropped(var drop)
 
+    function updatePopupTipsPosition() {
+        if (!iconArea.containsMouse)
+            return
+
+        var controlPosition = control.mapToGlobal(0, 0)
+        if (Settings.direction === DockSettings.Left)
+            popupTips.position = Qt.point(root.mapToGlobal(root.width, 0).x + FishUI.Units.largeSpacing,
+                                          controlPosition.y + (control.height / 2 - popupTips.height / 2))
+        else if (Settings.direction === DockSettings.Right)
+            popupTips.position = Qt.point(root.mapToGlobal(0, 0).x - popupTips.width - FishUI.Units.largeSpacing,
+                                          controlPosition.y + (control.height / 2 - popupTips.height / 2))
+        else
+            popupTips.position = Qt.point(controlPosition.x + (control.width / 2 - popupTips.width / 2),
+                                          root.mapToGlobal(0, 0).y - popupTips.height - FishUI.Units.smallSpacing)
+    }
+
     function refreshIcon() {
         if (icon && icon.width > 0 && icon.height > 0)
             icon.updateIcon()
@@ -151,20 +167,26 @@ Item {
         onContainsMouseChanged: {
             if (containsMouse && control.popupText !== "") {
                 popupTips.popupText = control.popupText
-
-                if (Settings.direction === DockSettings.Left)
-                    popupTips.position = Qt.point(root.width + FishUI.Units.largeSpacing,
-                                                  control.mapToGlobal(0, 0).y + (control.height / 2 - popupTips.height / 2))
-                else if (Settings.direction === DockSettings.Right)
-                    popupTips.position = Qt.point(control.mapToGlobal(0, 0).x - popupTips.width - FishUI.Units.smallSpacing / 2,
-                                                  control.mapToGlobal(0, 0).y + (control.height / 2 - popupTips.height / 2))
-                else
-                    popupTips.position = Qt.point(control.mapToGlobal(0, 0).x + (control.width / 2 - popupTips.width / 2),
-                                                  control.mapToGlobal(0, 0).y - popupTips.height - FishUI.Units.smallSpacing)
-
-                popupTips.show()
+                popupPositionTimer.restart()
             } else {
+                popupPositionTimer.stop()
                 popupTips.hide()
+            }
+        }
+    }
+
+    Timer {
+        id: popupPositionTimer
+        interval: 0
+        repeat: false
+        onTriggered: {
+            if (iconArea.containsMouse && popupTips.popupText !== "") {
+                if (!popupTips.visible) {
+                    popupTips.show()
+                    restart()
+                } else {
+                    control.updatePopupTipsPosition()
+                }
             }
         }
     }
