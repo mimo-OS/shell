@@ -1,0 +1,135 @@
+#include "statusbar.h"
+#include "battery.h"
+#include "processprovider.h"
+#include "appmenu/appmenu.h"
+#include "statusbaradaptor.h"
+
+#include <QQmlEngine>
+#include <QQmlContext>
+
+#include <QDBusConnection>
+#include <QApplication>
+#include <QSettings>
+#include <QScreen>
+
+#include <NETWM>
+#include <KX11Extras>
+#include <KWindowEffects>
+
+StatusBar::StatusBar(QQmlEngine *engine)
+    : ShellSurface(engine)
+    , m_acticity(Activity::self())
+{
+    QSettings settings("cutefishos", "locale");
+    m_twentyFourTime = settings.value("twentyFour", false).toBool();
+
+    setFlags(Qt::FramelessWindowHint | Qt::WindowDoesNotAcceptFocus);
+    setColor(Qt::transparent);
+
+    KX11Extras::setOnDesktop(winId(), NET::OnAllDesktops);
+    KX11Extras::setType(winId(), NET::Dock);
+
+    new StatusbarAdaptor(this);
+    new AppMenu(this);
+
+    setContextProperty("StatusBar", this);
+    setContextProperty("acticity", m_acticity);
+    setContextProperty("process", new ProcessProvider(this));
+    setContextProperty("battery", Battery::self());
+
+    setSource(QUrl(QStringLiteral("qrc:/statusbar/qml/main.qml")));
+    setScreen(qApp->primaryScreen());
+    updateGeometry();
+    setVisible(true);
+    initState();
+
+    connect(m_acticity, &Activity::launchPadChanged, this, &StatusBar::initState);
+
+    connect(screen(), &QScreen::virtualGeometryChanged, this, &StatusBar::updateGeometry);
+    connect(screen(), &QScreen::geometryChanged, this, &StatusBar::updateGeometry);
+
+    // Always show on the main screen
+    connect(qGuiApp, &QGuiApplication::primaryScreenChanged, this, &StatusBar::onPrimaryScreenChanged);
+}
+
+QRect StatusBar::screenRect()
+{
+    return m_screenRect;
+}
+
+bool StatusBar::twentyFourTime()
+{
+    return m_twentyFourTime;
+}
+
+void StatusBar::setBatteryPercentage(bool enabled)
+{
+    Battery::self()->setShowPercentage(enabled);
+}
+
+void StatusBar::setTwentyFourTime(bool t)
+{
+    if (m_twentyFourTime != t) {
+        m_twentyFourTime = t;
+        emit twentyFourTimeChanged();
+    }
+}
+
+void StatusBar::updateGeometry()
+{
+    const QRect rect = screen()->geometry();
+
+    if (m_screenRect != rect) {
+        m_screenRect = rect;
+        emit screenRectChanged();
+    }
+
+    QRect windowRect = QRect(rect.x(), rect.y(), rect.width(), 25);
+    setGeometry(windowRect);
+    updateViewStruts();
+
+    KWindowEffects::enableBlurBehind(this, true);
+}
+
+void StatusBar::updateViewStruts()
+{
+    const QRect wholeScreen(QPoint(0, 0), screen()->virtualSize());
+    const QRect rect = geometry();
+    const int topOffset = screen()->geometry().top();
+
+    NETExtendedStrut strut;
+    strut.top_width = rect.height() + topOffset - 1;
+    strut.top_start = rect.x();
+    strut.top_end = rect.x() + rect.width() - 1;
+
+    KX11Extras::setExtendedStrut(winId(),
+                                 strut.left_width,
+                                 strut.left_start,
+                                 strut.left_end,
+                                 strut.right_width,
+                                 strut.right_start,
+                                 strut.right_end,
+                                 strut.top_width,
+                                 strut.top_start,
+                                 strut.top_end,
+                                 strut.bottom_width,
+                                 strut.bottom_start,
+                                 strut.bottom_end);
+}
+
+void StatusBar::initState()
+{
+    // Remain below the face launchpad.
+    KX11Extras::setState(winId(), m_acticity->launchPad() ? NET::KeepBelow : NET::KeepAbove);
+}
+
+void StatusBar::onPrimaryScreenChanged(QScreen *screen)
+{
+    disconnect(this->screen());
+
+    setScreen(screen);
+    updateGeometry();
+
+    connect(screen, &QScreen::virtualGeometryChanged, this, &StatusBar::updateGeometry);
+    connect(screen, &QScreen::geometryChanged, this, &StatusBar::updateGeometry);
+}
