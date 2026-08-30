@@ -30,16 +30,24 @@ Item {
     visible: true
 
     property bool isHorizontal: Settings.direction === DockSettings.Bottom
-    property real windowRadius: isHorizontal ? root.height * 0.3 : root.width * 0.3
+    property real windowRadius: (isHorizontal ? root.height : root.width) * 28 / 86
     property bool compositing: windowHelper.compositing
-    property real iconSizeRatio: 0.8
-    // Keep the visual space at the ends equal to the space between icons.
-    // Icons occupy 80% of their cell, so half of the remaining 20% is added
-    // as padding at each end (the other half is already around the icon).
-    property int edgePadding: isHorizontal
-                               ? Math.round(root.height * (1 - iconSizeRatio) / (2 * (2 - iconSizeRatio)))
-                               : 0
-    property int itemSize: isHorizontal ? root.height - edgePadding * 2 : root.width
+    // Figma baseline (default IconSize 53):
+    // dock height = 16 top + 54 icon + 8 icon/dot gap + 4 dot + 4 bottom.
+    property real iconSizeRatio: 1.0
+    property real sizeScale: Settings.iconSize / 53.0
+    property int sidePadding: Math.max(1, Math.round(16 * sizeScale))
+    property int topPadding: Math.max(1, Math.round(16 * sizeScale))
+    property int iconGap: Math.max(1, Math.round(16 * sizeScale))
+    property int activeDotGap: Math.max(1, Math.round(8 * sizeScale))
+    property int activeDotSize: Math.max(1, Math.round(4 * sizeScale))
+    property int bottomPadding: Math.max(1, Math.round(4 * sizeScale))
+    property int itemSize: isHorizontal
+                             ? Math.max(1, Math.round(root.height - root.topPadding
+                                                       - root.activeDotGap
+                                                       - root.activeDotSize
+                                                       - root.bottomPadding))
+                             : Math.max(1, Math.round(root.width - root.sidePadding * 2))
 
     onCompositingChanged: {
         mainWindow.updateSize()
@@ -101,21 +109,25 @@ Item {
     GridLayout {
         id: mainLayout
         anchors.fill: parent
-        anchors.leftMargin: root.edgePadding
-        anchors.rightMargin: root.edgePadding
-        anchors.topMargin: root.edgePadding
-        anchors.bottomMargin: root.edgePadding
+        anchors.leftMargin: root.sidePadding
+        anchors.rightMargin: root.sidePadding
+        anchors.topMargin: root.topPadding
+        anchors.bottomMargin: isHorizontal
+                              ? root.activeDotGap + root.activeDotSize + root.bottomPadding
+                              : root.bottomPadding
         flow: isHorizontal ? Grid.LeftToRight : Grid.TopToBottom
-        columnSpacing: 0
-        rowSpacing: 0
+        columnSpacing: isHorizontal && appItemView.count > 0 ? root.iconGap : 0
+        rowSpacing: !isHorizontal && appItemView.count > 0 ? root.iconGap : 0
 
         ListView {
             id: appItemView
             orientation: isHorizontal ? Qt.Horizontal : Qt.Vertical
+            spacing: root.iconGap
             snapMode: ListView.SnapToItem
             interactive: false
             model: appModel
-            clip: true
+            // The active dot is positioned in the dock's bottom padding area.
+            clip: false
 
             Layout.fillHeight: true
             Layout.fillWidth: true
@@ -138,8 +150,8 @@ Item {
 
         DockItem {
             id: trashItem
-            implicitWidth: isHorizontal ? root.itemSize : root.width
-            implicitHeight: isHorizontal ? root.itemSize : root.width
+            implicitWidth: root.itemSize
+            implicitHeight: root.itemSize
             iconSizeRatio: root.iconSizeRatio
             popupText: qsTr("Trash")
             enableActivateDot: false

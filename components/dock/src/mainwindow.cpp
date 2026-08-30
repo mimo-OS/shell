@@ -146,35 +146,66 @@ QRect MainWindow::windowRect() const
     int maxLength = isHorizontal ? screenGeometry.width() - m_settings->edgeMargins()
                                  : availableGeometry.height() - m_settings->edgeMargins();;
 
+    struct DockMetrics {
+        int sidePadding;
+        int topPadding;
+        int iconGap;
+        int iconDotGap;
+        int dotSize;
+        int bottomPadding;
+    };
+
+    const auto metricsForScale = [](qreal scale) {
+        DockMetrics metrics;
+        metrics.sidePadding = qMax(1, qRound(16 * scale));
+        metrics.topPadding = qMax(1, qRound(16 * scale));
+        metrics.iconGap = qMax(1, qRound(16 * scale));
+        metrics.iconDotGap = qMax(1, qRound(8 * scale));
+        metrics.dotSize = qMax(1, qRound(4 * scale));
+        metrics.bottomPadding = qMax(1, qRound(4 * scale));
+        return metrics;
+    };
+
     // Add trash item.
-    int appCount = m_appModel->rowCount() + 1;
-    int iconSize = m_settings->iconSize();
-    iconSize += iconSize * 0.1;
-    int edgePadding = isHorizontal ? qRound(iconSize * 0.1) : 0;
-    int length = appCount * iconSize + edgePadding * 2;
+    const int appCount = m_appModel->rowCount() + 1;
+    const auto lengthForIconSize = [isHorizontal, appCount](int iconSize,
+                                                             const DockMetrics &metrics) {
+        const int iconGaps = qMax(0, appCount - 1) * metrics.iconGap;
+        if (isHorizontal) {
+            return metrics.sidePadding * 2 + appCount * iconSize + iconGaps;
+        }
+
+        return metrics.topPadding + metrics.bottomPadding + appCount * iconSize + iconGaps;
+    };
+
+    const qreal sizeScale = m_settings->iconSize() / 53.0;
+    int iconSize = qMax(1, qRound(54 * sizeScale));
+    DockMetrics metrics = metricsForScale(sizeScale);
+    int length = lengthForIconSize(iconSize, metrics);
     int margins = compositing ? DockSettings::self()->edgeMargins() / 2 : 0;
 
-    if (length >= maxLength) {
-        const int availableLength = maxLength - edgePadding * 2;
-        iconSize = (availableLength - (availableLength % appCount)) / appCount;
-        edgePadding = isHorizontal ? qRound(iconSize * 0.1) : 0;
-        length = appCount * iconSize + edgePadding * 2;
+    while (length > maxLength && iconSize > 1) {
+        --iconSize;
+        metrics = metricsForScale(iconSize / 54.0);
+        length = lengthForIconSize(iconSize, metrics);
     }
 
     switch (m_settings->direction()) {
     case DockSettings::Left:
-        newSize = QSize(iconSize, length);
+        newSize = QSize(metrics.sidePadding * 2 + iconSize, length);
         position.setX(screenGeometry.x() + margins);
         // Handle the top statusbar.
         position.setY(availableGeometry.y() + (availableGeometry.height() - newSize.height()) / 2);
         break;
     case DockSettings::Bottom:
-        newSize = QSize(length, iconSize + edgePadding * 2);
+        newSize = QSize(length,
+                        metrics.topPadding + iconSize + metrics.iconDotGap
+                        + metrics.dotSize + metrics.bottomPadding);
         position.setX(screenGeometry.x() + (screenGeometry.width() - newSize.width()) / 2);
         position.setY(screenGeometry.y() + screenGeometry.height() - newSize.height() - margins);
         break;
     case DockSettings::Right:
-        newSize = QSize(iconSize, length);
+        newSize = QSize(metrics.sidePadding * 2 + iconSize, length);
         position.setX(screenGeometry.x() + screenGeometry.width() - newSize.width() - margins);
         position.setY(availableGeometry.y() + (availableGeometry.height() - newSize.height()) / 2);
         break;

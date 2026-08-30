@@ -59,6 +59,16 @@ Item {
     signal doubleClicked(var mouse)
     signal dropped(var drop)
 
+    function refreshIcon() {
+        if (icon && icon.width > 0 && icon.height > 0)
+            icon.updateIcon()
+    }
+
+    onIconNameChanged: refreshIcon()
+    onIconSizeChanged: refreshIcon()
+
+    Component.onCompleted: refreshIcon()
+
     Drag.active: mouseArea.drag.active && control.draggable
     Drag.dragType: Drag.Automatic
     Drag.supportedActions: Qt.MoveAction
@@ -166,12 +176,14 @@ Item {
         property var leftY: (parent.height - height) / 2
 
         property var bottomX: (parent.width - width) / 2
-        property var bottomY: icon.y + icon.height + activeRect.height / 2 - 1
+        // Keep the dot in the dedicated area below the icon. The dock root
+        // supplies the remaining bottom padding outside this delegate.
+        property var bottomY: parent.height + root.activeDotGap
 
         property var rightX: icon.x + icon.width + activeRect.width / 2 - 1
         property var rightY: (parent.height - height) / 2
 
-        property var circleSize: isBottom ? control.height * 0.06 : control.width * 0.06
+        property var circleSize: root.activeDotSize
 
         width: circleSize
         height: circleSize
