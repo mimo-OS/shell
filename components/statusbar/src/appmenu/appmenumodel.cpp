@@ -11,16 +11,26 @@
 
 #include <KX11Extras>
 #include <KWindowInfo>
+#include <KWindowSystem>
 #include <NETWM>
 
 #include "../libdbusmenuqt/dbusmenuimporter.h"
+#include "kwinwaylandinterface.h"
+#include "menuimporter.h"
 #include <QDebug>
 
 #include <xcb/xcb.h>
 
 static QByteArray getWindowPropertyString(WId id, const QByteArray &name)
 {
-    xcb_connection_t *c = qGuiApp->nativeInterface<QNativeInterface::QX11Application>()->connection();
+    if (!KWindowSystem::isPlatformX11())
+        return {};
+
+    const auto native = qGuiApp->nativeInterface<QNativeInterface::QX11Application>();
+    if (!native || !native->connection())
+        return {};
+
+    xcb_connection_t *c = native->connection();
     QByteArray value;
 
     const xcb_intern_atom_cookie_t atomCookie = xcb_intern_atom(c, false, name.length(), name.constData());
@@ -64,6 +74,7 @@ protected:
 
 AppMenuModel::AppMenuModel(QObject *parent)
     : QAbstractListModel(parent)
+    , m_menuAvailable(false)
     , m_serviceWatcher(new QDBusServiceWatcher(this))
 {
     connect(this, &AppMenuModel::modelNeedsUpdate, this, [this] {
@@ -73,11 +84,31 @@ AppMenuModel::AppMenuModel(QObject *parent)
         }
     });
 
-    // Active window
-    connect(KX11Extras::self(), &KX11Extras::activeWindowChanged, this, &AppMenuModel::onActiveWindowChanged, Qt::QueuedConnection);
-    connect(KX11Extras::self(), &KX11Extras::windowChanged, this,
-            [this](WId, NET::Properties, NET::Properties2) { onActiveWindowChanged(); }, Qt::QueuedConnection);
-    onActiveWindowChanged();
+    if (KWindowSystem::isPlatformX11()) {
+        connect(KX11Extras::self(), &KX11Extras::activeWindowChanged, this, &AppMenuModel::onActiveWindowChanged, Qt::QueuedConnection);
+        connect(KX11Extras::self(), &KX11Extras::windowChanged, this,
+                [this](WId, NET::Properties, NET::Properties2) { onActiveWindowChanged(); }, Qt::QueuedConnection);
+        onActiveWindowChanged();
+    } else {
+        // On Wayland the active window comes from KWin's window management
+        // protocol instead of EWMH, and the menu it owns is looked up through
+        // the AppMenu registrar rather than an X11 window property.
+        KWinWaylandInterface *kwin = KWinWaylandInterface::instance();
+        connect(kwin, &KWinWaylandInterface::activeWindowChanged, this, &AppMenuModel::onActiveWindowChanged, Qt::QueuedConnection);
+        connect(kwin, &KWinWaylandInterface::clientChanged, this, &AppMenuModel::onActiveWindowChanged, Qt::QueuedConnection);
+        connect(kwin, &KWinWaylandInterface::clientRemoved, this, &AppMenuModel::onActiveWindowChanged, Qt::QueuedConnection);
+
+        // An application usually registers its menu a moment after its window
+        // is mapped and activated, so the first look-up finds nothing.
+        if (MenuImporter *importer = MenuImporter::instance()) {
+            connect(importer, &MenuImporter::WindowRegistered, this,
+                    [this](WId, const QString &, const QDBusObjectPath &) { onActiveWindowChanged(); }, Qt::QueuedConnection);
+            connect(importer, &MenuImporter::WindowUnregistered, this,
+                    [this](WId) { onActiveWindowChanged(); }, Qt::QueuedConnection);
+        }
+
+        onActiveWindowChanged();
+    }
 
     m_serviceWatcher->setConnection(QDBusConnection::sessionBus());
     // if our current DBus connection gets lost, close the menu
@@ -138,6 +169,36 @@ void AppMenuModel::update()
 
 void AppMenuModel::onActiveWindowChanged()
 {
+    if (!KWindowSystem::isPlatformX11()) {
+        KWinWaylandInterface *kwin = KWinWaylandInterface::instance();
+        const KWinWaylandClient client = kwin->client(kwin->activeWindow());
+
+        // KDE applications hand the menu to KWin over org_kde_kwin_appmenu and
+        // it arrives with the window. Everything built on plain Qt only talks
+        // to the registrar, where the pid of the exporting process is the one
+        // thing both sides agree on.
+        QString serviceName = client.appMenuServiceName;
+        QString objectPath = client.appMenuObjectPath;
+
+        if ((serviceName.isEmpty() || objectPath.isEmpty()) && client.pid > 0) {
+            if (MenuImporter *importer = MenuImporter::instance()) {
+                serviceName = importer->serviceForPid(static_cast<uint>(client.pid));
+                objectPath = importer->pathForPid(static_cast<uint>(client.pid));
+            }
+        }
+
+        if (!serviceName.isEmpty() && !objectPath.isEmpty()) {
+            setMenuAvailable(true);
+            updateApplicationMenu(serviceName, objectPath);
+            setVisible(true);
+            emit modelNeedsUpdate();
+        } else {
+            setVisible(false);
+        }
+
+        return;
+    }
+
     // 为了兼容旧版本，不使用新的 API
 //    KWindowInfo info(KX11Extras::activeWindow(),
 //                     NET::WMState | NET::WMVisibleName,

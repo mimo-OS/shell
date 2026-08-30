@@ -10,6 +10,7 @@
 #include <QDBusInterface>
 #include <QMenu>
 #include <QtGui/qguiapplication_platform.h>
+#include <KWindowSystem>
 
 // X11
 #include <xcb/xcb.h>
@@ -72,7 +73,7 @@ AppMenu::AppMenu(QObject *parent)
     // }
 
     const auto native = qGuiApp->nativeInterface<QNativeInterface::QX11Application>();
-    if (!native || !native->connection()) {
+    if (KWindowSystem::isPlatformX11() && (!native || !native->connection())) {
         m_xcbConn = xcb_connect(nullptr, nullptr);
     }
 }
@@ -99,6 +100,9 @@ bool AppMenu::eventFilter(QObject *object, QEvent *event)
 
 void AppMenu::slotWindowRegistered(WId id, const QString &serviceName, const QDBusObjectPath &menuObjectPath)
 {
+    if (!KWindowSystem::isPlatformX11())
+        return;
+
     auto *native = qGuiApp->nativeInterface<QNativeInterface::QX11Application>();
     auto *c = native ? native->connection() : nullptr;
     if (!c) {

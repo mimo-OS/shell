@@ -11,11 +11,20 @@
 #include <KWindowEffects>
 #include <KX11Extras>
 #include <KWindowInfo>
+#include <KWindowSystem>
 
 // X11
 #include <NETWM>
 
 static XWindowInterface *INSTANCE = nullptr;
+
+static bool isBlockedWaylandClient(const QString &appId)
+{
+    const QString normalized = appId.toLower();
+    return normalized == QStringLiteral("cutefish-shell")
+        || normalized.contains(QStringLiteral("xwaylandvideobridge"))
+        || normalized.contains(QStringLiteral("xwayland-video-bridge"));
+}
 
 XWindowInterface *XWindowInterface::instance()
 {
@@ -28,6 +37,24 @@ XWindowInterface *XWindowInterface::instance()
 XWindowInterface::XWindowInterface(QObject *parent)
     : QObject(parent)
 {
+    if (!KWindowSystem::isPlatformX11()) {
+        KWinWaylandInterface *kwin = KWinWaylandInterface::instance();
+        if (!kwin->available())
+            return;
+
+        connect(kwin, &KWinWaylandInterface::clientAdded, this, &XWindowInterface::onWaylandWindowAdded);
+        connect(kwin, &KWinWaylandInterface::clientRemoved, this, &XWindowInterface::windowRemoved);
+        connect(kwin, &KWinWaylandInterface::clientChanged, this, &XWindowInterface::onWaylandWindowChanged);
+        connect(kwin, &KWinWaylandInterface::activeWindowChanged, this, &XWindowInterface::activeChanged);
+        connect(kwin, &KWinWaylandInterface::windowManagementReady, this, [this, kwin] {
+            for (const KWinWaylandClient &client : kwin->clients())
+                onWaylandWindowAdded(client.id);
+        });
+        for (const KWinWaylandClient &client : kwin->clients())
+            onWaylandWindowAdded(client.id);
+        return;
+    }
+
     connect(KX11Extras::self(), &KX11Extras::windowAdded, this, &XWindowInterface::onWindowadded);
     connect(KX11Extras::self(), &KX11Extras::windowRemoved, this, &XWindowInterface::windowRemoved);
     connect(KX11Extras::self(), &KX11Extras::activeWindowChanged, this, &XWindowInterface::activeChanged);
@@ -35,32 +62,70 @@ XWindowInterface::XWindowInterface(QObject *parent)
 
 void XWindowInterface::enableBlurBehind(QWindow *view, bool enable, const QRegion &region)
 {
+    if (!KWindowSystem::isPlatformX11())
+        return;
+
     KWindowEffects::enableBlurBehind(view, enable, region);
 }
 
 WId XWindowInterface::activeWindow()
 {
+    if (!KWindowSystem::isPlatformX11())
+        return KWinWaylandInterface::instance()->activeWindow();
+
     return KX11Extras::activeWindow();
 }
 
 void XWindowInterface::minimizeWindow(WId win)
 {
+    if (!KWindowSystem::isPlatformX11()) {
+        KWinWaylandInterface::instance()->minimizeWindow(win);
+        return;
+    }
+
     KX11Extras::minimizeWindow(win);
 }
 
 void XWindowInterface::closeWindow(WId id)
 {
+    if (!KWindowSystem::isPlatformX11()) {
+        KWinWaylandInterface::instance()->closeWindow(id);
+        return;
+    }
+
     // FIXME: Why there is no such thing in KWindowSystem??
-    NETRootInfo(qGuiApp->nativeInterface<QNativeInterface::QX11Application>()->connection(), NET::CloseWindow).closeWindowRequest(id);
+    const auto native = qGuiApp->nativeInterface<QNativeInterface::QX11Application>();
+    if (native && native->connection())
+        NETRootInfo(native->connection(), NET::CloseWindow).closeWindowRequest(id);
 }
 
 void XWindowInterface::forceActiveWindow(WId win)
 {
+    if (!KWindowSystem::isPlatformX11()) {
+        KWinWaylandInterface::instance()->focusWindow(win);
+        return;
+    }
+
     KX11Extras::forceActiveWindow(win);
 }
 
 QMap<QString, QVariant> XWindowInterface::requestInfo(quint64 wid)
 {
+    if (!KWindowSystem::isPlatformX11()) {
+        const KWinWaylandClient client = KWinWaylandInterface::instance()->client(wid);
+        if (client.id == 0)
+            return {};
+
+        const QString appId = client.className.isEmpty() ? client.initialClass : client.className;
+        QMap<QString, QVariant> result;
+        result.insert("iconName", appId.toLower());
+        result.insert("active", wid == KWinWaylandInterface::instance()->activeWindow());
+        result.insert("visibleName", client.title);
+        result.insert("id", appId);
+        result.insert("pid", client.pid);
+        return result;
+    }
+
     const KWindowInfo winfo { wid, NET::WMFrameExtents
                 | NET::WMWindowType
                 | NET::WMGeometry
@@ -85,11 +150,23 @@ QMap<QString, QVariant> XWindowInterface::requestInfo(quint64 wid)
 
 QString XWindowInterface::requestWindowClass(quint64 wid)
 {
+    if (!KWindowSystem::isPlatformX11()) {
+        const KWinWaylandClient client = KWinWaylandInterface::instance()->client(wid);
+        return client.className.isEmpty() ? client.initialClass : client.className;
+    }
+
     return KWindowInfo(wid, NET::Supported, NET::WM2WindowClass).windowClassClass();
 }
 
 bool XWindowInterface::isAcceptableWindow(quint64 wid)
 {
+    if (!KWindowSystem::isPlatformX11()) {
+        const KWinWaylandClient client = KWinWaylandInterface::instance()->client(wid);
+        const QString appId = client.className.isEmpty() ? client.initialClass : client.className;
+        return client.id != 0 && client.mapped
+            && !isBlockedWaylandClient(appId);
+    }
+
     QFlags<NET::WindowTypeMask> ignoreList;
     ignoreList |= NET::DesktopMask;
     ignoreList |= NET::DockMask;
@@ -127,6 +204,9 @@ bool XWindowInterface::isAcceptableWindow(quint64 wid)
 
 void XWindowInterface::setViewStruts(QWindow *view, DockSettings::Direction direction, const QRect &rect, bool compositing)
 {
+    if (!KWindowSystem::isPlatformX11())
+        return;
+
     NETExtendedStrut strut;
 
     const auto screen = view->screen();
@@ -170,11 +250,22 @@ void XWindowInterface::setViewStruts(QWindow *view, DockSettings::Direction dire
 
 void XWindowInterface::clearViewStruts(QWindow *view)
 {
+    if (!KWindowSystem::isPlatformX11())
+        return;
+
     KX11Extras::setExtendedStrut(view->winId(), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 }
 
 void XWindowInterface::startInitWindows()
 {
+    if (!KWindowSystem::isPlatformX11()) {
+        KWinWaylandInterface *kwin = KWinWaylandInterface::instance();
+        kwin->refresh();
+        for (const KWinWaylandClient &client : kwin->clients())
+            onWaylandWindowAdded(client.id);
+        return;
+    }
+
     for (auto wid : KX11Extras::self()->windows()) {
         onWindowadded(wid);
     }
@@ -182,9 +273,19 @@ void XWindowInterface::startInitWindows()
 
 QString XWindowInterface::desktopFilePath(quint64 wid)
 {
+    if (!KWindowSystem::isPlatformX11()) {
+        const KWinWaylandClient client = KWinWaylandInterface::instance()->client(wid);
+        const QString appId = client.className.isEmpty() ? client.initialClass : client.className;
+        return Utils::instance()->desktopPathFromMetadata(appId, client.pid, appId);
+    }
+
+    const auto native = qGuiApp->nativeInterface<QNativeInterface::QX11Application>();
+    if (!native || !native->connection())
+        return {};
+
     const KWindowInfo info(wid, NET::Properties(), NET::WM2WindowClass | NET::WM2DesktopFileName);
     return Utils::instance()->desktopPathFromMetadata(info.windowClassClass(),
-                                                      NETWinInfo(qGuiApp->nativeInterface<QNativeInterface::QX11Application>()->connection(), wid,
+                                                      NETWinInfo(native->connection(), wid,
                                                                  Cutefish::X11::rootWindow(),
                                                                  NET::WMPid,
                                                                  NET::Properties2()).pid(),
@@ -193,7 +294,14 @@ QString XWindowInterface::desktopFilePath(quint64 wid)
 
 void XWindowInterface::setIconGeometry(quint64 wid, const QRect &rect)
 {
-    NETWinInfo info(qGuiApp->nativeInterface<QNativeInterface::QX11Application>()->connection(),
+    if (!KWindowSystem::isPlatformX11())
+        return;
+
+    const auto native = qGuiApp->nativeInterface<QNativeInterface::QX11Application>();
+    if (!native || !native->connection())
+        return;
+
+    NETWinInfo info(native->connection(),
                     wid,
                     (WId) Cutefish::X11::rootWindow(),
                     NET::WMIconGeometry,
@@ -208,7 +316,24 @@ void XWindowInterface::setIconGeometry(quint64 wid, const QRect &rect)
 
 void XWindowInterface::onWindowadded(quint64 wid)
 {
+    if (!KWindowSystem::isPlatformX11())
+        return;
+
     if (isAcceptableWindow(wid)) {
         emit windowAdded(wid);
     }
+}
+
+void XWindowInterface::onWaylandWindowAdded(quint64 wid)
+{
+    if (isAcceptableWindow(wid))
+        emit windowAdded(wid);
+}
+
+void XWindowInterface::onWaylandWindowChanged(quint64 wid)
+{
+    if (isAcceptableWindow(wid))
+        emit windowChanged(wid);
+    else
+        emit windowRemoved(wid);
 }

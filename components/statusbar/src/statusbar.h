@@ -2,6 +2,7 @@
 #define STATUSBAR_H
 
 #include "shellsurface.h"
+#include "strutspacer.h"
 #include "activity.h"
 
 class StatusBar : public ShellSurface
@@ -34,6 +35,7 @@ private slots:
 private:
     QRect m_screenRect;
     Activity *m_acticity;
+    StrutSpacer *m_strutSpacer;
     bool m_twentyFourTime;
 };
 

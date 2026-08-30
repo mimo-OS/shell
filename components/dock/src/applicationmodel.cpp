@@ -17,6 +17,7 @@ ApplicationModel::ApplicationModel(QObject *parent)
 {
     connect(m_iface, &XWindowInterface::windowAdded, this, &ApplicationModel::onWindowAdded);
     connect(m_iface, &XWindowInterface::windowRemoved, this, &ApplicationModel::onWindowRemoved);
+    connect(m_iface, &XWindowInterface::windowChanged, this, &ApplicationModel::onWindowChanged);
     connect(m_iface, &XWindowInterface::activeChanged, this, &ApplicationModel::onActiveChanged);
 
     initPinnedApplications();
@@ -440,7 +441,7 @@ void ApplicationModel::handleDataChangedFromItem(ApplicationItem *item)
     if (!item)
         return;
 
-    QModelIndex idx = index(indexOf(item->id), 0, QModelIndex());
+    QModelIndex idx = index(m_appItems.indexOf(item), 0, QModelIndex());
 
     if (idx.isValid()) {
         emit dataChanged(idx, idx);
@@ -449,8 +450,14 @@ void ApplicationModel::handleDataChangedFromItem(ApplicationItem *item)
 
 void ApplicationModel::onWindowAdded(quint64 wid)
 {
+    if (findItemByWId(wid))
+        return;
+
     QMap<QString, QVariant> info = m_iface->requestInfo(wid);
     const QString id = info.value("id").toString();
+
+    if (id.isEmpty())
+        return;
 
     // Skip the shell's own windows: the launcher, the status bar, the dock and
     // the desktop all live in one process and share this WM_CLASS.
@@ -491,6 +498,8 @@ void ApplicationModel::onWindowAdded(quint64 wid)
         item->id = id;
         item->iconName = info.value("iconName").toString();
         item->visibleName = info.value("visibleName").toString();
+        if (item->visibleName.isEmpty())
+            item->visibleName = id;
         item->isActive = info.value("active").toBool();
         item->wids.append(wid);
 
@@ -507,6 +516,33 @@ void ApplicationModel::onWindowAdded(quint64 wid)
 
         emit itemAdded();
         emit countChanged();
+    }
+}
+
+void ApplicationModel::onWindowChanged(quint64 wid)
+{
+    ApplicationItem *item = findItemByWId(wid);
+    if (!item) {
+        onWindowAdded(wid);
+        return;
+    }
+
+    const QMap<QString, QVariant> info = m_iface->requestInfo(wid);
+    if (info.value("id").toString() == QLatin1String("cutefish-shell")) {
+        onWindowRemoved(wid);
+        return;
+    }
+
+    if (!info.isEmpty()) {
+        const QString id = info.value("id").toString();
+        if (item->desktopPath.isEmpty() && !info.value("visibleName").toString().isEmpty())
+            item->visibleName = info.value("visibleName").toString();
+        if (item->desktopPath.isEmpty() && !info.value("iconName").toString().isEmpty())
+            item->iconName = info.value("iconName").toString();
+        if (!id.isEmpty() && item->id.isEmpty())
+            item->id = id;
+        item->isActive = info.value("active").toBool();
+        handleDataChangedFromItem(item);
     }
 }
 

@@ -14,6 +14,7 @@
 #include <NETWM>
 #include <KX11Extras>
 #include <KWindowEffects>
+#include <KWindowSystem>
 
 MainWindow::MainWindow(QQmlEngine *engine)
     : ShellSurface(engine)
@@ -21,6 +22,7 @@ MainWindow::MainWindow(QQmlEngine *engine)
     , m_settings(DockSettings::self())
     , m_appModel(new ApplicationModel)
     , m_fakeWindow(nullptr)
+    , m_strutSpacer(new StrutSpacer(this))
     , m_trashManager(new TrashManager)
     , m_hideBlocked(false)
     , m_showTimer(new QTimer(this))
@@ -33,9 +35,15 @@ MainWindow::MainWindow(QQmlEngine *engine)
     setDefaultAlphaBuffer(false);
     setColor(Qt::transparent);
 
-    setFlags(Qt::FramelessWindowHint | Qt::WindowDoesNotAcceptFocus);
-    // KX11Extras::setOnDesktop(winId(), NET::OnAllDesktops);
-    KX11Extras::setType(winId(), NET::Dock);
+    // On X11 the dock is a non-focusable EWMH panel.  A Wayland xdg-toplevel
+    // still needs to accept pointer focus, otherwise Qt Quick receives a
+    // mapped surface that the compositor will not route clicks to.
+    setFlags(Qt::FramelessWindowHint);
+    if (KWindowSystem::isPlatformX11())
+        setFlag(Qt::WindowDoesNotAcceptFocus);
+    setTitle(QStringLiteral("Dock"));
+    if (KWindowSystem::isPlatformX11())
+        KX11Extras::setType(winId(), NET::Dock);
 
     setContextProperty("appModel", m_appModel);
     setContextProperty("process", new ProcessProvider(this));
@@ -46,6 +54,7 @@ MainWindow::MainWindow(QQmlEngine *engine)
     setSource(QUrl(QStringLiteral("qrc:/dock/qml/main.qml")));
     setScreen(qApp->primaryScreen());
     initScreens();
+    configureSurfaceRole(SurfaceRole::Dock);
 
     initSlideWindow();
     resizeWindow();
@@ -218,7 +227,9 @@ QRect MainWindow::windowRect() const
 
 void MainWindow::resizeWindow()
 {
-    setGeometry(windowRect());
+    const QRect rect = windowRect();
+    setGeometry(rect);
+    setSurfacePosition(rect.topLeft());
     updateViewStruts();
 
     emit resizingFished();
@@ -250,6 +261,9 @@ void MainWindow::initScreens()
 
 void MainWindow::initSlideWindow()
 {
+    if (!KWindowSystem::isPlatformX11())
+        return;
+
     KWindowEffects::SlideFromLocation location = KWindowEffects::NoEdge;
 
     if (m_settings->direction() == DockSettings::Left)
@@ -271,7 +285,40 @@ void MainWindow::updateViewStruts()
         compositing = item->property("compositing").toBool();
     }
 
-    if (m_settings->visibility() == DockSettings::AlwaysShow || m_activity->launchPad()) {
+    const bool reserveSpace = m_settings->visibility() == DockSettings::AlwaysShow
+        && !m_activity->launchPad();
+
+    if (!KWindowSystem::isPlatformX11()) {
+        // The reserved strip runs from the screen edge to the far side of the
+        // dock, so it covers the dock plus the gap it floats above the edge
+        // with. See StrutSpacer for why a panel cannot claim this itself.
+        const QRect screenRect = screen()->geometry();
+        // Not geometry(): Qt reports every Wayland toplevel at (0, 0), so the
+        // dock's real placement only exists in windowRect().
+        const QRect dockRect = windowRect();
+        int thickness = 0;
+
+        switch (m_settings->direction()) {
+        case DockSettings::Left:
+            m_strutSpacer->setEdge(Qt::LeftEdge);
+            thickness = dockRect.right() - screenRect.left() + 1;
+            break;
+        case DockSettings::Right:
+            m_strutSpacer->setEdge(Qt::RightEdge);
+            thickness = screenRect.right() - dockRect.left() + 1;
+            break;
+        default:
+            m_strutSpacer->setEdge(Qt::BottomEdge);
+            thickness = screenRect.bottom() - dockRect.top() + 1;
+            break;
+        }
+
+        m_strutSpacer->setScreen(screen());
+        m_strutSpacer->setThickness(reserveSpace ? thickness : 0);
+        return;
+    }
+
+    if (reserveSpace || m_activity->launchPad()) {
         XWindowInterface::instance()->setViewStruts(this, m_settings->direction(), geometry(), compositing);
     } else {
         clearViewStruts();
@@ -280,6 +327,11 @@ void MainWindow::updateViewStruts()
 
 void MainWindow::clearViewStruts()
 {
+    if (!KWindowSystem::isPlatformX11()) {
+        m_strutSpacer->setThickness(0);
+        return;
+    }
+
     XWindowInterface::instance()->clearViewStruts(this);
 }
 
@@ -361,7 +413,9 @@ void MainWindow::onPositionChanged()
 
 void MainWindow::onIconSizeChanged()
 {
-    setGeometry(windowRect());
+    const QRect rect = windowRect();
+    setGeometry(rect);
+    setSurfacePosition(rect.topLeft());
     updateViewStruts();
 
     emit iconSizeChanged();

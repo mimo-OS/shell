@@ -4,6 +4,14 @@
 #include <QQuickView>
 #include <QTimer>
 
+namespace KWayland
+{
+namespace Client
+{
+class PlasmaShellSurface;
+}
+}
+
 class FakeWindow : public QQuickView
 {
     Q_OBJECT
@@ -23,10 +31,12 @@ protected:
 
 private:
     void setContainsMouse(bool contains);
+    void updatePlasmaSurface();
 
 private:
     QTimer m_delayedMouseTimer;
 
+    KWayland::Client::PlasmaShellSurface *m_plasmaSurface = nullptr;
     bool m_delayedContainsMouse;
     bool m_containsMouse;
 };

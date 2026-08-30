@@ -15,19 +15,29 @@
 #include <NETWM>
 #include <KX11Extras>
 #include <KWindowEffects>
+#include <KWindowSystem>
 
 StatusBar::StatusBar(QQmlEngine *engine)
     : ShellSurface(engine)
     , m_acticity(Activity::self())
 {
+    m_strutSpacer = nullptr;
+
     QSettings settings("cutefishos", "locale");
     m_twentyFourTime = settings.value("twentyFour", false).toBool();
 
-    setFlags(Qt::FramelessWindowHint | Qt::WindowDoesNotAcceptFocus);
+    // Keep the X11 panel non-focusable, but let the Wayland surface receive
+    // pointer focus so status-bar menus remain interactive.
+    setFlags(Qt::FramelessWindowHint);
+    if (KWindowSystem::isPlatformX11())
+        setFlag(Qt::WindowDoesNotAcceptFocus);
+    setTitle(QStringLiteral("Status Bar"));
     setColor(Qt::transparent);
 
-    KX11Extras::setOnDesktop(winId(), NET::OnAllDesktops);
-    KX11Extras::setType(winId(), NET::Dock);
+    if (KWindowSystem::isPlatformX11()) {
+        KX11Extras::setOnDesktop(winId(), NET::OnAllDesktops);
+        KX11Extras::setType(winId(), NET::Dock);
+    }
 
     new StatusbarAdaptor(this);
     new AppMenu(this);
@@ -39,6 +49,7 @@ StatusBar::StatusBar(QQmlEngine *engine)
 
     setSource(QUrl(QStringLiteral("qrc:/statusbar/qml/main.qml")));
     setScreen(qApp->primaryScreen());
+    configureSurfaceRole(SurfaceRole::Panel);
     updateGeometry();
     setVisible(true);
     initState();
@@ -86,13 +97,27 @@ void StatusBar::updateGeometry()
 
     QRect windowRect = QRect(rect.x(), rect.y(), rect.width(), 25);
     setGeometry(windowRect);
+    setSurfacePosition(windowRect.topLeft());
     updateViewStruts();
 
-    KWindowEffects::enableBlurBehind(this, true);
+    if (KWindowSystem::isPlatformX11())
+        KWindowEffects::enableBlurBehind(this, true);
 }
 
 void StatusBar::updateViewStruts()
 {
+    if (!KWindowSystem::isPlatformX11()) {
+        // A plasma-shell panel does not reserve work area on its own; the
+        // spacer does it. See StrutSpacer.
+        if (!m_strutSpacer)
+            m_strutSpacer = new StrutSpacer(this);
+
+        m_strutSpacer->setEdge(Qt::TopEdge);
+        m_strutSpacer->setScreen(screen());
+        m_strutSpacer->setThickness(m_acticity->launchPad() ? 0 : geometry().height());
+        return;
+    }
+
     const QRect wholeScreen(QPoint(0, 0), screen()->virtualSize());
     const QRect rect = geometry();
     const int topOffset = screen()->geometry().top();
@@ -119,6 +144,16 @@ void StatusBar::updateViewStruts()
 
 void StatusBar::initState()
 {
+    if (!KWindowSystem::isPlatformX11()) {
+        // The launcher is an ordinary full-screen window, so the status bar has
+        // to step out of its way; on X11 this was NET::KeepBelow. It also stops
+        // reserving work area while the launcher is up, matching the dock.
+        setPanelBehavior(m_acticity->launchPad() ? PanelBehavior::AllowCovering
+                                                 : PanelBehavior::StayAbove);
+        updateViewStruts();
+        return;
+    }
+
     // Remain below the face launchpad.
     KX11Extras::setState(winId(), m_acticity->launchPad() ? NET::KeepBelow : NET::KeepAbove);
 }

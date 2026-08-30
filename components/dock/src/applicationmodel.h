@@ -67,6 +67,7 @@ private:
 
     void onWindowAdded(quint64 wid);
     void onWindowRemoved(quint64 wid);
+    void onWindowChanged(quint64 wid);
     void onActiveChanged(quint64 wid);
 
 private:

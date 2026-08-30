@@ -5,6 +5,7 @@
 
 #include <NETWM>
 #include <KX11Extras>
+#include <KWindowSystem>
 
 DesktopSurface::DesktopSurface(QQmlEngine *engine, QScreen *screen)
     : ShellSurface(engine)
@@ -14,15 +15,17 @@ DesktopSurface::DesktopSurface(QQmlEngine *engine, QScreen *screen)
     setFlag(Qt::FramelessWindowHint);
     setColor(Qt::transparent);
 
-    KX11Extras::setType(winId(), NET::Desktop);
-    KX11Extras::setState(winId(), NET::KeepBelow);
+    // EWMH window types only exist on X11.  Calling KX11Extras on a native
+    // Wayland surface is not useful and, with some KF6 builds, can dereference
+    // a missing QX11Application interface.
+    if (KWindowSystem::isPlatformX11()) {
+        KX11Extras::setType(winId(), NET::Desktop);
+        KX11Extras::setState(winId(), NET::KeepBelow);
+    }
 
-    // An opacity just below 1 keeps the compositor from treating the desktop as
-    // fully opaque, which used to leave the wallpaper black on some drivers.
-    setOpacity(0.99);
-
-    setTitle(tr("Desktop"));
+    setTitle(QStringLiteral("Desktop"));
     QQuickWindow::setScreen(screen);
+    configureSurfaceRole(SurfaceRole::Desktop);
     updateGeometry();
 
     setContextProperty(QStringLiteral("surface"), this);
@@ -59,4 +62,5 @@ void DesktopSurface::updateGeometry()
     // The extra pixel matches what the standalone desktop did: without it a
     // one pixel line of the root window shows through at the right/bottom edge.
     setGeometry(m_screen->geometry().adjusted(0, 0, 1, 1));
+    setSurfacePosition(m_screen->geometry().topLeft());
 }

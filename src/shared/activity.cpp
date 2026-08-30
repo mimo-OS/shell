@@ -1,4 +1,5 @@
 #include "activity.h"
+#include "kwinwaylandinterface.h"
 #include "x11utils.h"
 
 #include <QFile>
@@ -12,11 +13,25 @@
 #include <NETWM>
 #include <KX11Extras>
 #include <KWindowInfo>
+#include <KWindowSystem>
 
 // Every shell window (status bar, dock, launcher, desktop) now shares this
 // WM_CLASS, so one entry blocks them all from being reported as "the active
-// application".
-static const QStringList blockList = {"cutefish-shell"};
+// application".  xwaylandvideobridge is a transparent helper window used for
+// screen sharing; it must not appear as the current application either.
+static const QStringList blockList = {
+    QStringLiteral("cutefish-shell"),
+    QStringLiteral("xwaylandvideobridge"),
+    QStringLiteral("xwayland-video-bridge"),
+};
+
+static bool isBlockedWaylandClient(const QString &appId)
+{
+    const QString normalized = appId.toLower();
+    return blockList.contains(appId, Qt::CaseInsensitive)
+        || normalized.contains(QStringLiteral("xwaylandvideobridge"))
+        || normalized.contains(QStringLiteral("xwayland-video-bridge"));
+}
 
 static Activity *SELF = nullptr;
 
@@ -35,6 +50,17 @@ Activity::Activity(QObject *parent)
     , m_pid(0)
     , m_launchPad(false)
 {
+    if (!KWindowSystem::isPlatformX11()) {
+        KWinWaylandInterface *kwin = KWinWaylandInterface::instance();
+        connect(kwin, &KWinWaylandInterface::activeWindowChanged, this, &Activity::onActiveWindowChanged);
+        connect(kwin, &KWinWaylandInterface::clientAdded, this, &Activity::updateExistsWindowMaximized);
+        connect(kwin, &KWinWaylandInterface::clientRemoved, this, &Activity::updateExistsWindowMaximized);
+        connect(kwin, &KWinWaylandInterface::clientChanged, this, &Activity::updateExistsWindowMaximized);
+        connect(kwin, &KWinWaylandInterface::clientChanged, this, &Activity::onActiveWindowChanged);
+        onActiveWindowChanged();
+        return;
+    }
+
     onActiveWindowChanged();
 
     connect(KX11Extras::self(), &KX11Extras::activeWindowChanged, this, &Activity::onActiveWindowChanged);
@@ -65,6 +91,24 @@ bool Activity::existsWindowMaximized() const
 // hide" mode, so it has to look at every window, not just the active one.
 void Activity::updateExistsWindowMaximized()
 {
+    if (!KWindowSystem::isPlatformX11()) {
+        bool existsWindowMaximized = false;
+        for (const KWinWaylandClient &client : KWinWaylandInterface::instance()->clients()) {
+            const QString appId = client.className.isEmpty() ? client.initialClass : client.className;
+            if (client.mapped && !isBlockedWaylandClient(appId)
+                    && (client.maximized || client.fullscreen != 0)) {
+                existsWindowMaximized = true;
+                break;
+            }
+        }
+
+        if (m_existsWindowMaximized != existsWindowMaximized) {
+            m_existsWindowMaximized = existsWindowMaximized;
+            emit existsWindowMaximizedChanged();
+        }
+        return;
+    }
+
     bool existsWindowMaximized = false;
 
     for (WId wid : KX11Extras::windows()) {
@@ -97,26 +141,53 @@ QString Activity::icon() const
 
 void Activity::close()
 {
-    NETRootInfo(qGuiApp->nativeInterface<QNativeInterface::QX11Application>()->connection(), NET::CloseWindow).closeWindowRequest(KX11Extras::activeWindow());
+    if (!KWindowSystem::isPlatformX11()) {
+        KWinWaylandInterface::instance()->closeWindow(KWinWaylandInterface::instance()->activeWindow());
+        return;
+    }
+
+    const auto native = qGuiApp->nativeInterface<QNativeInterface::QX11Application>();
+    if (native && native->connection())
+        NETRootInfo(native->connection(), NET::CloseWindow).closeWindowRequest(KX11Extras::activeWindow());
 }
 
 void Activity::minimize()
 {
+    if (!KWindowSystem::isPlatformX11()) {
+        KWinWaylandInterface::instance()->minimizeWindow(KWinWaylandInterface::instance()->activeWindow());
+        return;
+    }
+
     KX11Extras::minimizeWindow(KX11Extras::activeWindow());
 }
 
 void Activity::restore()
 {
+    if (!KWindowSystem::isPlatformX11()) {
+        KWinWaylandInterface::instance()->restoreWindow(KWinWaylandInterface::instance()->activeWindow());
+        return;
+    }
+
     KX11Extras::clearState(KX11Extras::activeWindow(), NET::Max);
 }
 
 void Activity::maximize()
 {
+    if (!KWindowSystem::isPlatformX11()) {
+        KWinWaylandInterface::instance()->toggleMaximize(KWinWaylandInterface::instance()->activeWindow());
+        return;
+    }
+
     KX11Extras::setState(KX11Extras::activeWindow(), NET::Max);
 }
 
 void Activity::toggleMaximize()
 {
+    if (!KWindowSystem::isPlatformX11()) {
+        KWinWaylandInterface::instance()->toggleMaximize(KWinWaylandInterface::instance()->activeWindow());
+        return;
+    }
+
     KWindowInfo info(KX11Extras::activeWindow(), NET::WMState);
     bool isWindow = !info.hasState(NET::SkipTaskbar) ||
                      info.windowType(NET::UtilityMask) != NET::Utility ||
@@ -131,6 +202,11 @@ void Activity::toggleMaximize()
 
 void Activity::move()
 {
+    if (!KWindowSystem::isPlatformX11()) {
+        KWinWaylandInterface::instance()->startMove(KWinWaylandInterface::instance()->activeWindow());
+        return;
+    }
+
     WId winId = KX11Extras::activeWindow();
     KWindowInfo info(winId, NET::WMState | NET::WMGeometry | NET::WMDesktop);
     bool window = !info.hasState(NET::SkipTaskbar) ||
@@ -146,7 +222,11 @@ void Activity::move()
         KX11Extras::forceActiveWindow(winId);
     }
 
-    NETRootInfo ri(qGuiApp->nativeInterface<QNativeInterface::QX11Application>()->connection(), NET::WMMoveResize);
+    const auto native = qGuiApp->nativeInterface<QNativeInterface::QX11Application>();
+    if (!native || !native->connection())
+        return;
+
+    NETRootInfo ri(native->connection(), NET::WMMoveResize);
     ri.moveResizeRequest(winId,
                          QCursor::pos().x(),
                          QCursor::pos().y(), NET::Move);
@@ -154,6 +234,13 @@ void Activity::move()
 
 bool Activity::isAcceptableWindow(quint64 wid)
 {
+    if (!KWindowSystem::isPlatformX11()) {
+        const KWinWaylandClient client = KWinWaylandInterface::instance()->client(wid);
+        const QString appId = client.className.isEmpty() ? client.initialClass : client.className;
+        return client.id != 0 && client.mapped
+            && !isBlockedWaylandClient(appId);
+    }
+
     QFlags<NET::WindowTypeMask> ignoreList;
     ignoreList |= NET::DesktopMask;
     ignoreList |= NET::DockMask;
@@ -191,6 +278,35 @@ bool Activity::isAcceptableWindow(quint64 wid)
 
 void Activity::onActiveWindowChanged()
 {
+    if (!KWindowSystem::isPlatformX11()) {
+        updateExistsWindowMaximized();
+
+        const quint64 address = KWinWaylandInterface::instance()->activeWindow();
+        const KWinWaylandClient client = KWinWaylandInterface::instance()->client(address);
+        if (client.id == 0 || !isAcceptableWindow(address)) {
+            clearTitle();
+            clearIcon();
+            return;
+        }
+
+        m_pid = static_cast<quint32>(client.pid);
+        m_windowClass = (client.className.isEmpty() ? client.initialClass : client.className).toLower();
+
+        CAppItem *item = m_cApps->matchItem(m_pid, m_windowClass);
+        const QString title = item ? item->localName : client.title;
+        const QString icon = item ? item->icon : m_windowClass;
+
+        if (m_title != title) {
+            m_title = title;
+            emit titleChanged();
+        }
+        if (m_icon != icon) {
+            m_icon = icon;
+            emit iconChanged();
+        }
+        return;
+    }
+
     KWindowInfo info(KX11Extras::activeWindow(),
                      NET::WMState | NET::WMVisibleName | NET::WMWindowType,
                      NET::WM2WindowClass);

@@ -10,6 +10,12 @@
 #include <QTimer>
 
 #include <KX11Extras>
+#include <KWindowSystem>
+
+#include <KWayland/Client/plasmashell.h>
+#include <KWayland/Client/surface.h>
+
+#include "kwinwaylandinterface.h"
 
 // X11
 #include <NETWM>
@@ -67,7 +73,13 @@ bool FakeWindow::event(QEvent *e)
             m_delayedMouseTimer.start();
         }
     } else if (e->type() == QEvent::Show) {
-        KX11Extras::setState(winId(), NET::SkipTaskbar | NET::SkipPager | NET::SkipSwitcher);
+        if (KWindowSystem::isPlatformX11())
+            KX11Extras::setState(winId(), NET::SkipTaskbar | NET::SkipPager | NET::SkipSwitcher);
+    } else if (e->type() == QEvent::Expose) {
+        // The wl_surface only exists once the window is exposed, and Qt makes
+        // a new one every time it is hidden and shown again.
+        if (isExposed())
+            updatePlasmaSurface();
     }
 
     return QQuickView::event(e);
@@ -81,8 +93,38 @@ void FakeWindow::setContainsMouse(bool contains)
     }
 }
 
+void FakeWindow::updatePlasmaSurface()
+{
+    if (KWindowSystem::isPlatformX11())
+        return;
+
+    KWayland::Client::PlasmaShell *shell = KWinWaylandInterface::instance()->plasmaShell();
+    if (!shell)
+        return;
+
+    KWayland::Client::Surface *surface = KWayland::Client::Surface::fromWindow(this);
+    if (!surface)
+        return;
+
+    delete m_plasmaSurface;
+    m_plasmaSurface = shell->createSurface(surface, this);
+    if (!m_plasmaSurface)
+        return;
+
+    // The auto-hide trigger is a thin strip on the screen edge. It has to sit
+    // above ordinary windows to catch the pointer, but must never reserve any
+    // work area of its own.
+    m_plasmaSurface->setRole(KWayland::Client::PlasmaShellSurface::Role::Panel);
+    m_plasmaSurface->setPanelBehavior(KWayland::Client::PlasmaShellSurface::PanelBehavior::WindowsGoBelow);
+    m_plasmaSurface->setPanelTakesFocus(false);
+    m_plasmaSurface->setSkipTaskbar(true);
+    m_plasmaSurface->setSkipSwitcher(true);
+    m_plasmaSurface->setPosition(geometry().topLeft());
+}
+
 void FakeWindow::updateGeometry()
 {
+
     int length = 5;
     const QRect screenRect = qApp->primaryScreen()->geometry();
     QRect newRect;
@@ -107,4 +149,5 @@ void FakeWindow::updateGeometry()
     }
 
     setGeometry(newRect);
+    updatePlasmaSurface();
 }

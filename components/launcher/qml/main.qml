@@ -30,8 +30,9 @@ import FishUI 1.0 as FishUI
 Item {
     id: root
 
-    // width: launcher.screenRect.width
-    // height: launcher.screenRect.height
+    // Follow the actual layer-surface content size.  This is the Qt6
+    // equivalent of the old QQuickView::SizeRootObjectToView behavior.
+    anchors.fill: parent
 
     property real horizontalSpacing: launcher.screenRect.width * 0.01
     property real verticalSpacing: launcher.screenRect.height * 0.01
@@ -191,10 +192,14 @@ Item {
     ColorOverlay {
         id: wallpaperColor
         anchors.fill: parent
-        source: parent
+        // Sampling the root here makes the effect include itself and the
+        // transparent layer-surface buffer.  Use the blurred wallpaper as
+        // the source instead, which preserves the original visual effect
+        // without the recursive transparent result on Qt6.
+        source: wallpaperBlur
         color: "#000000"
         opacity: backend.dimsWallpaper ? 0.5 : 0.4
-        visible: true
+        visible: wallpaperBlur.visible
     }
 
     LauncherModel {
@@ -213,9 +218,11 @@ Item {
         id: mainLayout
         anchors.fill: parent
         anchors.topMargin: 28
-        anchors.leftMargin: launcher.leftMargin
-        anchors.rightMargin: launcher.rightMargin
-        anchors.bottomMargin: launcher.bottomMargin + 28
+        // The launcher is a full-screen overlay.  The dock is drawn above it,
+        // so its geometry must not shrink the launcher's content area.
+        anchors.leftMargin: 28
+        anchors.rightMargin: 28
+        anchors.bottomMargin: 28
         spacing: 0
 
         Item {

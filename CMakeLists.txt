@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.14)
 
-project(cutefish-shell LANGUAGES CXX)
+project(cutefish-shell LANGUAGES C CXX)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_AUTOUIC ON)
@@ -11,10 +11,47 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(GNUInstallDirs)
 
-find_package(Qt6 CONFIG REQUIRED Widgets DBus Concurrent Quick QuickControls2 LinguistTools)
+find_package(Qt6 CONFIG REQUIRED Widgets DBus Concurrent Quick QuickControls2 Network LinguistTools)
 find_package(KF6WindowSystem REQUIRED)
+find_package(KWayland REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(XCB REQUIRED IMPORTED_TARGET xcb)
+pkg_check_modules(WAYLAND_CLIENT REQUIRED IMPORTED_TARGET wayland-client)
+
+# ---------------------------------------------------------------------------
+# wlr-layer-shell
+#
+# KWin reserves work area for exactly two kinds of window: X11 windows with a
+# strut, and wlr-layer-shell surfaces with an exclusive zone. A plasma-shell
+# panel reserves nothing. Layer shell cannot be used for the panels themselves,
+# because LayerShellQt selects it through QT_WAYLAND_SHELL_INTEGRATION for the
+# whole process and then every menu and tooltip becomes a full-screen layer
+# surface too, so the shell talks to the protocol directly and uses it only for
+# the invisible spacers in StrutSpacer.
+#
+# The protocol lives outside wayland-protocols, so a copy is vendored here the
+# way every other layer-shell client does it. xdg-shell comes along only
+# because zwlr_layer_surface_v1.get_popup refers to xdg_popup.
+# ---------------------------------------------------------------------------
+find_program(WAYLAND_SCANNER_EXECUTABLE NAMES wayland-scanner REQUIRED)
+
+set(WAYLAND_PROTOCOL_SRCS "")
+foreach(protocol wlr-layer-shell-unstable-v1 xdg-shell)
+    set(_xml ${CMAKE_CURRENT_SOURCE_DIR}/protocols/${protocol}.xml)
+    set(_header ${CMAKE_CURRENT_BINARY_DIR}/${protocol}-client-protocol.h)
+    set(_code ${CMAKE_CURRENT_BINARY_DIR}/${protocol}-protocol.c)
+
+    add_custom_command(OUTPUT ${_header}
+                       COMMAND ${WAYLAND_SCANNER_EXECUTABLE} client-header ${_xml} ${_header}
+                       DEPENDS ${_xml} VERBATIM)
+    add_custom_command(OUTPUT ${_code}
+                       COMMAND ${WAYLAND_SCANNER_EXECUTABLE} private-code ${_xml} ${_code}
+                       DEPENDS ${_xml} VERBATIM)
+
+    list(APPEND WAYLAND_PROTOCOL_SRCS ${_header} ${_code})
+endforeach()
+
+set_source_files_properties(${WAYLAND_PROTOCOL_SRCS} PROPERTIES SKIP_AUTOGEN ON)
 
 # ---------------------------------------------------------------------------
 # Shell core: the single QQmlEngine, the window base class, and the desktop.
@@ -30,6 +67,8 @@ set(SHELL_SRCS
     # once per binary; in one process there is exactly one of each.
     src/shared/activity.cpp
     src/shared/capplications.cpp
+    src/shared/kwinwaylandinterface.cpp
+    src/shared/strutspacer.cpp
     src/shared/processprovider.cpp
 
     shell.qrc
@@ -151,6 +190,7 @@ qt6_add_dbus_adaptor(LAUNCHER_GENERATED
 set_source_files_properties(${DOCK_GENERATED} ${LAUNCHER_GENERATED} PROPERTIES SKIP_AUTOGEN ON)
 
 add_executable(cutefish-shell
+    ${WAYLAND_PROTOCOL_SRCS}
     ${SHELL_SRCS}
     ${STATUSBAR_SRCS}
     ${STATUSBAR_GENERATED}
@@ -176,8 +216,11 @@ target_link_libraries(cutefish-shell PRIVATE
     Qt6::QuickControls2
     Qt6::Concurrent
     Qt6::DBus
+    Qt6::Network
     KF6::WindowSystem
+    Plasma::KWaylandClient
     PkgConfig::XCB
+    PkgConfig::WAYLAND_CLIENT
 )
 
 # ---------------------------------------------------------------------------
@@ -195,3 +238,13 @@ install(FILES ${QM_FILES} DESTINATION /usr/share/cutefish-shell/translations)
 
 install(TARGETS cutefish-shell RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES components/dock/cutefish-dock-list.conf DESTINATION /etc)
+
+# KWin only hands org_kde_plasma_window_management (the protocol the dock and
+# the status bar read the window list from) to clients whose desktop entry
+# lists it in X-KDE-Wayland-Interfaces. It matches the entry to the client by
+# comparing Exec against the process' executable path, and it does not resolve
+# a bare command name against PATH, so Exec has to be absolute.
+configure_file(data/cutefish-shell.desktop.in
+               ${CMAKE_CURRENT_BINARY_DIR}/cutefish-shell.desktop @ONLY)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/cutefish-shell.desktop
+        DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications)

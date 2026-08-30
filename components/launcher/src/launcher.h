@@ -53,6 +53,7 @@ protected:
 
 private:
     void onActiveChanged();
+    void focusWaylandWindow(quint64 address = 0);
 
 private:
     QDBusInterface m_dockInterface;

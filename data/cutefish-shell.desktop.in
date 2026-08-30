@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Cutefish Shell
+Comment=Status bar, dock, launcher and desktop of the Cutefish desktop
+Exec=@CMAKE_INSTALL_FULL_BINDIR@/cutefish-shell
+Icon=cutefish
+Terminal=false
+NoDisplay=true
+X-KDE-Wayland-Interfaces=org_kde_plasma_window_management,org_kde_plasma_activation_feedback

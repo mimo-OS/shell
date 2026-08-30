@@ -3,6 +3,7 @@
 
 #include "applicationitem.h"
 #include "docksettings.h"
+#include "kwinwaylandinterface.h"
 #include <QObject>
 
 // KLIB
@@ -40,10 +41,13 @@ public:
 signals:
     void windowAdded(quint64 wid);
     void windowRemoved(quint64 wid);
+    void windowChanged(quint64 wid);
     void activeChanged(quint64 wid);
 
 private:
     void onWindowadded(quint64 wid);
+    void onWaylandWindowAdded(quint64 wid);
+    void onWaylandWindowChanged(quint64 wid);
 };
 
 #endif // XWINDOWINTERFACE_H

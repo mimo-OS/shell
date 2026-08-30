@@ -32,6 +32,8 @@
 #include <QFile>
 #include <QDebug>
 
+#include <KWindowSystem>
+
 struct ServiceRegistration {
     const char *service;
     const char *path;
@@ -139,11 +141,15 @@ void Shell::start()
 {
     QDBusConnection bus = QDBusConnection::sessionBus();
 
-    // The dock first: it owns the struts and publishes the geometry that the
-    // launcher and the desktop use to keep clear of it.
+    // Construct the dock first so its D-Bus object and geometry are available
+    // to the desktop, but on Wayland defer mapping it until after the desktop.
+    // DesktopSurface is a full-screen ordinary xdg-toplevel; mapping it last
+    // can leave it above the dock/status bar and consume every pointer click.
     m_dock = new MainWindow(m_engine);
     bus.registerObject(QStringLiteral("/Dock"), m_dock);
-    m_dock->show();
+
+    if (!KWindowSystem::isPlatformX11())
+        m_desktops = new DesktopManager(m_engine, this);
 
     m_statusBar = new StatusBar(m_engine);
     bus.registerObject(QStringLiteral("/Statusbar"), m_statusBar);
@@ -152,5 +158,8 @@ void Shell::start()
     bus.registerObject(QStringLiteral("/Launcher"),
                        QStringLiteral("com.cutefish.Launcher"), m_launcher);
 
-    m_desktops = new DesktopManager(m_engine, this);
+    m_dock->show();
+
+    if (KWindowSystem::isPlatformX11())
+        m_desktops = new DesktopManager(m_engine, this);
 }

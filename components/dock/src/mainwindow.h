@@ -10,6 +10,7 @@
 #include "applicationmodel.h"
 #include "fakewindow.h"
 #include "trashmanager.h"
+#include "strutspacer.h"
 
 class MainWindow : public ShellSurface
 {
@@ -73,6 +74,7 @@ private:
     DockSettings *m_settings;
     ApplicationModel *m_appModel;
     FakeWindow *m_fakeWindow;
+    StrutSpacer *m_strutSpacer;
     TrashManager *m_trashManager;
 
     bool m_hideBlocked;
