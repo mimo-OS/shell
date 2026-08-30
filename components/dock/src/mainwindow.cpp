@@ -161,12 +161,15 @@ QRect MainWindow::windowRect() const
     int appCount = m_appModel->rowCount() + 1;
     int iconSize = m_settings->iconSize();
     iconSize += iconSize * 0.1;
-    int length = appCount * iconSize;
+    int edgePadding = isHorizontal ? qRound(iconSize * 0.1) : 0;
+    int length = appCount * iconSize + edgePadding * 2;
     int margins = compositing ? DockSettings::self()->edgeMargins() / 2 : 0;
 
     if (length >= maxLength) {
-        iconSize = (maxLength - (maxLength % appCount)) / appCount;
-        length = appCount * iconSize;
+        const int availableLength = maxLength - edgePadding * 2;
+        iconSize = (availableLength - (availableLength % appCount)) / appCount;
+        edgePadding = isHorizontal ? qRound(iconSize * 0.1) : 0;
+        length = appCount * iconSize + edgePadding * 2;
     }
 
     switch (m_settings->style()) {
@@ -179,7 +182,7 @@ QRect MainWindow::windowRect() const
             position.setY(availableGeometry.y() + (availableGeometry.height() - newSize.height()) / 2);
             break;
         case DockSettings::Bottom:
-            newSize = QSize(length, iconSize);
+            newSize = QSize(length, iconSize + edgePadding * 2);
             position.setX(screenGeometry.x() + (screenGeometry.width() - newSize.width()) / 2);
             position.setY(screenGeometry.y() + screenGeometry.height() - newSize.height() - margins);
             break;
@@ -202,7 +205,7 @@ QRect MainWindow::windowRect() const
             position.setY(screenGeometry.y());
             break;
         case DockSettings::Bottom:
-            newSize = QSize(screenGeometry.width(), iconSize);
+            newSize = QSize(screenGeometry.width(), iconSize + edgePadding * 2);
             position.setX(screenGeometry.x());
             position.setY(screenGeometry.y() + screenGeometry.height() - newSize.height());
             break;

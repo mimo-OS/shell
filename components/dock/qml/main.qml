@@ -32,6 +32,14 @@ Item {
     property bool isHorizontal: Settings.direction === DockSettings.Bottom
     property real windowRadius: isHorizontal ? root.height * 0.3 : root.width * 0.3
     property bool compositing: windowHelper.compositing
+    property real iconSizeRatio: 0.8
+    // Keep the visual space at the ends equal to the space between icons.
+    // Icons occupy 80% of their cell, so half of the remaining 20% is added
+    // as padding at each end (the other half is already around the icon).
+    property int edgePadding: isHorizontal
+                               ? Math.round(root.height * (1 - iconSizeRatio) / (2 * (2 - iconSizeRatio)))
+                               : 0
+    property int itemSize: isHorizontal ? root.height - edgePadding * 2 : root.width
 
     onCompositingChanged: {
         mainWindow.updateSize()
@@ -93,9 +101,13 @@ Item {
     GridLayout {
         id: mainLayout
         anchors.fill: parent
-        anchors.topMargin: Settings.style === 1
-                           && (Settings.direction === 0 || Settings.direction === 2)
-                           ? 28 : 0
+        anchors.leftMargin: root.edgePadding
+        anchors.rightMargin: root.edgePadding
+        anchors.topMargin: root.edgePadding
+                           + (Settings.style === 1
+                              && (Settings.direction === 0 || Settings.direction === 2)
+                              ? 28 : 0)
+        anchors.bottomMargin: root.edgePadding
         flow: isHorizontal ? Grid.LeftToRight : Grid.TopToBottom
         columnSpacing: 0
         rowSpacing: 0
@@ -115,6 +127,7 @@ Item {
                 id: appItemDelegate
                 implicitWidth: isHorizontal ? appItemView.height : appItemView.width
                 implicitHeight: isHorizontal ? appItemView.height : appItemView.width
+                iconSizeRatio: root.iconSizeRatio
             }
 
             moveDisplaced: Transition {
@@ -128,8 +141,9 @@ Item {
 
         DockItem {
             id: trashItem
-            implicitWidth: isHorizontal ? root.height : root.width
-            implicitHeight: isHorizontal ? root.height : root.width
+            implicitWidth: isHorizontal ? root.itemSize : root.width
+            implicitHeight: isHorizontal ? root.itemSize : root.width
+            iconSizeRatio: root.iconSizeRatio
             popupText: qsTr("Trash")
             enableActivateDot: false
             iconName: trash.count === 0 ? "user-trash-empty" : "user-trash-full"
