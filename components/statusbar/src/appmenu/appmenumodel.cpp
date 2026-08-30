@@ -5,9 +5,9 @@
 #include <QDBusConnectionInterface>
 #include <QDBusServiceWatcher>
 #include <QGuiApplication>
+#include <QtGui/qguiapplication_platform.h>
 #include <QMenu>
 
-#include <QX11Info>
 
 #include <KX11Extras>
 #include <KWindowInfo>
@@ -20,7 +20,7 @@
 
 static QByteArray getWindowPropertyString(WId id, const QByteArray &name)
 {
-    xcb_connection_t *c = QX11Info::connection();
+    xcb_connection_t *c = qGuiApp->nativeInterface<QNativeInterface::QX11Application>()->connection();
     QByteArray value;
 
     const xcb_intern_atom_cookie_t atomCookie = xcb_intern_atom(c, false, name.length(), name.constData());

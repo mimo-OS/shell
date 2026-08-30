@@ -1,12 +1,13 @@
 #include "activity.h"
+#include "x11utils.h"
 
 #include <QFile>
 #include <QCursor>
 #include <QDebug>
-#include <QX11Info>
 #include <QDirIterator>
 #include <QSettings>
 #include <QRegularExpression>
+#include <QtGui/qguiapplication_platform.h>
 
 #include <NETWM>
 #include <KX11Extras>
@@ -96,7 +97,7 @@ QString Activity::icon() const
 
 void Activity::close()
 {
-    NETRootInfo(QX11Info::connection(), NET::CloseWindow).closeWindowRequest(KX11Extras::activeWindow());
+    NETRootInfo(qGuiApp->nativeInterface<QNativeInterface::QX11Application>()->connection(), NET::CloseWindow).closeWindowRequest(KX11Extras::activeWindow());
 }
 
 void Activity::minimize()
@@ -145,7 +146,7 @@ void Activity::move()
         KX11Extras::forceActiveWindow(winId);
     }
 
-    NETRootInfo ri(QX11Info::connection(), NET::WMMoveResize);
+    NETRootInfo ri(qGuiApp->nativeInterface<QNativeInterface::QX11Application>()->connection(), NET::WMMoveResize);
     ri.moveResizeRequest(winId,
                          QCursor::pos().x(),
                          QCursor::pos().y(), NET::Move);
@@ -175,7 +176,7 @@ bool Activity::isAcceptableWindow(quint64 wid)
 
     // WM_TRANSIENT_FOR hint not set - normal window
     WId transFor = info.transientFor();
-    if (transFor == 0 || transFor == wid || transFor == (WId) QX11Info::appRootWindow())
+    if (transFor == 0 || transFor == wid || transFor == (WId) Cutefish::X11::rootWindow())
         return true;
 
     info = KWindowInfo(transFor, NET::WMWindowType);

@@ -1,11 +1,12 @@
 #include "xwindowinterface.h"
 #include "utils.h"
+#include "x11utils.h"
 
 #include <QTimer>
 #include <QDebug>
-#include <QX11Info>
 #include <QWindow>
 #include <QScreen>
+#include <QtGui/qguiapplication_platform.h>
 
 #include <KWindowEffects>
 #include <KX11Extras>
@@ -50,7 +51,7 @@ void XWindowInterface::minimizeWindow(WId win)
 void XWindowInterface::closeWindow(WId id)
 {
     // FIXME: Why there is no such thing in KWindowSystem??
-    NETRootInfo(QX11Info::connection(), NET::CloseWindow).closeWindowRequest(id);
+    NETRootInfo(qGuiApp->nativeInterface<QNativeInterface::QX11Application>()->connection(), NET::CloseWindow).closeWindowRequest(id);
 }
 
 void XWindowInterface::forceActiveWindow(WId win)
@@ -111,7 +112,7 @@ bool XWindowInterface::isAcceptableWindow(quint64 wid)
 
     // WM_TRANSIENT_FOR hint not set - normal window
     WId transFor = info.transientFor();
-    if (transFor == 0 || transFor == wid || transFor == (WId) QX11Info::appRootWindow())
+    if (transFor == 0 || transFor == wid || transFor == (WId) Cutefish::X11::rootWindow())
         return true;
 
     info = KWindowInfo(transFor, NET::WMWindowType);
@@ -183,8 +184,8 @@ QString XWindowInterface::desktopFilePath(quint64 wid)
 {
     const KWindowInfo info(wid, NET::Properties(), NET::WM2WindowClass | NET::WM2DesktopFileName);
     return Utils::instance()->desktopPathFromMetadata(info.windowClassClass(),
-                                                      NETWinInfo(QX11Info::connection(), wid,
-                                                                 QX11Info::appRootWindow(),
+                                                      NETWinInfo(qGuiApp->nativeInterface<QNativeInterface::QX11Application>()->connection(), wid,
+                                                                 Cutefish::X11::rootWindow(),
                                                                  NET::WMPid,
                                                                  NET::Properties2()).pid(),
                                                       info.windowClassName());
@@ -192,9 +193,9 @@ QString XWindowInterface::desktopFilePath(quint64 wid)
 
 void XWindowInterface::setIconGeometry(quint64 wid, const QRect &rect)
 {
-    NETWinInfo info(QX11Info::connection(),
+    NETWinInfo info(qGuiApp->nativeInterface<QNativeInterface::QX11Application>()->connection(),
                     wid,
-                    (WId) QX11Info::appRootWindow(),
+                    (WId) Cutefish::X11::rootWindow(),
                     NET::WMIconGeometry,
                     QFlags<NET::Property2>(1));
     NETRect nrect;

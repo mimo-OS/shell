@@ -161,7 +161,6 @@ add_executable(cutefish-shell
 )
 
 target_include_directories(cutefish-shell PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/compat
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/src/shared
     ${CMAKE_CURRENT_SOURCE_DIR}/components/statusbar/src
