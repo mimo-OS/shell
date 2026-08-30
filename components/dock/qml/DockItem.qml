@@ -172,29 +172,14 @@ Item {
         property var rightY: (parent.height - height) / 2
 
         property var circleSize: isBottom ? control.height * 0.06 : control.width * 0.06
-        property var activeLength: isBottom ? control.height * 0.5 : control.height * 0.5
 
-        width: !isBottom ? circleSize : (isActive ? activeLength : circleSize)
-        height: !isBottom ? (isActive ? activeLength : circleSize) : circleSize
-        radius: !isBottom ? width / 2 : height / 2
+        width: circleSize
+        height: circleSize
+        radius: width / 2
         visible: enableActivateDot && !dragStarted
         color: FishUI.Theme.textColor
 
         x: isLeft ? leftX : isBottom ? bottomX : rightX
         y: isLeft ? leftY : isBottom ? bottomY : rightY
-
-        Behavior on width {
-            NumberAnimation {
-                duration: isBottom ? 250 : 0
-                easing.type: Easing.InOutSine
-            }
-        }
-
-        Behavior on height {
-            NumberAnimation {
-                duration: !isBottom ? 250 : 0
-                easing.type: Easing.InOutSine
-            }
-        }
     }
 }
