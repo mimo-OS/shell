@@ -5,7 +5,6 @@
 #include <QIcon>
 #include <QUrl>
 
-class SystemAppMonitor;
 class Utils : public QObject
 {
     Q_OBJECT
@@ -35,8 +34,6 @@ public:
                                     const QString &windowClassName = QString());
     QMap<QString, QString> readInfoFromDesktop(const QString &desktopFile);
 
-private:
-    SystemAppMonitor *m_sysAppMonitor;
 };
 
 #endif // UTILS_H

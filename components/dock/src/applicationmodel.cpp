@@ -1,26 +1,35 @@
 ﻿#include "applicationmodel.h"
-#include "processprovider.h"
+#include "applicationlauncher.h"
+#include "applicationregistry.h"
+#include "desktopentry.h"
 
 #include <QDBusConnection>
 #include <QDBusInterface>
+#include <QFileInfo>
+#include <QSettings>
 
 // The dock's built-in launcher button. It is not backed by a .desktop file.
 static const char *kLauncherId = "cutefish-launcher";
-#include "utils.h"
 
-#include <QProcess>
+#include <algorithm>
+#include <utility>
 
 ApplicationModel::ApplicationModel(QObject *parent)
     : QAbstractListModel(parent)
     , m_iface(WindowInterface::instance())
-    , m_sysAppMonitor(SystemAppMonitor::self())
 {
     connect(m_iface, &WindowInterface::windowAdded, this, &ApplicationModel::onWindowAdded);
     connect(m_iface, &WindowInterface::windowRemoved, this, &ApplicationModel::onWindowRemoved);
     connect(m_iface, &WindowInterface::windowChanged, this, &ApplicationModel::onWindowChanged);
     connect(m_iface, &WindowInterface::activeChanged, this, &ApplicationModel::onActiveChanged);
 
+    ApplicationRegistry *registry = ApplicationRegistry::instance();
+    connect(registry, &ApplicationRegistry::applicationsChanged,
+            this, &ApplicationModel::onApplicationsChanged);
     initPinnedApplications();
+    m_pinsInitialized = true;
+    if (!registry->loading())
+        onApplicationsChanged();
 
     QTimer::singleShot(100, m_iface, &WindowInterface::startInitWindows);
 }
@@ -77,29 +86,45 @@ QVariant ApplicationModel::data(const QModelIndex &index, int role) const
     return QVariant();
 }
 
+void ApplicationModel::updateFromDesktopEntry(ApplicationItem *item,
+                                               DesktopEntry *entry)
+{
+    if (!item || !entry)
+        return;
+
+    item->id = entry->id();
+    if (!entry->icon().isEmpty())
+        item->iconName = entry->icon();
+    if (!entry->name().isEmpty())
+        item->visibleName = entry->name();
+    if (!entry->exec().isEmpty())
+        item->exec = entry->exec();
+    item->desktopPath = entry->path();
+}
+
 void ApplicationModel::addItem(const QString &desktopFile)
 {
-    ApplicationItem *existsItem = findItemByDesktop(desktopFile);
+    ApplicationRegistry *registry = ApplicationRegistry::instance();
+    DesktopEntry *entry = registry->byPath(desktopFile);
+    if (!entry)
+        entry = registry->byId(desktopFile);
+    if (!entry)
+        return;
+
+    ApplicationItem *existsItem = findItemByDesktop(entry->path());
 
     if (existsItem) {
         existsItem->isPinned = true;
+        updateFromDesktopEntry(existsItem, entry);
+        handleDataChangedFromItem(existsItem);
+        savePinAndUnPinList();
         return;
     }
 
     beginInsertRows(QModelIndex(), rowCount(), rowCount());
     ApplicationItem *item = new ApplicationItem;
-    QMap<QString, QString> desktopInfo = Utils::instance()->readInfoFromDesktop(desktopFile);
-    item->iconName = desktopInfo.value("Icon");
-    item->visibleName = desktopInfo.value("Name");
-    item->exec = desktopInfo.value("Exec");
-    item->desktopPath = desktopFile;
+    updateFromDesktopEntry(item, entry);
     item->isPinned = true;
-
-    // First use filename as the id of the item.
-    // Why not use exec? Because exec contains the file path,
-    // QSettings will have problems, resulting in unrecognized next time.
-    QFileInfo fi(desktopFile);
-    item->id = fi.baseName();
 
     m_appItems << item;
     endInsertRows();
@@ -112,7 +137,14 @@ void ApplicationModel::addItem(const QString &desktopFile)
 
 void ApplicationModel::removeItem(const QString &desktopFile)
 {
-    ApplicationItem *item = findItemByDesktop(desktopFile);
+    DesktopEntry *entry = ApplicationRegistry::instance()->byPath(desktopFile);
+    if (!entry)
+        entry = ApplicationRegistry::instance()->byId(desktopFile);
+
+    ApplicationItem *item = entry ? findItemByDesktop(entry->path())
+                                  : findItemByDesktop(desktopFile);
+    if (!item)
+        item = findItemById(desktopFile);
 
     if (item) {
         ApplicationModel::unPin(item->id);
@@ -124,12 +156,26 @@ bool ApplicationModel::desktopContains(const QString &desktopFile)
     if (desktopFile.isEmpty())
         return false;
 
+    DesktopEntry *entry = ApplicationRegistry::instance()->byPath(desktopFile);
+    if (!entry)
+        entry = ApplicationRegistry::instance()->byId(desktopFile);
+    if (entry)
+        return findItemByDesktop(entry->path()) != nullptr;
+
+    if (findItemById(desktopFile))
+        return true;
     return findItemByDesktop(desktopFile) != nullptr;
 }
 
 bool ApplicationModel::isDesktopPinned(const QString &desktopFile)
 {
-    ApplicationItem *item = findItemByDesktop(desktopFile);
+    DesktopEntry *entry = ApplicationRegistry::instance()->byPath(desktopFile);
+    if (!entry)
+        entry = ApplicationRegistry::instance()->byId(desktopFile);
+    ApplicationItem *item = entry ? findItemByDesktop(entry->path())
+                                  : findItemByDesktop(desktopFile);
+    if (!item)
+        item = findItemById(desktopFile);
 
     if (item) {
         return item->isPinned;
@@ -196,21 +242,13 @@ bool ApplicationModel::openNewInstance(const QString &appId)
         return false;
     }
 
-    if (!item->exec.isEmpty()) {
-        QStringList args = item->exec.split(" ");
-        QString exec = args.first();
-        args.removeFirst();
+    if (DesktopEntry *entry = ApplicationRegistry::instance()->byId(item->id))
+        return entry->launch();
 
-        if (!args.isEmpty()) {
-            ProcessProvider::startDetached(exec, args);
-        } else {
-            ProcessProvider::startDetached(exec);
-        }
-    } else {
-        ProcessProvider::startDetached(appId);
-    }
+    if (item->exec.isEmpty())
+        return ApplicationLauncher::startDetached({appId});
 
-    return true;
+    return ApplicationLauncher::startDetached(DesktopEntry::parseExec(item->exec));
 }
 
 void ApplicationModel::closeAllByAppId(const QString &appId)
@@ -303,8 +341,13 @@ ApplicationItem *ApplicationModel::findItemById(const QString &id)
 
 ApplicationItem *ApplicationModel::findItemByDesktop(const QString &desktop)
 {
+    if (desktop.isEmpty())
+        return nullptr;
+
+    const QString normalizedDesktop = QFileInfo(desktop).absoluteFilePath();
     for (ApplicationItem *item : m_appItems) {
-        if (item->desktopPath == desktop)
+        if (!item->desktopPath.isEmpty()
+            && QFileInfo(item->desktopPath).absoluteFilePath() == normalizedDesktop)
             return item;
     }
 
@@ -338,6 +381,14 @@ void ApplicationModel::initPinnedApplications()
     QSettings *set = (QFile(settings.fileName()).exists()) ? &settings
                                                            : &systemSettings;
     QStringList groups = set->childGroups();
+    QList<QPair<int, QString>> orderedGroups;
+    for (const QString &group : groups) {
+        set->beginGroup(group);
+        orderedGroups.append({set->value("Index").toInt(), group});
+        set->endGroup();
+    }
+    std::sort(orderedGroups.begin(), orderedGroups.end(),
+              [](const auto &left, const auto &right) { return left.first < right.first; });
 
     // Launcher
     ApplicationItem *item = new ApplicationItem;
@@ -348,55 +399,85 @@ void ApplicationModel::initPinnedApplications()
     item->fixed = true;
     m_appItems.append(item);
 
-    // Pinned Apps
-    for (int i = 0; i < groups.size(); ++i) {
-        for (const QString &id : groups) {
-            set->beginGroup(id);
-            int index = set->value("Index").toInt();
+    // Pinned apps. Older configurations store an absolute path, while newer
+    // ones store the desktop id as the group name; both remain supported.
+    for (const auto &[index, group] : orderedGroups) {
+        Q_UNUSED(index)
+        set->beginGroup(group);
+        const QString path = set->value("DesktopPath").toString();
+        const QString savedIcon = set->value("Icon").toString();
+        const QString savedName = set->value("VisibleName").toString();
+        const QString savedExec = set->value("Exec").toString();
+        DesktopEntry *entry = ApplicationRegistry::instance()->byPath(path);
+        if (!entry)
+            entry = ApplicationRegistry::instance()->byId(group);
 
-            if (index == i) {
-                beginInsertRows(QModelIndex(), rowCount(), rowCount());
-                ApplicationItem *item = new ApplicationItem;
+        if (entry && !findItemById(entry->id())) {
+            beginInsertRows(QModelIndex(), rowCount(), rowCount());
+            ApplicationItem *item = new ApplicationItem;
+            updateFromDesktopEntry(item, entry);
+            if (item->iconName.isEmpty())
+                item->iconName = savedIcon;
+            if (item->visibleName.isEmpty())
+                item->visibleName = savedName;
+            if (item->exec.isEmpty())
+                item->exec = savedExec;
+            item->isPinned = true;
+            m_appItems.append(item);
+            endInsertRows();
 
-                item->desktopPath = set->value("DesktopPath").toString();
-                item->id = id;
-                item->isPinned = true;
+            emit itemAdded();
+            emit countChanged();
+        } else if (!entry && !path.isEmpty() && QFile::exists(path)
+                   && !findItemById(group)) {
+            beginInsertRows(QModelIndex(), rowCount(), rowCount());
+            ApplicationItem *item = new ApplicationItem;
+            item->id = group;
+            item->desktopPath = path;
+            item->iconName = savedIcon;
+            item->visibleName = savedName;
+            item->exec = savedExec;
+            item->isPinned = true;
+            m_appItems.append(item);
+            endInsertRows();
 
-                if (!QFile(item->desktopPath).exists()) {
-                    set->endGroup();
-                    continue;
-                }
+            emit itemAdded();
+            emit countChanged();
+        }
+        set->endGroup();
+    }
+}
 
-                // Read from desktop file.
-                if (!item->desktopPath.isEmpty()) {
-                    QMap<QString, QString> desktopInfo = Utils::instance()->readInfoFromDesktop(item->desktopPath);
-                    item->iconName = desktopInfo.value("Icon");
-                    item->visibleName = desktopInfo.value("Name");
-                    item->exec = desktopInfo.value("Exec");
-                }
+void ApplicationModel::onApplicationsChanged()
+{
+    if (!m_pinsInitialized) {
+        initPinnedApplications();
+        m_pinsInitialized = true;
+    }
 
-                // Read from config file.
-                if (item->iconName.isEmpty())
-                    item->iconName = set->value("Icon").toString();
+    ApplicationRegistry *registry = ApplicationRegistry::instance();
+    for (ApplicationItem *item : std::as_const(m_appItems)) {
+        if (item->fixed)
+            continue;
 
-                if (item->visibleName.isEmpty())
-                    item->visibleName = set->value("VisibleName").toString();
+        DesktopEntry *entry = registry->byId(item->id);
+        if (!entry && !item->desktopPath.isEmpty())
+            entry = registry->byPath(item->desktopPath);
+        for (quint64 wid : std::as_const(item->wids)) {
+            const QString path = m_iface->desktopFilePath(wid);
+            if (path.isEmpty())
+                continue;
 
-                if (item->exec.isEmpty())
-                    item->exec = set->value("Exec").toString();
-
-                m_appItems.append(item);
-                endInsertRows();
-
-                emit itemAdded();
-                emit countChanged();
-
-                set->endGroup();
+            if (DesktopEntry *windowEntry = registry->byPath(path)) {
+                entry = windowEntry;
                 break;
-            } else {
-                set->endGroup();
             }
         }
+        if (!entry)
+            continue;
+
+        updateFromDesktopEntry(item, entry);
+        handleDataChangedFromItem(item);
     }
 }
 
@@ -452,6 +533,7 @@ void ApplicationModel::onWindowAdded(quint64 wid)
         return;
 
     QString desktopPath = m_iface->desktopFilePath(wid);
+    DesktopEntry *entry = ApplicationRegistry::instance()->byPath(desktopPath);
     ApplicationItem *desktopItem = findItemByDesktop(desktopPath);
 
     // Use desktop find
@@ -460,7 +542,9 @@ void ApplicationModel::onWindowAdded(quint64 wid)
         // Need to update application active status.
         desktopItem->isActive = info.value("active").toBool();
 
-        if (desktopItem->id != id) {
+        if (entry)
+            updateFromDesktopEntry(desktopItem, entry);
+        else if (desktopItem->id != id) {
             desktopItem->id = id;
             savePinAndUnPinList();
         }
@@ -489,14 +573,10 @@ void ApplicationModel::onWindowAdded(quint64 wid)
             item->visibleName = id;
         item->isActive = info.value("active").toBool();
         item->wids.append(wid);
+        item->desktopPath = desktopPath;
 
-        if (!desktopPath.isEmpty()) {
-            QMap<QString, QString> desktopInfo = Utils::instance()->readInfoFromDesktop(desktopPath);
-            item->iconName = desktopInfo.value("Icon");
-            item->visibleName = desktopInfo.value("Name");
-            item->exec = desktopInfo.value("Exec");
-            item->desktopPath = desktopPath;
-        }
+        if (entry)
+            updateFromDesktopEntry(item, entry);
 
         m_appItems << item;
         endInsertRows();

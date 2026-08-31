@@ -3,7 +3,6 @@
 
 #include <QAbstractListModel>
 #include "applicationitem.h"
-#include "systemappmonitor.h"
 #include "windowinterface.h"
 
 class ApplicationModel : public QAbstractListModel
@@ -55,11 +54,13 @@ private:
     ApplicationItem *findItemByWId(quint64 wid);
     ApplicationItem *findItemById(const QString &id);
     ApplicationItem *findItemByDesktop(const QString &desktop);
+    void updateFromDesktopEntry(ApplicationItem *item, class DesktopEntry *entry);
 
     bool contains(const QString &id);
     int indexOf(const QString &id);
     void initPinnedApplications();
     void savePinAndUnPinList();
+    void onApplicationsChanged();
 
     void handleDataChangedFromItem(ApplicationItem *item);
 
@@ -70,8 +71,8 @@ private:
 
 private:
     WindowInterface *m_iface;
-    SystemAppMonitor *m_sysAppMonitor;
     QList<ApplicationItem *> m_appItems;
+    bool m_pinsInitialized = false;
 };
 
 #endif // APPLICATIONMODEL_H

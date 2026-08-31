@@ -1,4 +1,6 @@
 #include "activity.h"
+#include "applicationresolver.h"
+#include "applicationregistry.h"
 #include "kwinwaylandinterface.h"
 
 static bool isBlockedClient(const QString &appId)
@@ -19,12 +21,14 @@ Activity *Activity::self()
 
 Activity::Activity(QObject *parent)
     : QObject(parent)
-    , m_cApps(CApplications::self())
     , m_existsWindowMaximized(false)
     , m_pid(0)
     , m_launchPad(false)
 {
     KWinWaylandInterface *kwin = KWinWaylandInterface::instance();
+    ApplicationRegistry *registry = ApplicationRegistry::instance();
+    connect(registry, &ApplicationRegistry::applicationsChanged,
+            this, &Activity::onActiveWindowChanged);
     connect(kwin, &KWinWaylandInterface::activeWindowChanged,
             this, &Activity::onActiveWindowChanged);
     connect(kwin, &KWinWaylandInterface::clientAdded,
@@ -141,9 +145,12 @@ void Activity::onActiveWindowChanged()
     m_pid = static_cast<quint32>(client.pid);
     m_windowClass = (client.className.isEmpty() ? client.initialClass : client.className).toLower();
 
-    CAppItem *item = m_cApps->matchItem(m_pid, m_windowClass);
-    const QString title = item ? item->localName : client.title;
-    const QString icon = item ? item->icon : m_windowClass;
+    DesktopEntry *entry = ApplicationResolver::instance()->resolve(
+        client.className.isEmpty() ? client.initialClass : client.className,
+        m_pid,
+        m_windowClass);
+    const QString title = entry ? entry->name() : client.title;
+    const QString icon = entry ? entry->icon() : m_windowClass;
 
     if (m_title != title) {
         m_title = title;

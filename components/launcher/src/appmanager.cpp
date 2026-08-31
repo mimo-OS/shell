@@ -1,4 +1,5 @@
 #include "appmanager.h"
+#include "applicationregistry.h"
 #include <QFile>
 
 AppManager::AppManager(QObject *parent)
@@ -12,8 +13,12 @@ AppManager::AppManager(QObject *parent)
 
 void AppManager::uninstall(const QString &desktopFile)
 {
+    QString path = desktopFile;
+    if (DesktopEntry *entry = ApplicationRegistry::instance()->byId(desktopFile))
+        path = entry->path();
+
     if (m_iface.isValid()) {
-        m_iface.asyncCall("uninstall", desktopFile);
+        m_iface.asyncCall("uninstall", path);
     }
 }
 

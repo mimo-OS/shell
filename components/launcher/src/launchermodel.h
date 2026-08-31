@@ -2,7 +2,6 @@
 #define LAUNCHERMODEL_H
 
 #include <QObject>
-#include <QFileSystemWatcher>
 #include <QLoggingCategory>
 #include <QAbstractListModel>
 #include <QSettings>
@@ -52,8 +51,6 @@ public:
 
     int findById(const QString &id);
 
-    static void refresh(LauncherModel *manager);
-
     Q_INVOKABLE void move(int from, int to, int page, int pageCount);
     Q_INVOKABLE void save();
 
@@ -69,20 +66,16 @@ Q_SIGNALS:
     void applicationLaunched();
 
 private Q_SLOTS:
-    void onRefreshed();
-    void onFileChanged(const QString &path);
-    void addApp(const QString &fileName);
-    void removeApp(const QString &fileName);
+    void onApplicationsChanged();
 
 private:
     QList<AppItem> m_appItems;
     QList<AppItem> m_searchItems;
 
-    QFileSystemWatcher *m_fileWatcher;
-
     QTimer m_saveTimer;
     QSettings m_settings;
     Mode m_mode;
+    QString m_searchKey;
 
     bool m_firstLoad;
 };

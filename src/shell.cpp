@@ -28,6 +28,7 @@
 #include "pagemodel.h"
 #include "iconitem.h"
 #include "appmanager.h"
+#include "applicationregistry.h"
 
 #include <QQmlEngine>
 #include <QQmlContext>
@@ -79,6 +80,8 @@ Shell::~Shell()
 
 void Shell::registerQmlTypes()
 {
+    registerApplicationsQmlTypes();
+
     const char *statusBarUri = "Cutefish.StatusBar";
     qmlRegisterType<SystemTrayModel>(statusBarUri, 1, 0, "SystemTrayModel");
     qmlRegisterType<ControlCenterDialog>(statusBarUri, 1, 0, "ControlCenterDialog");

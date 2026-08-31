@@ -16,6 +16,9 @@ find_package(KWayland REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(WAYLAND_CLIENT REQUIRED IMPORTED_TARGET wayland-client)
 
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../libcutefish/applications
+                 ${CMAKE_CURRENT_BINARY_DIR}/cutefishapplications-build)
+
 # ---------------------------------------------------------------------------
 # wlr-layer-shell
 #
@@ -63,7 +66,7 @@ set(SHELL_SRCS
     # Services shared by more than one component. These used to be duplicated
     # once per binary; in one process there is exactly one of each.
     src/shared/activity.cpp
-    src/shared/capplications.cpp
+    src/shared/applicationresolver.cpp
     src/shared/kwinwaylandinterface.cpp
     src/shared/strutspacer.cpp
     src/shared/processprovider.cpp
@@ -144,8 +147,6 @@ set(DOCK_SRCS
     components/dock/src/applicationmodel.cpp
     components/dock/src/docksettings.cpp
     components/dock/src/mainwindow.cpp
-    components/dock/src/systemappmonitor.cpp
-    components/dock/src/systemappitem.cpp
     components/dock/src/trashmanager.cpp
     components/dock/src/utils.cpp
     components/dock/src/windowinterface.cpp
@@ -193,7 +194,6 @@ qt6_add_dbus_adaptor(NOTIFICATION_GENERATED
 # Launcher
 # ---------------------------------------------------------------------------
 set(LAUNCHER_SRCS
-    components/launcher/src/desktopproperties.cpp
     components/launcher/src/launcher.cpp
     components/launcher/src/launchermodel.cpp
     components/launcher/src/appitem.cpp
@@ -243,6 +243,7 @@ target_include_directories(cutefish-shell PRIVATE
 )
 
 target_link_libraries(cutefish-shell PRIVATE
+    cutefishapplications
     Qt6::Core
     Qt6::Widgets
     Qt6::Quick

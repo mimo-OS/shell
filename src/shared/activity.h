@@ -2,7 +2,6 @@
 #define ACTIVITY_H
 
 #include <QObject>
-#include "capplications.h"
 
 class Activity : public QObject
 {
@@ -52,7 +51,6 @@ signals:
     void launchPadChanged();
 
 private:
-    CApplications *m_cApps;
     QString m_title;
     QString m_icon;
     bool m_existsWindowMaximized;
