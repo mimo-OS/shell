@@ -26,6 +26,19 @@ public:
 
     bool showed();
 
+    /**
+     * D-Bus entry points, called by the generated adaptor.
+     *
+     * The adaptor calls the slot named like the D-Bus method, and QWindow
+     * already has show() and hide(): without these, com.cutefish.Launcher.show
+     * mapped the window straight from QWindow, behind the launcher's back. The
+     * panels never gave their reserved area back, so KWin sized the launcher to
+     * the work area and it came up a strip short at the bottom, unfocused, and
+     * with the dock still stacked over it.
+     */
+    Q_INVOKABLE void show();
+    Q_INVOKABLE void hide();
+
     Q_INVOKABLE void showWindow();
     Q_INVOKABLE void hideWindow();
     Q_INVOKABLE void toggle();

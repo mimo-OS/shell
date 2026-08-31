@@ -137,6 +137,16 @@ void Launcher::focusWaylandWindow(quint64 address)
         kwin->focusWindow(address);
 }
 
+void Launcher::show()
+{
+    showWindow();
+}
+
+void Launcher::hide()
+{
+    hideWindow();
+}
+
 void Launcher::hideWindow()
 {
     m_showed = false;
@@ -204,8 +214,11 @@ void Launcher::updateMargins()
 
 void Launcher::updateSize()
 {
-    if (m_screenRect != qApp->primaryScreen()->geometry()) {
-        m_screenRect = qApp->primaryScreen()->geometry();
+    if (!screen())
+        return;
+
+    if (m_screenRect != screen()->geometry()) {
+        m_screenRect = screen()->geometry();
         setGeometry(m_screenRect);
         setSurfacePosition(m_screenRect.topLeft());
         emit screenRectChanged();
@@ -214,13 +227,9 @@ void Launcher::updateSize()
 
 void Launcher::onGeometryChanged()
 {
-    disconnect(screen());
-
     setScreen(qApp->primaryScreen());
+    watchScreen(screen(), [this] { updateSize(); });
     updateSize();
-
-    connect(screen(), &QScreen::virtualGeometryChanged, this, &Launcher::updateSize);
-    connect(screen(), &QScreen::geometryChanged, this, &Launcher::updateSize);
 }
 
 void Launcher::showEvent(QShowEvent *e)
