@@ -176,18 +176,6 @@ Item {
                 anchors.rightMargin: FishUI.Units.smallSpacing
                 spacing: FishUI.Units.smallSpacing
 
-                Image {
-                    id: acticityIcon
-                    width: rootItem.iconSize
-                    height: rootItem.iconSize
-                    sourceSize: Qt.size(rootItem.iconSize,
-                                        rootItem.iconSize)
-                    source: acticity.icon ? "image://icontheme/" + acticity.icon : ""
-                    visible: status === Image.Ready
-                    antialiasing: true
-                    smooth: false
-                }
-
                 Label {
                     id: acticityLabel
                     text: acticity.title
