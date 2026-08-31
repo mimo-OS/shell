@@ -31,7 +31,6 @@ Item {
 
     property bool isHorizontal: Settings.direction === DockSettings.Bottom
     property real windowRadius: (isHorizontal ? root.height : root.width) * 28 / 86
-    property bool compositing: windowHelper.compositing
     // Figma baseline (default IconSize 53):
     // dock height = 16 top + 54 icon + 8 icon/dot gap + 4 dot + 4 bottom.
     property real iconSizeRatio: 1.0
@@ -49,10 +48,6 @@ Item {
                                                        - root.bottomPadding))
                              : Math.max(1, Math.round(root.width - root.sidePadding * 2))
 
-    onCompositingChanged: {
-        mainWindow.updateSize()
-    }
-
     DropArea {
         anchors.fill: parent
         enabled: true
@@ -62,14 +57,13 @@ Item {
     Rectangle {
         id: _background
 
-        property var borderColor: root.compositing ? FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.3)
-                                                                           : Qt.rgba(0, 0, 0, 0.2) : FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.15)
-                                                                                                                           : Qt.rgba(0, 0, 0, 0.15)
+        property var borderColor: FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.3)
+                                                        : Qt.rgba(0, 0, 0, 0.2)
 
         anchors.fill: parent
-        radius: root.compositing ? windowRadius : 0
+        radius: windowRadius
         color: FishUI.Theme.darkMode ? "#666666" : "#E6E6E6"
-        opacity: root.compositing ? FishUI.Theme.darkMode ? 0.5 : 0.5 : 0.9
+        opacity: 0.5
         border.width: 1 / FishUI.Units.devicePixelRatio
         border.pixelAligned: FishUI.Units.devicePixelRatio > 1 ? false : true
         border.color: borderColor
@@ -80,10 +74,6 @@ Item {
                 easing.type: Easing.Linear
             }
         }
-    }
-
-    FishUI.WindowHelper {
-        id: windowHelper
     }
 
     FishUI.WindowShadow {

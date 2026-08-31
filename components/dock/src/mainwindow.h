@@ -37,8 +37,6 @@ public:
     void setIconSize(int iconSize);
     void setVisibility(int visibility);
 
-    Q_INVOKABLE void updateSize();
-
 signals:
     void resizingFished();
     void iconSizeChanged();

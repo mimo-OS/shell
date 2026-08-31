@@ -77,7 +77,6 @@ Item {
         opacity: 0.3
 
 //        color: FishUI.Theme.darkMode ? "#4D4D4D" : "#FFFFFF"
-//        opacity: windowHelper.compositing ? FishUI.Theme.darkMode ? 0.5 : 0.7 : 1.0
 
 //        Behavior on color {
 //            ColorAnimation {
@@ -85,10 +84,6 @@ Item {
 //                easing.type: Easing.Linear
 //            }
 //        }
-    }
-
-    FishUI.WindowHelper {
-        id: windowHelper
     }
 
     FishUI.PopupTips {

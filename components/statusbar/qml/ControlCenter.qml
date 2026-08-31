@@ -42,9 +42,8 @@ ControlCenterDialog {
     property bool bluetoothDisConnected: Bluez.Manager.bluetoothBlocked
     property var defaultSinkValue: defaultSink ? defaultSink.volume / PulseAudio.NormalVolume * 100.0 : -1
 
-    property var borderColor: windowHelper.compositing ? FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.3)
-                                                                  : Qt.rgba(0, 0, 0, 0.2) : FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.15)
-                                                                                                                  : Qt.rgba(0, 0, 0, 0.15)
+    property var borderColor: FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.3)
+                                                    : Qt.rgba(0, 0, 0, 0.2)
 
     property var volumeIconName: {
         if (defaultSinkValue <= 0)
@@ -135,9 +134,9 @@ ControlCenterDialog {
     Rectangle {
         id: _background
         anchors.fill: parent
-        radius: windowHelper.compositing ? FishUI.Theme.bigRadius * 1.5 : 0
+        radius: FishUI.Theme.bigRadius * 1.5
         color: FishUI.Theme.darkMode ? "#4D4D4D" : "#F0F0F0"
-        opacity: windowHelper.compositing ? FishUI.Theme.darkMode ? 0.6 : 0.8 : 1.0
+        opacity: FishUI.Theme.darkMode ? 0.6 : 0.8
         antialiasing: true
         border.width: 1 / Screen.devicePixelRatio
         border.pixelAligned: Screen.devicePixelRatio > 1 ? false : true

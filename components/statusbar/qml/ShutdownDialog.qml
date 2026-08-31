@@ -41,9 +41,8 @@ ControlCenterDialog {
 
     property point position: Qt.point(0, 0)
     property var margin: 4 * Screen.devicePixelRatio
-    property var borderColor: windowHelper.compositing ? FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.3)
-                                                                  : Qt.rgba(0, 0, 0, 0.2) : FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.15)
-                                                                                                                  : Qt.rgba(0, 0, 0, 0.15)
+    property var borderColor: FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.3)
+                                                    : Qt.rgba(0, 0, 0, 0.2)
 
     Accounts.UserAccount {
         id: currentUser
@@ -65,9 +64,9 @@ ControlCenterDialog {
     Rectangle {
         id: _background
         anchors.fill: parent
-        radius: windowHelper.compositing ? FishUI.Theme.bigRadius * 1.5 : 0
+        radius: FishUI.Theme.bigRadius * 1.5
         color: FishUI.Theme.darkMode ? "#4D4D4D" : "#FFFFFF"
-        opacity: windowHelper.compositing ? FishUI.Theme.darkMode ? 0.5 : 0.7 : 1.0
+        opacity: FishUI.Theme.darkMode ? 0.5 : 0.7
         antialiasing: true
         border.width: 1 / Screen.devicePixelRatio
         border.pixelAligned: Screen.devicePixelRatio > 1 ? false : true

@@ -69,10 +69,6 @@ NotificationCenterDialog {
         id: screen
     }
 
-    FishUI.WindowHelper {
-        id: windowHelper
-    }
-
     Rectangle {
         id: _background
         anchors.fill: parent

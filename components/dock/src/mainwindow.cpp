@@ -8,7 +8,6 @@
 #include <QQmlEngine>
 #include <QQmlContext>
 #include <QQmlProperty>
-#include <QQuickItem>
 #include <QMetaEnum>
 
 MainWindow::MainWindow(QQmlEngine *engine)
@@ -119,23 +118,12 @@ void MainWindow::setVisibility(int visibility)
     DockSettings::self()->setVisibility(static_cast<DockSettings::Visibility>(visibility));
 }
 
-void MainWindow::updateSize()
-{
-    resizeWindow();
-}
-
 QRect MainWindow::windowRect() const
 {
     const QRect screenGeometry = screen()->geometry();
     const QRect availableGeometry = screen()->availableGeometry();
 
     bool isHorizontal = m_settings->direction() == DockSettings::Bottom;
-    bool compositing = false;
-    QQuickItem *item = rootItem();
-
-    if (item) {
-        compositing = item->property("compositing").toBool();
-    }
 
     QSize newSize(0, 0);
     QPoint position(0, 0);
@@ -178,7 +166,7 @@ QRect MainWindow::windowRect() const
     int iconSize = qMax(1, qRound(54 * sizeScale));
     DockMetrics metrics = metricsForScale(sizeScale);
     int length = lengthForIconSize(iconSize, metrics);
-    int margins = compositing ? DockSettings::self()->edgeMargins() / 2 : 0;
+    int margins = DockSettings::self()->edgeMargins() / 2;
 
     while (length > maxLength && iconSize > 1) {
         --iconSize;
