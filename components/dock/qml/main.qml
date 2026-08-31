@@ -64,7 +64,7 @@ Item {
         anchors.fill: parent
         radius: windowRadius
         color: FishUI.Theme.darkMode ? "#666666" : "#E6E6E6"
-        opacity: 0.5
+        opacity: FishUI.Theme.blurEnabled ? 0.5 : 1
         border.width: 1 / FishUI.Units.devicePixelRatio
         border.pixelAligned: FishUI.Units.devicePixelRatio > 1 ? false : true
         border.color: borderColor
@@ -86,13 +86,13 @@ Item {
     FishUI.WindowBlur {
         view: mainWindow
         windowRadius: _background.radius
-        enabled: true
+        enabled: FishUI.Theme.blurEnabled
     }
 
     FishUI.PopupTips {
         id: popupTips
         backgroundColor: _background.color
-        blurEnabled: false
+        blurEnabled: FishUI.Theme.blurEnabled
     }
 
     GridLayout {
@@ -177,6 +177,7 @@ Item {
 
             FishUI.DesktopMenu {
                 id: trashMenu
+                blurEnabled: FishUI.Theme.blurEnabled
 
                 MenuItem {
                     text: qsTr("Open")

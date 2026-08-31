@@ -44,7 +44,7 @@ NotificationPopup {
     FishUI.WindowBlur {
         view: control
         windowRadius: _background.radius
-        enabled: true
+        enabled: FishUI.Theme.blurEnabled
     }
 
     Rectangle {
@@ -52,7 +52,7 @@ NotificationPopup {
         anchors.fill: parent
         radius: height * 0.2
         color: FishUI.Theme.backgroundColor
-        opacity: 0.5
+        opacity: FishUI.Theme.blurEnabled ? 0.5 : 1
     }
 
     MouseArea {

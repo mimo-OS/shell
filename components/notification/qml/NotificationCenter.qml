@@ -74,7 +74,7 @@ NotificationCenterDialog {
         anchors.fill: parent
         color: FishUI.Theme.secondBackgroundColor
         radius: control.width * 0.05
-        opacity: 0.7
+        opacity: FishUI.Theme.blurEnabled ? 0.7 : 1
 
         border.width: 1 / FishUI.Units.devicePixelRatio
         border.pixelAligned: Screen.devicePixelRatio > 1 ? false : true
@@ -90,7 +90,7 @@ NotificationCenterDialog {
     FishUI.WindowBlur {
         view: control
         windowRadius: _background.radius
-        enabled: true
+        enabled: FishUI.Theme.blurEnabled
     }
 
     NumberAnimation {

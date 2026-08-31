@@ -62,7 +62,7 @@ Item {
         anchors.fill: parent
         color: "white"
         radius: FishUI.Theme.bigRadius
-        opacity: FishUI.Theme.darkMode ? 0.2 : 0.7
+        opacity: FishUI.Theme.blurEnabled ? (FishUI.Theme.darkMode ? 0.2 : 0.7) : 1
     }
 
     RowLayout {

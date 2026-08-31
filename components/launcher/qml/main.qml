@@ -183,7 +183,7 @@ Item {
     FastBlur {
         id: wallpaperBlur
         anchors.fill: parent
-        radius: 72
+        radius: FishUI.Theme.blurEnabled ? 72 : 0
         source: wallpaperImage
         cached: false
         visible: wallpaperImage.visible

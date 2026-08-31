@@ -121,7 +121,7 @@ ControlCenterDialog {
     FishUI.WindowBlur {
         view: control
         windowRadius: _background.radius
-        enabled: true
+        enabled: FishUI.Theme.blurEnabled
     }
 
     FishUI.WindowShadow {
@@ -134,7 +134,7 @@ ControlCenterDialog {
         anchors.fill: parent
         radius: FishUI.Theme.bigRadius * 1.5
         color: FishUI.Theme.darkMode ? "#4D4D4D" : "#F0F0F0"
-        opacity: FishUI.Theme.darkMode ? 0.6 : 0.8
+        opacity: FishUI.Theme.blurEnabled ? (FishUI.Theme.darkMode ? 0.6 : 0.8) : 1
         antialiasing: true
         border.width: 1 / Screen.devicePixelRatio
         border.pixelAligned: Screen.devicePixelRatio > 1 ? false : true
@@ -210,7 +210,7 @@ ControlCenterDialog {
                 anchors.fill: parent
                 color: "white"
                 radius: FishUI.Theme.bigRadius
-                opacity: FishUI.Theme.darkMode ? 0.2 : 0.7
+                opacity: FishUI.Theme.blurEnabled ? (FishUI.Theme.darkMode ? 0.2 : 0.7) : 1
             }
 
             GridLayout {
@@ -314,7 +314,7 @@ ControlCenterDialog {
                 anchors.fill: parent
                 color: "white"
                 radius: FishUI.Theme.bigRadius
-                opacity: FishUI.Theme.darkMode ? 0.2 : 0.7
+                opacity: FishUI.Theme.blurEnabled ? (FishUI.Theme.darkMode ? 0.2 : 0.7) : 1
             }
 
             RowLayout {
@@ -371,7 +371,7 @@ ControlCenterDialog {
                 anchors.fill: parent
                 color: "white"
                 radius: FishUI.Theme.bigRadius
-                opacity: FishUI.Theme.darkMode ? 0.2 : 0.7
+                opacity: FishUI.Theme.blurEnabled ? (FishUI.Theme.darkMode ? 0.2 : 0.7) : 1
             }
 
             RowLayout {

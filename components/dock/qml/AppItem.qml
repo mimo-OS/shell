@@ -72,6 +72,7 @@ DockItem {
 
     FishUI.DesktopMenu {
         id: contextMenu
+        blurEnabled: FishUI.Theme.blurEnabled
 
         MenuItem {
             text: qsTr("Open")

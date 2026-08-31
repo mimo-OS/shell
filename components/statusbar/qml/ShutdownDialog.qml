@@ -51,7 +51,7 @@ ControlCenterDialog {
     FishUI.WindowBlur {
         view: control
         windowRadius: _background.radius
-        enabled: true
+        enabled: FishUI.Theme.blurEnabled
     }
 
     FishUI.WindowShadow {
@@ -64,7 +64,7 @@ ControlCenterDialog {
         anchors.fill: parent
         radius: FishUI.Theme.bigRadius * 1.5
         color: FishUI.Theme.darkMode ? "#4D4D4D" : "#FFFFFF"
-        opacity: FishUI.Theme.darkMode ? 0.5 : 0.7
+        opacity: FishUI.Theme.blurEnabled ? (FishUI.Theme.darkMode ? 0.5 : 0.7) : 1
         antialiasing: true
         border.width: 1 / Screen.devicePixelRatio
         border.pixelAligned: Screen.devicePixelRatio > 1 ? false : true

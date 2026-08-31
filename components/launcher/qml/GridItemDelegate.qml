@@ -111,6 +111,7 @@ Item {
 
     FishUI.DesktopMenu {
         id: _itemMenu
+        blurEnabled: FishUI.Theme.blurEnabled
 
         MenuItem {
             text: qsTr("Open")
