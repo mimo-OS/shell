@@ -109,7 +109,6 @@ Item {
         // App name
         StandardItem {
             id: acticityItem
-            animationEnabled: true
             Layout.fillHeight: true
             Layout.preferredWidth: Math.min(rootItem.width / 3,
                                             acticityLayout.implicitWidth + FishUI.Units.largeSpacing)
@@ -252,7 +251,6 @@ Item {
             id: controler
 
             checked: controlCenter.item.visible
-            animationEnabled: true
             Layout.fillHeight: true
             Layout.preferredWidth: _controlerLayout.implicitWidth + FishUI.Units.largeSpacing
 
@@ -336,7 +334,6 @@ Item {
         StandardItem {
             id: shutdownItem
 
-            animationEnabled: true
             Layout.fillHeight: true
             Layout.preferredWidth: shutdownIcon.implicitWidth + FishUI.Units.smallSpacing
             checked: shutdownDialog.item.visible
@@ -365,7 +362,6 @@ Item {
             id: datetimeItem
 
             checked: notificationCenter.item ? notificationCenter.item.visible : false
-            animationEnabled: true
             Layout.fillHeight: true
             Layout.preferredWidth: _dateTimeLayout.implicitWidth + FishUI.Units.smallSpacing
 

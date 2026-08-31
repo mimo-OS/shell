@@ -28,13 +28,9 @@ import Cutefish.StatusBar 1.0
 Item {
     id: control
 
-    property real moveX: 0
-    property real moveY: 0
-
     property string popupText: ""
 
     property bool checked: false
-    property bool animationEnabled: false
 
     property alias mouseArea: _mouseArea
 
@@ -60,11 +56,6 @@ Item {
             if (checked)
                 return
 
-            _bgRect.width = 0
-            _bgRect.height = 0
-
-            _bgRect.x = mouseX
-            _bgRect.y = mouseY
             _bgRect.state = "shown"
         }
 
@@ -72,14 +63,10 @@ Item {
             if (checked)
                 return
 
-            control.moveX = mouseX
-            control.moveY = mouseY
             _bgRect.state = "hidden"
         }
 
         onClicked: {
-            control.moveX = mouseX
-            control.moveY = mouseY
             control.clicked(mouse)
         }
 
@@ -134,52 +121,11 @@ Item {
                 name: "hidden"
                 PropertyChanges {
                     target: _bgRect
-                    x: control.moveX
-                    y: control.moveY
+                    x: 0
+                    y: 0
                     width: 0
                     height: 0
                     visible: false
-                }
-            }
-        ]
-
-        transitions:[
-            Transition {
-                from: "hidden"
-                to: "shown"
-
-                SequentialAnimation{
-                    PropertyAnimation {
-                        target: _bgRect
-                        properties: "visible"
-                        duration: 0
-                        easing.type: Easing.OutQuart
-                    }
-                    PropertyAnimation {
-                        target: _bgRect
-                        properties: "x, y, width, height"
-                        duration: control.animationEnabled ? 400 : 0
-                        easing.type: Easing.OutQuart
-                    }
-                }
-            },
-            Transition {
-                from: "shown"
-                to: "hidden"
-
-                SequentialAnimation{
-                    PropertyAnimation {
-                        target: _bgRect
-                        properties: "x, y, width, height"
-                        duration: control.animationEnabled ? 200 : 0
-                        easing.type: Easing.OutQuart
-                    }
-                    PropertyAnimation {
-                        target: _bgRect
-                        properties: "visible"
-                        duration: 0
-                        easing.type: Easing.OutQuart
-                    }
                 }
             }
         ]

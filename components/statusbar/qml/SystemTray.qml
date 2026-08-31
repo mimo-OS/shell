@@ -41,7 +41,6 @@ ListView {
 
         width: trayView.itemWidth
         height: ListView.view.height
-        animationEnabled: true
 
         onDarkModeChanged: updateTimer.restart()
 
