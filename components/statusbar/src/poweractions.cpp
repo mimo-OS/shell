@@ -2,11 +2,14 @@
 #include <QCommandLineParser>
 #include <QDBusInterface>
 #include <QApplication>
-#include <QProcess>
 
 const static QString s_dbusName = "com.cutefish.Session";
 const static QString s_pathName = "/Session";
 const static QString s_interfaceName = "com.cutefish.Session";
+
+const static QString s_screenSaverService = "org.freedesktop.ScreenSaver";
+const static QString s_screenSaverPath = "/ScreenSaver";
+const static QString s_screenSaverInterface = "org.freedesktop.ScreenSaver";
 
 PowerActions::PowerActions(QObject *parent)
     : QObject(parent)
@@ -40,7 +43,13 @@ void PowerActions::reboot()
 
 void PowerActions::lockScreen()
 {
-    QProcess::startDetached("cutefish-screenlocker", QStringList());
+    QDBusInterface iface(s_screenSaverService,
+                         s_screenSaverPath,
+                         s_screenSaverInterface,
+                         QDBusConnection::sessionBus());
+    if (iface.isValid()) {
+        iface.asyncCall(QStringLiteral("Lock"));
+    }
 }
 
 void PowerActions::suspend()
