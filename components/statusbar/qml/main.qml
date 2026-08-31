@@ -102,9 +102,9 @@ Item {
     // Main layout
     RowLayout {
         anchors.fill: parent
-        anchors.leftMargin: FishUI.Units.smallSpacing
-        anchors.rightMargin: FishUI.Units.smallSpacing
-        spacing: FishUI.Units.smallSpacing / 2
+        anchors.leftMargin: FishUI.Units.largeSpacing
+        anchors.rightMargin: FishUI.Units.largeSpacing
+        spacing: FishUI.Units.largeSpacing
 
         // App name
         StandardItem {
