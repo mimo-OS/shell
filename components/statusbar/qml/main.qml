@@ -39,7 +39,7 @@ Item {
     property color textColor: rootItem.darkMode ? "#FFFFFF" : "#000000";
     property var fontSize: rootItem.height ? rootItem.height / 3 : 1
 
-    property var timeFormat: StatusBar.twentyFourTime ? "HH:mm" : "h:mm ap"
+    property var timeFormat: StatusBar.twentyFourTime ? "ddd MMM d HH:mm" : "ddd MMM d h:mmAP"
 
     onTimeFormatChanged: {
         timeTimer.restart()
@@ -414,8 +414,7 @@ Item {
                         running: true
                         triggeredOnStart: true
                         onTriggered: {
-                            timeLabel.text = new Date().toLocaleTimeString(Qt.locale(), StatusBar.twentyFourTime ? rootItem.timeFormat
-                                                                                                                 : Locale.ShortFormat)
+                            timeLabel.text = new Date().toLocaleString(Qt.locale(), rootItem.timeFormat)
                         }
                     }
                 }
