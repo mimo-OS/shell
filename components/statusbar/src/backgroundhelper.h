@@ -3,6 +3,9 @@
 
 #include <QObject>
 #include <QColor>
+#include <QPointer>
+
+class QScreen;
 
 class BackgroundHelper : public QObject
 {
@@ -22,6 +25,7 @@ signals:
     void newColor(QColor color, bool darkMode);
 
 private:
+    QPointer<QScreen> m_screen;
     int m_statusBarHeight;
     int m_type;
     QColor m_color;

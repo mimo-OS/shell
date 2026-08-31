@@ -21,6 +21,7 @@
 #define SCREENHELPER_H
 
 #include <QObject>
+#include <QPointer>
 #include <QRect>
 #include <QScreen>
 
@@ -40,6 +41,11 @@ public:
 signals:
     void screenGeometryChanged();
     void availableScreenRectChanged();
+
+private:
+    void watchPrimaryScreen();
+
+    QPointer<QScreen> m_screen;
 };
 
 #endif // SCREENHELPER_H

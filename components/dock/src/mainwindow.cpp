@@ -61,8 +61,7 @@ MainWindow::MainWindow(QQmlEngine *engine)
 
     // Screen change.
     connect(qGuiApp, &QGuiApplication::primaryScreenChanged, this, &MainWindow::onPrimaryScreenChanged);
-    connect(screen(), &QScreen::virtualGeometryChanged, this, &MainWindow::resizeWindow);
-    connect(screen(), &QScreen::geometryChanged, this, &MainWindow::resizeWindow);
+    watchScreen(screen(), [this] { resizeWindow(); });
 
     connect(m_appModel, &ApplicationModel::countChanged, this, &MainWindow::resizeWindow);
     connect(m_settings, &DockSettings::directionChanged, this, &MainWindow::onPositionChanged);
@@ -214,6 +213,11 @@ void MainWindow::resizeWindow()
     applyGeometry();
     updateViewStruts();
 
+    // The auto-hide trigger is a strip along the screen edge, so it has to
+    // follow the screen as well.
+    if (m_fakeWindow)
+        m_fakeWindow->updateGeometry();
+
     emit resizingFished();
 }
 
@@ -322,8 +326,11 @@ void MainWindow::deleteFakeWindow()
 
 void MainWindow::onPrimaryScreenChanged(QScreen *screen)
 {
+    Q_UNUSED(screen)
+
+    // initScreens() is what picks the screen the dock belongs on.
     initScreens();
-    setScreen(screen);
+    watchScreen(this->screen(), [this] { resizeWindow(); });
     resizeWindow();
 }
 

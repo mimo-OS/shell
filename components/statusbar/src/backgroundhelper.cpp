@@ -1,4 +1,5 @@
 #include "backgroundhelper.h"
+#include "statusbar.h"
 
 #include <QApplication>
 #include <QDebug>
@@ -9,7 +10,9 @@
 
 BackgroundHelper::BackgroundHelper(QObject *parent)
     : QObject(parent)
-    , m_statusBarHeight(25 / qApp->devicePixelRatio())
+    // Logical pixels, like every other size here: the image is scaled to the
+    // screen's logical size before the strip is cut out of it.
+    , m_statusBarHeight(StatusBar::Height)
     , m_type(0)
 {
     onPrimaryScreenChanged();
@@ -35,13 +38,21 @@ void BackgroundHelper::setBackgound(const QString &fileName)
 
     QImage img(fileName);
 
-    QSize screenSize = qApp->primaryScreen()->geometry().size();
+    // Nothing to sample yet: the wallpaper is set once the theme daemon has
+    // told the shell about it.
+    if (img.isNull())
+        return;
+
+    const QSize screenSize = qApp->primaryScreen()->geometry().size();
     img = img.scaled(screenSize.width(), screenSize.height());
     img = img.copy(QRect(0, 0, screenSize.width(), m_statusBarHeight));
 
     QSize size(img.size());
     img = img.scaledToWidth(size.width() * 0.8);
     size = img.size();
+
+    if (size.isEmpty())
+        return;
 
     long long sumR = 0, sumG = 0, sumB = 0;
     int measureArea = size.width() * size.height();
@@ -65,8 +76,6 @@ void BackgroundHelper::setBackgound(const QString &fileName)
                         sumG * 0.587 +
                         sumB * 0.114) > 186 ? "#000000" : "#FFFFFF";
 
-    qDebug() << c << textColor;
-
     emit newColor(c, textColor == "#FFFFFF");
 
     // clear cache.
@@ -75,10 +84,22 @@ void BackgroundHelper::setBackgound(const QString &fileName)
 
 void BackgroundHelper::onPrimaryScreenChanged()
 {
-    disconnect(qApp->primaryScreen());
+    // QObject::disconnect(receiver) drops this object's *own* signals to that
+    // receiver, which is not what has to go here: the connections to drop are
+    // the ones from the screen that is no longer the primary one.
+    if (m_screen)
+        m_screen->disconnect(this);
 
-    connect(qApp->primaryScreen(), &QScreen::geometryChanged, this, &BackgroundHelper::onChanged);
-    connect(qApp->primaryScreen(), &QScreen::virtualGeometryChanged, this, &BackgroundHelper::onChanged);
+    m_screen = qApp->primaryScreen();
+
+    if (!m_screen)
+        return;
+
+    connect(m_screen, &QScreen::geometryChanged, this, &BackgroundHelper::onChanged);
+    connect(m_screen, &QScreen::virtualGeometryChanged, this, &BackgroundHelper::onChanged);
+    connect(m_screen, &QScreen::physicalDotsPerInchChanged, this, &BackgroundHelper::onChanged);
+
+    onChanged();
 }
 
 void BackgroundHelper::onChanged()

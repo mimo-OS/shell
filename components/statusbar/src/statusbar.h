@@ -12,6 +12,10 @@ class StatusBar : public ShellSurface
     Q_PROPERTY(bool twentyFourTime READ twentyFourTime NOTIFY twentyFourTimeChanged)
 
 public:
+    //! Thickness of the bar, in logical pixels. The background sampler needs
+    //! the same value to average the strip of wallpaper the bar covers.
+    static constexpr int Height = 25;
+
     explicit StatusBar(QQmlEngine *engine);
 
     QRect screenRect();

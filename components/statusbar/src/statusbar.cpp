@@ -41,8 +41,7 @@ StatusBar::StatusBar(QQmlEngine *engine)
 
     connect(m_acticity, &Activity::launchPadChanged, this, &StatusBar::initState);
 
-    connect(screen(), &QScreen::virtualGeometryChanged, this, &StatusBar::updateGeometry);
-    connect(screen(), &QScreen::geometryChanged, this, &StatusBar::updateGeometry);
+    watchScreen(screen(), [this] { updateGeometry(); });
 
     // Always show on the main screen
     connect(qGuiApp, &QGuiApplication::primaryScreenChanged, this, &StatusBar::onPrimaryScreenChanged);
@@ -80,7 +79,7 @@ void StatusBar::updateGeometry()
         emit screenRectChanged();
     }
 
-    QRect windowRect = QRect(rect.x(), rect.y(), rect.width(), 25);
+    const QRect windowRect(rect.x(), rect.y(), rect.width(), Height);
     setGeometry(windowRect);
     setSurfacePosition(windowRect.topLeft());
     updateViewStruts();
@@ -111,11 +110,7 @@ void StatusBar::initState()
 
 void StatusBar::onPrimaryScreenChanged(QScreen *screen)
 {
-    disconnect(this->screen());
-
     setScreen(screen);
+    watchScreen(screen, [this] { updateGeometry(); });
     updateGeometry();
-
-    connect(screen, &QScreen::virtualGeometryChanged, this, &StatusBar::updateGeometry);
-    connect(screen, &QScreen::geometryChanged, this, &StatusBar::updateGeometry);
 }

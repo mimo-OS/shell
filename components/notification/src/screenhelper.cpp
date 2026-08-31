@@ -26,16 +26,34 @@
 ScreenHelper::ScreenHelper(QObject *parent)
     : QObject(parent)
 {
-    connect(qGuiApp, &QGuiApplication::primaryScreenChanged, this, &ScreenHelper::screenGeometryChanged);
-    connect(qGuiApp, &QGuiApplication::primaryScreenChanged, this, &ScreenHelper::availableScreenRectChanged);
-
-    connect(qApp->primaryScreen(), &QScreen::geometryChanged, this, &ScreenHelper::screenGeometryChanged);
-    connect(qApp->primaryScreen(), &QScreen::availableGeometryChanged, this, &ScreenHelper::availableScreenRectChanged);
+    connect(qGuiApp, &QGuiApplication::primaryScreenChanged, this, &ScreenHelper::watchPrimaryScreen);
 
     // On Wayland Qt reports the whole output as available, so the work area
     // comes from the struts the shell itself reserves.
     connect(StrutRegistry::self(), &StrutRegistry::changed,
             this, &ScreenHelper::availableScreenRectChanged);
+
+    watchPrimaryScreen();
+}
+
+void ScreenHelper::watchPrimaryScreen()
+{
+    // Following the primary screen means following whichever QScreen that is
+    // now: the signals of the old one say nothing about the geometry this
+    // helper reports.
+    if (m_screen)
+        m_screen->disconnect(this);
+
+    m_screen = qApp->primaryScreen();
+
+    if (m_screen) {
+        connect(m_screen, &QScreen::geometryChanged, this, &ScreenHelper::screenGeometryChanged);
+        connect(m_screen, &QScreen::physicalDotsPerInchChanged, this, &ScreenHelper::screenGeometryChanged);
+        connect(m_screen, &QScreen::geometryChanged, this, &ScreenHelper::availableScreenRectChanged);
+    }
+
+    emit screenGeometryChanged();
+    emit availableScreenRectChanged();
 }
 
 QRect ScreenHelper::screenGeometry() const

@@ -6,11 +6,14 @@
 #include <QSize>
 #include <QUrl>
 
+#include <functional>
+
 struct wl_surface;
 
 class QQmlComponent;
 class QQmlContext;
 class QQmlEngine;
+class QScreen;
 
 #include <KWayland/Client/plasmashell.h>
 
@@ -76,6 +79,23 @@ public:
     //! position to (0, 0) because plain xdg-shell has no global coordinates.
     void setSurfacePosition(const QPoint &position);
 
+    /**
+     * Runs @p update whenever the metrics of @p screen change, and until the
+     * next call to watchScreen().
+     *
+     * The call is deferred to the next pass of the event loop on purpose. Qt's
+     * Wayland plugin emits QScreen::geometryChanged from the middle of its own
+     * output handling and then goes on to resize every window on that screen
+     * itself, to keep them the same size in physical pixels. A panel that
+     * applies its new geometry straight from the signal handler is therefore
+     * overwritten again, and because Qt sees no change afterwards the window is
+     * never repainted: the surface keeps the buffer it had, and the compositor
+     * keeps showing the panel at the size that buffer implies. That is what
+     * left the status bar the width of the old resolution, and the desktop
+     * covering a quarter of the screen, after every scale change.
+     */
+    void watchScreen(QScreen *screen, const std::function<void()> &update);
+
 protected:
     void resizeEvent(QResizeEvent *e) override;
     void exposeEvent(QExposeEvent *e) override;
@@ -90,6 +110,7 @@ private:
 
     QQmlEngine *m_engine;
     QQmlContext *m_context;
+    QList<QMetaObject::Connection> m_screenConnections;
     QQmlComponent *m_component;
     QQuickItem *m_rootItem;
     QUrl m_source;

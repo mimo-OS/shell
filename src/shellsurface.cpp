@@ -5,6 +5,7 @@
 #include <QQmlEngine>
 #include <QQuickItem>
 #include <QPlatformSurfaceEvent>
+#include <QScreen>
 #include <QDebug>
 
 #include <KWayland/Client/plasmashell.h>
@@ -149,12 +150,43 @@ PlasmaShellSurface::PanelBehavior ShellSurface::plasmaPanelBehavior() const
         : PlasmaShellSurface::PanelBehavior::WindowsGoBelow;
 }
 
+void ShellSurface::watchScreen(QScreen *screen, const std::function<void()> &update)
+{
+    for (const QMetaObject::Connection &connection : std::as_const(m_screenConnections))
+        disconnect(connection);
+
+    m_screenConnections.clear();
+
+    if (!screen)
+        return;
+
+    const auto watch = [this, screen, update](auto signal) {
+        m_screenConnections << connect(screen, signal, this, [update] { update(); },
+                                       Qt::QueuedConnection);
+    };
+
+    watch(&QScreen::geometryChanged);
+    watch(&QScreen::virtualGeometryChanged);
+    // A scale change that comes with a matching mode change leaves the screen
+    // the same size in logical pixels; only the pixel density says so.
+    watch(&QScreen::physicalDotsPerInchChanged);
+}
+
 void ShellSurface::setSurfacePosition(const QPoint &position)
 {
+    const bool moved = m_surfacePosition != position;
     m_surfacePosition = position;
 
-    if (m_plasmaSurface)
-        m_plasmaSurface->setPosition(position);
+    if (!m_plasmaSurface)
+        return;
+
+    m_plasmaSurface->setPosition(position);
+
+    // KWin applies the position with the next commit of the surface, and a
+    // panel that only moves has nothing new to draw: the dock kept landing
+    // where the *previous* screen change had put it, one resolution behind.
+    if (moved)
+        requestUpdate();
 }
 
 bool ShellSurface::event(QEvent *e)

@@ -19,8 +19,7 @@ DesktopSurface::DesktopSurface(QQmlEngine *engine, QScreen *screen)
     setContextProperty(QStringLiteral("surface"), this);
     setSource(QUrl(QStringLiteral("qrc:/shell/qml/DesktopSurface.qml")));
 
-    connect(m_screen, &QScreen::geometryChanged, this, &DesktopSurface::updateGeometry);
-    connect(m_screen, &QScreen::virtualGeometryChanged, this, &DesktopSurface::updateGeometry);
+    watchScreen(m_screen, [this] { updateGeometry(); });
 }
 
 QScreen *DesktopSurface::targetScreen() const
@@ -47,8 +46,8 @@ void DesktopSurface::updateGeometry()
     if (!m_screen)
         return;
 
-    // The extra pixel matches what the standalone desktop did: without it a
-    // one pixel line of the root window shows through at the right/bottom edge.
-    setGeometry(m_screen->geometry().adjusted(0, 0, 1, 1));
-    setSurfacePosition(m_screen->geometry().topLeft());
+    const QRect rect = m_screen->geometry();
+
+    setGeometry(rect);
+    setSurfacePosition(rect.topLeft());
 }
