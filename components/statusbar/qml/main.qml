@@ -21,7 +21,9 @@ import QtQuick 2.12
 import QtQuick.Layouts 1.12
 import QtQuick.Controls 2.12
 import QtQuick.Window 2.12
+import Qt5Compat.GraphicalEffects
 
+import Cutefish.Accounts 1.0 as Accounts
 import Cutefish.System 1.0 as System
 import Cutefish.StatusBar 1.0
 import Cutefish.NetworkManagement 1.0 as NM
@@ -60,6 +62,10 @@ Item {
         onTypeChanged: sysWallpaper.reload()
         onColorChanged: sysWallpaper.reload()
         onPathChanged: sysWallpaper.reload()
+    }
+
+    Accounts.UserAccount {
+        id: currentUser
     }
 
     BackgroundHelper {
@@ -105,6 +111,52 @@ Item {
         anchors.leftMargin: FishUI.Units.largeSpacing
         anchors.rightMargin: FishUI.Units.largeSpacing
         spacing: FishUI.Units.largeSpacing
+
+        // User menu
+        StandardItem {
+            id: userItem
+
+            checked: userMenu.item ? userMenu.item.visible : false
+            Layout.fillHeight: true
+            Layout.preferredWidth: rootItem.iconSize + FishUI.Units.smallSpacing * 2
+
+            onClicked: {
+                if (!userMenu.item)
+                    return
+
+                if (userMenu.item.visible) {
+                    userMenu.item.close()
+                } else {
+                    userMenu.item.position = Qt.point(0, 0)
+                    userMenu.item.position = mapToGlobal(0, 0)
+                    userMenu.item.open()
+                }
+            }
+
+            Image {
+                id: userIcon
+                anchors.centerIn: parent
+                width: rootItem.iconSize
+                height: width
+                sourceSize: String(source) === "image://icontheme/default-user" ? Qt.size(width, height) : undefined
+                source: currentUser.iconFileName ? "file:///" + currentUser.iconFileName : "image://icontheme/default-user"
+                antialiasing: true
+                smooth: false
+
+                layer.enabled: true
+                layer.effect: OpacityMask {
+                    maskSource: Item {
+                        width: userIcon.width
+                        height: userIcon.height
+
+                        Rectangle {
+                            anchors.fill: parent
+                            radius: parent.height / 2
+                        }
+                    }
+                }
+            }
+        }
 
         // App name
         StandardItem {
@@ -331,32 +383,6 @@ Item {
             }
         }
 
-        StandardItem {
-            id: shutdownItem
-
-            Layout.fillHeight: true
-            Layout.preferredWidth: shutdownIcon.implicitWidth + FishUI.Units.smallSpacing
-            checked: shutdownDialog.item.visible
-
-            onClicked: {
-                shutdownDialog.item.position = Qt.point(0, 0)
-                shutdownDialog.item.position = mapToGlobal(0, 0)
-                shutdownDialog.item.open()
-            }
-
-            Image {
-                id: shutdownIcon
-                anchors.centerIn: parent
-                width: rootItem.iconSize
-                height: width
-                sourceSize: Qt.size(width, height)
-                source: "qrc:/statusbar/images/" + (rootItem.darkMode ? "dark/" : "light/") + "system-shutdown-symbolic.svg"
-                asynchronous: true
-                antialiasing: true
-                smooth: false
-            }
-        }
-
         // Pop-up notification center and calendar
         StandardItem {
             id: datetimeItem
@@ -497,7 +523,7 @@ Item {
     }
 
     Loader {
-        id: shutdownDialog
+        id: userMenu
         sourceComponent: ShutdownDialog {}
         asynchronous: true
     }

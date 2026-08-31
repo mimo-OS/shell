@@ -32,6 +32,8 @@ import FishUI 1.0 as FishUI
 ControlCenterDialog {
     id: control
 
+    property int cardSize: 96
+
     width: _mainLayout.implicitWidth + FishUI.Units.largeSpacing * 3
     height: _mainLayout.implicitHeight + FishUI.Units.largeSpacing * 3
 
@@ -122,14 +124,51 @@ ControlCenterDialog {
             }
         }
 
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: FishUI.Units.largeSpacing
+
+            StandardCard {
+                Layout.preferredWidth: control.cardSize
+                Layout.preferredHeight: control.cardSize
+                icon: "image://icontheme/help-about"
+                text: qsTr("About")
+
+                onClicked: {
+                    control.visible = false
+                    process.startDetached("cutefish-settings", ["-m", "about"])
+                }
+            }
+
+            StandardCard {
+                Layout.preferredWidth: control.cardSize
+                Layout.preferredHeight: control.cardSize
+                icon: FishUI.Theme.darkMode ? "qrc:/statusbar/images/dark/settings.svg"
+                                            : "qrc:/statusbar/images/light/settings.svg"
+                text: qsTr("Settings")
+
+                onClicked: {
+                    control.visible = false
+                    process.startDetached("cutefish-settings")
+                }
+            }
+
+        }
+
+        Label {
+            Layout.fillWidth: true
+            text: qsTr("Power")
+            font.bold: true
+        }
+
         GridLayout {
             rowSpacing: FishUI.Units.largeSpacing
             columnSpacing: FishUI.Units.largeSpacing
             columns: 3
 
             StandardCard {
-                Layout.preferredWidth: 96
-                Layout.preferredHeight: 96
+                Layout.preferredWidth: control.cardSize
+                Layout.preferredHeight: control.cardSize
                 icon: FishUI.Theme.darkMode ? "qrc:/statusbar/images/dark/system-shutdown.svg"
                                             : "qrc:/statusbar/images/light/system-shutdown.svg"
                 visible: true
@@ -143,8 +182,8 @@ ControlCenterDialog {
             }
 
             StandardCard {
-                Layout.preferredWidth: 96
-                Layout.preferredHeight: 96
+                Layout.preferredWidth: control.cardSize
+                Layout.preferredHeight: control.cardSize
                 icon: FishUI.Theme.darkMode ? "qrc:/statusbar/images/dark/system-reboot.svg"
                                             : "qrc:/statusbar/images/light/system-reboot.svg"
                 visible: true
@@ -158,8 +197,8 @@ ControlCenterDialog {
             }
 
             StandardCard {
-                Layout.preferredWidth: 96
-                Layout.preferredHeight: 96
+                Layout.preferredWidth: control.cardSize
+                Layout.preferredHeight: control.cardSize
                 icon: FishUI.Theme.darkMode ? "qrc:/statusbar/images/dark/system-log-out.svg"
                                             : "qrc:/statusbar/images/light/system-log-out.svg"
                 visible: true
@@ -173,8 +212,8 @@ ControlCenterDialog {
             }
 
             StandardCard {
-                Layout.preferredWidth: 96
-                Layout.preferredHeight: 96
+                Layout.preferredWidth: control.cardSize
+                Layout.preferredHeight: control.cardSize
                 icon: FishUI.Theme.darkMode ? "qrc:/statusbar/images/dark/system-lock-screen.svg"
                                             : "qrc:/statusbar/images/light/system-lock-screen.svg"
                 visible: true
@@ -188,8 +227,8 @@ ControlCenterDialog {
             }
 
             StandardCard {
-                Layout.preferredWidth: 96
-                Layout.preferredHeight: 96
+                Layout.preferredWidth: control.cardSize
+                Layout.preferredHeight: control.cardSize
                 icon: FishUI.Theme.darkMode ? "qrc:/statusbar/images/dark/system-suspend.svg"
                                             : "qrc:/statusbar/images/light/system-suspend.svg"
                 visible: true

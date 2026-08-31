@@ -45,27 +45,42 @@
 <context>
     <name>ShutdownDialog</name>
     <message>
-        <location filename="../qml/ShutdownDialog.qml" line="140"/>
+        <location filename="../qml/ShutdownDialog.qml" line="136"/>
+        <source>About</source>
+        <translation>关于</translation>
+    </message>
+    <message>
+        <location filename="../qml/ShutdownDialog.qml" line="149"/>
+        <source>Settings</source>
+        <translation>设置</translation>
+    </message>
+    <message>
+        <location filename="../qml/ShutdownDialog.qml" line="160"/>
+        <source>Power</source>
+        <translation>电源</translation>
+    </message>
+    <message>
+        <location filename="../qml/ShutdownDialog.qml" line="163"/>
         <source>Shutdown</source>
         <translation>关机</translation>
     </message>
     <message>
-        <location filename="../qml/ShutdownDialog.qml" line="155"/>
+        <location filename="../qml/ShutdownDialog.qml" line="178"/>
         <source>Reboot</source>
         <translation>重启</translation>
     </message>
     <message>
-        <location filename="../qml/ShutdownDialog.qml" line="170"/>
+        <location filename="../qml/ShutdownDialog.qml" line="193"/>
         <source>Log out</source>
         <translation>注销</translation>
     </message>
     <message>
-        <location filename="../qml/ShutdownDialog.qml" line="185"/>
+        <location filename="../qml/ShutdownDialog.qml" line="208"/>
         <source>Lock Screen</source>
         <translation>锁屏</translation>
     </message>
     <message>
-        <location filename="../qml/ShutdownDialog.qml" line="200"/>
+        <location filename="../qml/ShutdownDialog.qml" line="223"/>
         <source>Suspend</source>
         <translation>休眠</translation>
     </message>
