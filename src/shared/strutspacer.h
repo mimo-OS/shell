@@ -96,6 +96,7 @@ private:
     friend class StrutRegistry;
 
     void update();
+    void clearInputRegion();
     void destroySurface();
     void handleConfigure(quint32 serial, quint32 width, quint32 height);
 

@@ -215,8 +215,23 @@ void StrutSpacer::update()
 
     // Nothing must ever land on this surface: it sits behind the panel and
     // covers a strip of the desktop.
-    m_surface->setInputRegion(nullptr);
+    clearInputRegion();
     wl_surface_commit(*m_surface);
+}
+
+void StrutSpacer::clearInputRegion()
+{
+    Compositor *compositor = KWinWaylandInterface::instance()->compositor();
+    if (!m_surface || !compositor)
+        return;
+
+    // Not setInputRegion(nullptr): that *resets* the region, and an unset
+    // input region is an infinite one. The spacer would then eat every click
+    // along the whole screen edge, which is what kept the desktop from
+    // reacting to the left and right of the dock. An explicitly empty region
+    // is what makes the surface click-through.
+    std::unique_ptr<Region> empty = compositor->createRegion(QRegion());
+    m_surface->setInputRegion(empty.get());
 }
 
 void StrutSpacer::handleConfigure(quint32 serial, quint32 width, quint32 height)
@@ -244,7 +259,7 @@ void StrutSpacer::handleConfigure(quint32 serial, quint32 width, quint32 height)
 
     // An empty input region has to be re-applied after every configure, since
     // it is double buffered along with the rest of the surface state.
-    m_surface->setInputRegion(nullptr);
+    clearInputRegion();
     m_surface->damage(QRect(QPoint(0, 0), size));
     wl_surface_commit(*m_surface);
 }
