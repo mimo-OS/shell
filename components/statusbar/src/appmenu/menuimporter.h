@@ -6,7 +6,6 @@
 #include <QDBusContext>
 #include <QDBusObjectPath>
 #include <QObject>
-#include <QWidget> // For WId
 
 class QDBusObjectPath;
 class QDBusServiceWatcher;
@@ -25,25 +24,25 @@ public:
 
     bool connectToBus();
 
-    bool serviceExist(WId id)
+    bool serviceExist(uint id)
     {
         return m_menuServices.contains(id);
     }
-    QString serviceForWindow(WId id)
+    QString serviceForWindow(uint id)
     {
         return m_menuServices.value(id);
     }
 
-    bool pathExist(WId id)
+    bool pathExist(uint id)
     {
         return m_menuPaths.contains(id);
     }
-    QString pathForWindow(WId id)
+    QString pathForWindow(uint id)
     {
         return m_menuPaths.value(id).path();
     }
 
-    QList<WId> ids()
+    QList<uint> ids()
     {
         return m_menuServices.keys();
     }
@@ -51,7 +50,7 @@ public:
     //! Wayland has no window id a client and the compositor agree on, so the
     //! menu a window owns is found through the pid of the process that
     //! registered it.
-    WId windowForPid(uint pid) const;
+    uint windowForPid(uint pid) const;
     QString serviceForPid(uint pid) const
     {
         return m_menuServices.value(windowForPid(pid));
@@ -62,23 +61,22 @@ public:
     }
 
 Q_SIGNALS:
-    void WindowRegistered(WId id, const QString &service, const QDBusObjectPath &);
-    void WindowUnregistered(WId id);
+    void WindowRegistered(uint id, const QString &service, const QDBusObjectPath &);
+    void WindowUnregistered(uint id);
 
 public Q_SLOTS:
-    Q_NOREPLY void RegisterWindow(WId id, const QDBusObjectPath &path);
-    Q_NOREPLY void UnregisterWindow(WId id);
-    QString GetMenuForWindow(WId id, QDBusObjectPath &path);
+    Q_NOREPLY void RegisterWindow(uint id, const QDBusObjectPath &path);
+    Q_NOREPLY void UnregisterWindow(uint id);
+    QString GetMenuForWindow(uint id, QDBusObjectPath &path);
 
 private Q_SLOTS:
     void slotServiceUnregistered(const QString &service);
 
 private:
     QDBusServiceWatcher *m_serviceWatcher;
-    QHash<WId, QString> m_menuServices;
-    QHash<WId, QDBusObjectPath> m_menuPaths;
-    QHash<WId, QString> m_windowClasses;
-    QHash<WId, uint> m_windowPids;
+    QHash<uint, QString> m_menuServices;
+    QHash<uint, QDBusObjectPath> m_menuPaths;
+    QHash<uint, uint> m_windowPids;
 };
 
 #endif /* MENUIMPORTER_H */

@@ -20,8 +20,8 @@ class Surface;
 /**
  * An invisible wlr-layer-shell surface whose only job is to reserve work area.
  *
- * KWin reserves space for X11 windows with a strut and for layer surfaces with
- * an exclusive zone, and for nothing else: a panel that uses org_kde_plasma_shell
+ * KWin reserves space for layer surfaces with an exclusive zone, and for
+ * nothing else: a panel that uses org_kde_plasma_shell
  * stacks above other windows but does not keep maximized ones out of its way.
  * Layer shell is no use for the panels themselves either, because LayerShellQt
  * selects it for the whole process through QT_WAYLAND_SHELL_INTEGRATION, which

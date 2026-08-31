@@ -9,16 +9,10 @@
 #include <QScreen>
 #include <QTimer>
 
-#include <KX11Extras>
-#include <KWindowSystem>
-
 #include <KWayland/Client/plasmashell.h>
 #include <KWayland/Client/surface.h>
 
 #include "kwinwaylandinterface.h"
-
-// X11
-#include <NETWM>
 
 FakeWindow::FakeWindow(QQuickView *parent)
     : QQuickView(parent)
@@ -72,9 +66,6 @@ bool FakeWindow::event(QEvent *e)
         if (!m_delayedMouseTimer.isActive()) {
             m_delayedMouseTimer.start();
         }
-    } else if (e->type() == QEvent::Show) {
-        if (KWindowSystem::isPlatformX11())
-            KX11Extras::setState(winId(), NET::SkipTaskbar | NET::SkipPager | NET::SkipSwitcher);
     } else if (e->type() == QEvent::Expose) {
         // The wl_surface only exists once the window is exposed, and Qt makes
         // a new one every time it is hidden and shown again.
@@ -95,9 +86,6 @@ void FakeWindow::setContainsMouse(bool contains)
 
 void FakeWindow::updatePlasmaSurface()
 {
-    if (KWindowSystem::isPlatformX11())
-        return;
-
     KWayland::Client::PlasmaShell *shell = KWinWaylandInterface::instance()->plasmaShell();
     if (!shell)
         return;

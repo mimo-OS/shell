@@ -4,7 +4,7 @@
 #include <QAbstractListModel>
 #include "applicationitem.h"
 #include "systemappmonitor.h"
-#include "xwindowinterface.h"
+#include "windowinterface.h"
 
 class ApplicationModel : public QAbstractListModel
 {
@@ -43,8 +43,6 @@ public:
     Q_INVOKABLE void pin(const QString &appId);
     Q_INVOKABLE void unPin(const QString &appId);
 
-    Q_INVOKABLE void updateGeometries(const QString &id, QRect rect);
-
     Q_INVOKABLE void move(int from, int to);
 
 signals:
@@ -71,7 +69,7 @@ private:
     void onActiveChanged(quint64 wid);
 
 private:
-    XWindowInterface *m_iface;
+    WindowInterface *m_iface;
     SystemAppMonitor *m_sysAppMonitor;
     QList<ApplicationItem *> m_appItems;
 };

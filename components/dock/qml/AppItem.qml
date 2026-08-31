@@ -35,23 +35,6 @@ DockItem {
     draggable: !model.fixed
     dragItemIndex: index
 
-    onXChanged: {
-        if (windowCount > 0)
-            updateGeometry()
-    }
-
-    onYChanged: {
-        if (windowCount > 0)
-            updateGeometry()
-    }
-
-    onWindowCountChanged: {
-        if (windowCount > 0)
-            updateGeometry()
-    }
-
-    onPositionChanged: updateGeometry()
-    onPressed: updateGeometry()
     onRightClicked: if (model.appId !== "cutefish-launcher") contextMenu.show()
 
     onClicked: {
@@ -73,7 +56,6 @@ DockItem {
 
     dropArea.onDropped: {
         appModel.save()
-        updateGeometry()
     }
 
     Timer {
@@ -117,15 +99,5 @@ DockItem {
                                     : qsTr("Close %1 windows").arg(windowCount)
             onTriggered: appModel.closeAllByAppId(model.appId)
         }
-    }
-
-
-    function updateGeometry() {
-        if (model.fixed)
-            return
-
-        appModel.updateGeometries(model.appId, Qt.rect(appItem.mapToGlobal(0, 0).x,
-                                                       appItem.mapToGlobal(0, 0).y,
-                                                       appItem.width, appItem.height))
     }
 }

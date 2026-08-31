@@ -12,17 +12,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include(GNUInstallDirs)
 
 find_package(Qt6 CONFIG REQUIRED Widgets DBus Concurrent Quick QuickControls2 Network LinguistTools)
-find_package(KF6WindowSystem REQUIRED)
 find_package(KWayland REQUIRED)
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(XCB REQUIRED IMPORTED_TARGET xcb)
 pkg_check_modules(WAYLAND_CLIENT REQUIRED IMPORTED_TARGET wayland-client)
 
 # ---------------------------------------------------------------------------
 # wlr-layer-shell
 #
-# KWin reserves work area for exactly two kinds of window: X11 windows with a
-# strut, and wlr-layer-shell surfaces with an exclusive zone. A plasma-shell
+# KWin reserves work area for wlr-layer-shell surfaces with an exclusive zone.
 # panel reserves nothing. Layer shell cannot be used for the panels themselves,
 # because LayerShellQt selects it through QT_WAYLAND_SHELL_INTEGRATION for the
 # whole process and then every menu and tooltip becomes a full-screen layer
@@ -151,7 +148,7 @@ set(DOCK_SRCS
     components/dock/src/systemappitem.cpp
     components/dock/src/trashmanager.cpp
     components/dock/src/utils.cpp
-    components/dock/src/xwindowinterface.cpp
+    components/dock/src/windowinterface.cpp
     components/dock/src/fakewindow.cpp
 
     components/dock/dock.qrc
@@ -217,9 +214,7 @@ target_link_libraries(cutefish-shell PRIVATE
     Qt6::Concurrent
     Qt6::DBus
     Qt6::Network
-    KF6::WindowSystem
     Plasma::KWaylandClient
-    PkgConfig::XCB
     PkgConfig::WAYLAND_CLIENT
 )
 

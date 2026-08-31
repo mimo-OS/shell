@@ -50,7 +50,6 @@ private:
     QRect windowRect() const;
     void resizeWindow();
     void initScreens();
-    void initSlideWindow();
     void updateViewStruts();
     void clearViewStruts();
 

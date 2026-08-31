@@ -9,14 +9,6 @@
 #include <QApplication>
 #include <QDBusInterface>
 #include <QMenu>
-#include <QtGui/qguiapplication_platform.h>
-#include <KWindowSystem>
-
-// X11
-#include <xcb/xcb.h>
-
-static const QByteArray s_x11AppMenuServiceNamePropertyName = QByteArrayLiteral("_KDE_NET_WM_APPMENU_SERVICE_NAME");
-static const QByteArray s_x11AppMenuObjectPathPropertyName = QByteArrayLiteral("_KDE_NET_WM_APPMENU_OBJECT_PATH");
 
 AppMenu::AppMenu(QObject *parent)
     : QObject(parent)
@@ -50,7 +42,6 @@ AppMenu::AppMenu(QObject *parent)
         // Setup a menu importer if needed
         if (!m_menuImporter) {
             m_menuImporter = new MenuImporter(this);
-            connect(m_menuImporter, &MenuImporter::WindowRegistered, this, &AppMenu::slotWindowRegistered);
             m_menuImporter->connectToBus();
         }
     };
@@ -72,17 +63,6 @@ AppMenu::AppMenu(QObject *parent)
         setupMenuImporter();
     // }
 
-    const auto native = qGuiApp->nativeInterface<QNativeInterface::QX11Application>();
-    if (KWindowSystem::isPlatformX11() && (!native || !native->connection())) {
-        m_xcbConn = xcb_connect(nullptr, nullptr);
-    }
-}
-
-AppMenu::~AppMenu()
-{
-    if (m_xcbConn) {
-        xcb_disconnect(m_xcbConn);
-    }
 }
 
 bool AppMenu::eventFilter(QObject *object, QEvent *event)
@@ -95,51 +75,7 @@ bool AppMenu::eventFilter(QObject *object, QEvent *event)
 //            waylandWindow->display()->setLastInputDevice(device, device->pointer()->mEnterSerial, waylandWindow);
 //        }
 //    }
-    return AppMenu::eventFilter(object, event);
-}
-
-void AppMenu::slotWindowRegistered(WId id, const QString &serviceName, const QDBusObjectPath &menuObjectPath)
-{
-    if (!KWindowSystem::isPlatformX11())
-        return;
-
-    auto *native = qGuiApp->nativeInterface<QNativeInterface::QX11Application>();
-    auto *c = native ? native->connection() : nullptr;
-    if (!c) {
-        c = m_xcbConn;
-    }
-
-    if (c) {
-        static xcb_atom_t s_serviceNameAtom = XCB_ATOM_NONE;
-        static xcb_atom_t s_objectPathAtom = XCB_ATOM_NONE;
-
-        auto setWindowProperty = [c](WId id, xcb_atom_t &atom, const QByteArray &name, const QByteArray &value) {
-            if (atom == XCB_ATOM_NONE) {
-                const xcb_intern_atom_cookie_t cookie = xcb_intern_atom(c, false, name.length(), name.constData());
-                QScopedPointer<xcb_intern_atom_reply_t, QScopedPointerPodDeleter> reply(xcb_intern_atom_reply(c, cookie, nullptr));
-                if (reply.isNull()) {
-                    return;
-                }
-                atom = reply->atom;
-                if (atom == XCB_ATOM_NONE) {
-                    return;
-                }
-            }
-
-            auto cookie = xcb_change_property_checked(c, XCB_PROP_MODE_REPLACE, id, atom, XCB_ATOM_STRING, 8, value.length(), value.constData());
-            xcb_generic_error_t *error;
-            if ((error = xcb_request_check(c, cookie))) {
-                qWarning() << "Got an error";
-                free(error);
-                return;
-            }
-        };
-
-        // TODO only set the property if it doesn't already exist
-
-        setWindowProperty(id, s_serviceNameAtom, s_x11AppMenuServiceNamePropertyName, serviceName.toUtf8());
-        setWindowProperty(id, s_objectPathAtom, s_x11AppMenuObjectPathPropertyName, menuObjectPath.path().toUtf8());
-    }
+    return QObject::eventFilter(object, event);
 }
 
 void AppMenu::slotShowMenu(int x, int y, const QString &serviceName, const QDBusObjectPath &menuObjectPath, int actionId)
@@ -222,5 +158,7 @@ void AppMenu::fakeUnityAboutToShow(const QString &service, const QDBusObjectPath
 
 KDBusMenuImporter *AppMenu::getImporter(const QString &service, const QString &path)
 {
-
+    Q_UNUSED(service)
+    Q_UNUSED(path)
+    return nullptr;
 }

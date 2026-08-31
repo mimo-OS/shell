@@ -37,8 +37,7 @@ class ShellSurface : public QQuickWindow
 
 public:
     //! What the compositor should make of this surface. Mapped onto
-    //! org_kde_plasma_shell roles, the Wayland equivalent of the EWMH window
-    //! types the X11 code used.
+    //! org_kde_plasma_shell roles used by the Wayland compositor.
     enum class SurfaceRole {
         Desktop,
         Panel,
@@ -63,13 +62,12 @@ public:
 
     void configureSurfaceRole(SurfaceRole role);
     //! What a Role::Panel surface does about other windows. Ignored for the
-    //! other roles.
+        //! other roles.
     enum class PanelBehavior {
         //! Stays above ordinary windows. The reserved work area itself comes
         //! from StrutSpacer, not from here.
         StayAbove,
-        //! Lets windows be stacked over the panel, the way NET::KeepBelow did
-        //! on X11 while the launcher is up.
+        //! Lets windows be stacked over the panel while the launcher is up.
         AllowCovering,
     };
     void setPanelBehavior(PanelBehavior behavior);

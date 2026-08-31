@@ -3,10 +3,6 @@
 #include <QScreen>
 #include <QQmlContext>
 
-#include <NETWM>
-#include <KX11Extras>
-#include <KWindowSystem>
-
 DesktopSurface::DesktopSurface(QQmlEngine *engine, QScreen *screen)
     : ShellSurface(engine)
     , m_screen(screen)
@@ -14,14 +10,6 @@ DesktopSurface::DesktopSurface(QQmlEngine *engine, QScreen *screen)
 {
     setFlag(Qt::FramelessWindowHint);
     setColor(Qt::transparent);
-
-    // EWMH window types only exist on X11.  Calling KX11Extras on a native
-    // Wayland surface is not useful and, with some KF6 builds, can dereference
-    // a missing QX11Application interface.
-    if (KWindowSystem::isPlatformX11()) {
-        KX11Extras::setType(winId(), NET::Desktop);
-        KX11Extras::setState(winId(), NET::KeepBelow);
-    }
 
     setTitle(QStringLiteral("Desktop"));
     QQuickWindow::setScreen(screen);

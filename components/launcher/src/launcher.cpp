@@ -11,9 +11,6 @@
 #include <QScreen>
 #include <QTimer>
 
-#include <KX11Extras>
-#include <KWindowSystem>
-
 Launcher::Launcher(QQmlEngine *engine, bool firstShow)
     : ShellSurface(engine)
     , m_dockInterface("com.cutefish.Dock",
@@ -68,12 +65,10 @@ Launcher::Launcher(QQmlEngine *engine, bool firstShow)
     connect(qApp, &QApplication::primaryScreenChanged, this, [=] { onGeometryChanged(); });
     connect(this, &QQuickWindow::activeChanged, this, &Launcher::onActiveChanged);
 
-    if (!KWindowSystem::isPlatformX11()) {
-        KWinWaylandInterface *kwin = KWinWaylandInterface::instance();
-        connect(kwin, &KWinWaylandInterface::clientAdded, this, [this](quint64 address) {
-            focusWaylandWindow(address);
-        });
-    }
+    KWinWaylandInterface *kwin = KWinWaylandInterface::instance();
+    connect(kwin, &KWinWaylandInterface::clientAdded, this, [this](quint64 address) {
+        focusWaylandWindow(address);
+    });
 }
 
 int Launcher::leftMargin() const
@@ -105,15 +100,10 @@ void Launcher::showWindow()
     // in one process there is no WM_CLASS left to tell them apart.
     Activity::self()->setLaunchPad(true);
 
-    if (!KWindowSystem::isPlatformX11()) {
-        // setLaunchPad() above made the dock and the status bar give their
-        // reserved area back. That has to reach KWin before the window is
-        // mapped: the size KWin suggests in xdg_toplevel.configure_bounds is
-        // the placement area, and Qt shrinks the window to it. Mapping first
-        // meant the launcher came up at the work area size and was pushed back
-        // out to the screen size a frame later, which is the flicker.
-        KWinWaylandInterface::instance()->roundtrip();
-    }
+    // setLaunchPad() above made the dock and the status bar give their
+    // reserved area back. Ensure KWin has processed that before mapping the
+    // launcher, otherwise Qt may briefly use the old work area size.
+    KWinWaylandInterface::instance()->roundtrip();
 
     if (!m_screenRect.isEmpty())
         setGeometry(m_screenRect);
@@ -121,20 +111,17 @@ void Launcher::showWindow()
     setSurfacePosition(m_screenRect.topLeft());
     requestActivate();
 
-    if (!KWindowSystem::isPlatformX11()) {
-        // Qt's Wayland requestActivate() has no activation token when the
-        // request originates from our D-Bus shortcut. Ask KWin's window
-        // management protocol to focus this already-mapped surface after the
-        // compositor has seen it.
-        QTimer::singleShot(50, this, [this] {
-            focusWaylandWindow();
-        });
-    }
+    // Qt's Wayland requestActivate() has no activation token when the request
+    // originates from our D-Bus shortcut. Ask KWin to focus this surface after
+    // the compositor has seen it.
+    QTimer::singleShot(50, this, [this] {
+        focusWaylandWindow();
+    });
 }
 
 void Launcher::focusWaylandWindow(quint64 address)
 {
-    if (KWindowSystem::isPlatformX11() || !m_showed)
+    if (!m_showed)
         return;
 
     KWinWaylandInterface *kwin = KWinWaylandInterface::instance();
@@ -238,9 +225,6 @@ void Launcher::onGeometryChanged()
 
 void Launcher::showEvent(QShowEvent *e)
 {
-    if (KWindowSystem::isPlatformX11())
-        KX11Extras::setState(winId(), NET::SkipTaskbar | NET::SkipPager);
-
     QQuickWindow::showEvent(e);
 }
 

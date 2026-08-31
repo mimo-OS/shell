@@ -1,7 +1,6 @@
 #ifndef APPMENUMODEL_H
 #define APPMENUMODEL_H
 
-#include <KX11Extras>
 #include <QAbstractListModel>
 #include <QPointer>
 #include <QRect>
@@ -56,11 +55,6 @@ private:
     bool m_menuAvailable;
     bool m_updatePending = false;
     bool m_visible = true;
-
-    //! current active window used
-    WId m_currentWindowId = 0;
-    //! window that its menu initialization may be delayed
-    WId m_delayedMenuWindowId = 0;
 
     QPointer<QMenu> m_menu;
 

@@ -7,8 +7,6 @@
 #include <QPlatformSurfaceEvent>
 #include <QDebug>
 
-#include <KWindowSystem>
-
 #include <KWayland/Client/plasmashell.h>
 #include <KWayland/Client/surface.h>
 
@@ -68,9 +66,6 @@ void ShellSurface::setContextProperty(const QString &name, const QVariant &value
 
 void ShellSurface::configureSurfaceRole(SurfaceRole role)
 {
-    if (KWindowSystem::isPlatformX11())
-        return;
-
     m_role = role;
     m_hasRole = true;
     applySurfaceRole();
@@ -89,7 +84,7 @@ void ShellSurface::setPanelBehavior(PanelBehavior behavior)
 
 void ShellSurface::applySurfaceRole()
 {
-    if (!m_hasRole || KWindowSystem::isPlatformX11())
+    if (!m_hasRole)
         return;
 
     PlasmaShell *shell = KWinWaylandInterface::instance()->plasmaShell();
@@ -125,15 +120,14 @@ void ShellSurface::applySurfaceRole()
     case SurfaceRole::Dock:
         m_plasmaSurface->setRole(PlasmaShellSurface::Role::Panel);
         m_plasmaSurface->setPanelBehavior(plasmaPanelBehavior());
-        // Panels must not take the keyboard focus, the same way they carried
-        // Qt::WindowDoesNotAcceptFocus on X11. A dock that steals focus makes
+        // Panels must not take the keyboard focus. A dock that steals focus makes
         // the launcher hide itself on the very click that is meant to toggle
         // it, so it can never be closed from its own dock button.
         m_plasmaSurface->setPanelTakesFocus(false);
         break;
     case SurfaceRole::Launcher:
-        // An ordinary window, as it was on X11. That keeps it in the normal
-        // layer, below the dock and the status bar, which both sit in KWin's
+        // An ordinary window keeps the launcher in the normal layer, below the
+        // dock and the status bar, which both sit in KWin's
         // "above" layer as panels. A panel role would put the launcher in the
         // same layer as the dock, where being the active window would raise it
         // over the dock instead of under it.

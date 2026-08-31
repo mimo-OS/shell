@@ -7,10 +7,6 @@
 #include <QDBusReply>
 #include <QDBusServiceWatcher>
 
-#include <KWindowInfo>
-#include <KX11Extras>
-#include <KWindowSystem>
-
 static const char *DBUS_SERVICE = "com.canonical.AppMenu.Registrar";
 static const char *DBUS_OBJECT_PATH = "/com/canonical/AppMenu/Registrar";
 
@@ -41,14 +37,14 @@ MenuImporter::~MenuImporter()
     QDBusConnection::sessionBus().unregisterService(DBUS_SERVICE);
 }
 
-WId MenuImporter::windowForPid(uint pid) const
+uint MenuImporter::windowForPid(uint pid) const
 {
     if (pid == 0)
         return 0;
 
     // Newest registration wins: an application that opened a second window
     // registers it again with the same pid.
-    WId result = 0;
+    uint result = 0;
     for (auto it = m_windowPids.cbegin(); it != m_windowPids.cend(); ++it) {
         if (it.value() == pid && it.key() >= result)
             result = it.key();
@@ -68,29 +64,13 @@ bool MenuImporter::connectToBus()
     return true;
 }
 
-void MenuImporter::RegisterWindow(WId id, const QDBusObjectPath &path)
+void MenuImporter::RegisterWindow(uint id, const QDBusObjectPath &path)
 {
-    QString classClass;
-
-    if (KWindowSystem::isPlatformX11()) {
-        KWindowInfo info(id, NET::WMWindowType, NET::WM2WindowClass);
-        NET::WindowTypes mask = NET::AllTypesMask;
-        auto type = info.windowType(mask);
-
-        // Menu can try to register, right click in gimp for example
-        if (type != NET::Unknown && (type & (NET::Menu | NET::DropdownMenu | NET::PopupMenu))) {
-            return;
-        }
-
-        classClass = info.windowClassClass();
-    }
-
     if (path.path().isEmpty()) // prevent bad dbusmenu usage
         return;
 
     QString service = message().service();
 
-    m_windowClasses.insert(id, classClass);
     m_menuServices.insert(id, service);
     m_menuPaths.insert(id, path);
 
@@ -107,17 +87,16 @@ void MenuImporter::RegisterWindow(WId id, const QDBusObjectPath &path)
     emit WindowRegistered(id, service, path);
 }
 
-void MenuImporter::UnregisterWindow(WId id)
+void MenuImporter::UnregisterWindow(uint id)
 {
     m_menuServices.remove(id);
     m_menuPaths.remove(id);
-    m_windowClasses.remove(id);
     m_windowPids.remove(id);
 
     emit WindowUnregistered(id);
 }
 
-QString MenuImporter::GetMenuForWindow(WId id, QDBusObjectPath &path)
+QString MenuImporter::GetMenuForWindow(uint id, QDBusObjectPath &path)
 {
     path = m_menuPaths.value(id);
     return m_menuServices.value(id);
@@ -125,10 +104,9 @@ QString MenuImporter::GetMenuForWindow(WId id, QDBusObjectPath &path)
 
 void MenuImporter::slotServiceUnregistered(const QString &service)
 {
-    WId id = m_menuServices.key(service);
+    const uint id = m_menuServices.key(service);
     m_menuServices.remove(id);
     m_menuPaths.remove(id);
-    m_windowClasses.remove(id);
     m_windowPids.remove(id);
     emit WindowUnregistered(id);
     m_serviceWatcher->removeWatchedService(service);

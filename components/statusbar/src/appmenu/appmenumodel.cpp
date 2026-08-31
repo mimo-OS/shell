@@ -5,57 +5,12 @@
 #include <QDBusConnectionInterface>
 #include <QDBusServiceWatcher>
 #include <QGuiApplication>
-#include <QtGui/qguiapplication_platform.h>
 #include <QMenu>
-
-
-#include <KX11Extras>
-#include <KWindowInfo>
-#include <KWindowSystem>
-#include <NETWM>
 
 #include "../libdbusmenuqt/dbusmenuimporter.h"
 #include "kwinwaylandinterface.h"
 #include "menuimporter.h"
 #include <QDebug>
-
-#include <xcb/xcb.h>
-
-static QByteArray getWindowPropertyString(WId id, const QByteArray &name)
-{
-    if (!KWindowSystem::isPlatformX11())
-        return {};
-
-    const auto native = qGuiApp->nativeInterface<QNativeInterface::QX11Application>();
-    if (!native || !native->connection())
-        return {};
-
-    xcb_connection_t *c = native->connection();
-    QByteArray value;
-
-    const xcb_intern_atom_cookie_t atomCookie = xcb_intern_atom(c, false, name.length(), name.constData());
-    QScopedPointer<xcb_intern_atom_reply_t, QScopedPointerPodDeleter> atomReply(xcb_intern_atom_reply(c, atomCookie, Q_NULLPTR));
-    if (atomReply.isNull()) {
-        return value;
-    }
-
-    static const long MAX_PROP_SIZE = 10000;
-    auto propertyCookie = xcb_get_property(c, false, id, atomReply->atom, XCB_ATOM_STRING, 0, MAX_PROP_SIZE);
-    QScopedPointer<xcb_get_property_reply_t, QScopedPointerPodDeleter> propertyReply(xcb_get_property_reply(c, propertyCookie, NULL));
-    if (propertyReply.isNull()) {
-        return value;
-    }
-
-    if (propertyReply->type == XCB_ATOM_STRING && propertyReply->format == 8 && propertyReply->value_len > 0) {
-        const char *data = (const char *) xcb_get_property_value(propertyReply.data());
-        int len = propertyReply->value_len;
-        if (data) {
-            value = QByteArray(data, data[len - 1] ? len : len - 1);
-        }
-    }
-
-    return value;
-}
 
 class CDBusMenuImporter : public DBusMenuImporter
 {
@@ -84,31 +39,24 @@ AppMenuModel::AppMenuModel(QObject *parent)
         }
     });
 
-    if (KWindowSystem::isPlatformX11()) {
-        connect(KX11Extras::self(), &KX11Extras::activeWindowChanged, this, &AppMenuModel::onActiveWindowChanged, Qt::QueuedConnection);
-        connect(KX11Extras::self(), &KX11Extras::windowChanged, this,
-                [this](WId, NET::Properties, NET::Properties2) { onActiveWindowChanged(); }, Qt::QueuedConnection);
-        onActiveWindowChanged();
-    } else {
-        // On Wayland the active window comes from KWin's window management
-        // protocol instead of EWMH, and the menu it owns is looked up through
-        // the AppMenu registrar rather than an X11 window property.
-        KWinWaylandInterface *kwin = KWinWaylandInterface::instance();
-        connect(kwin, &KWinWaylandInterface::activeWindowChanged, this, &AppMenuModel::onActiveWindowChanged, Qt::QueuedConnection);
-        connect(kwin, &KWinWaylandInterface::clientChanged, this, &AppMenuModel::onActiveWindowChanged, Qt::QueuedConnection);
-        connect(kwin, &KWinWaylandInterface::clientRemoved, this, &AppMenuModel::onActiveWindowChanged, Qt::QueuedConnection);
+    // On Wayland KWin exposes the active window and its exported application
+    // menu together, so no client-side window identifier is needed.
+    KWinWaylandInterface *kwin = KWinWaylandInterface::instance();
+    connect(kwin, &KWinWaylandInterface::activeWindowChanged, this, &AppMenuModel::onActiveWindowChanged, Qt::QueuedConnection);
+    connect(kwin, &KWinWaylandInterface::clientChanged, this, &AppMenuModel::onActiveWindowChanged, Qt::QueuedConnection);
+    connect(kwin, &KWinWaylandInterface::clientRemoved, this, &AppMenuModel::onActiveWindowChanged, Qt::QueuedConnection);
 
-        // An application usually registers its menu a moment after its window
-        // is mapped and activated, so the first look-up finds nothing.
-        if (MenuImporter *importer = MenuImporter::instance()) {
-            connect(importer, &MenuImporter::WindowRegistered, this,
-                    [this](WId, const QString &, const QDBusObjectPath &) { onActiveWindowChanged(); }, Qt::QueuedConnection);
-            connect(importer, &MenuImporter::WindowUnregistered, this,
-                    [this](WId) { onActiveWindowChanged(); }, Qt::QueuedConnection);
-        }
-
-        onActiveWindowChanged();
+    // Compatibility exporters may register after the window is mapped. Their
+    // numeric token is not a Wayland window ID, so only use the exporter's
+    // D-Bus process ID to associate the menu with KWin's active window.
+    if (MenuImporter *importer = MenuImporter::instance()) {
+        connect(importer, &MenuImporter::WindowRegistered, this,
+                [this](uint, const QString &, const QDBusObjectPath &) { onActiveWindowChanged(); }, Qt::QueuedConnection);
+        connect(importer, &MenuImporter::WindowUnregistered, this,
+                [this](uint) { onActiveWindowChanged(); }, Qt::QueuedConnection);
     }
+
+    onActiveWindowChanged();
 
     m_serviceWatcher->setConnection(QDBusConnection::sessionBus());
     // if our current DBus connection gets lost, close the menu
@@ -169,55 +117,29 @@ void AppMenuModel::update()
 
 void AppMenuModel::onActiveWindowChanged()
 {
-    if (!KWindowSystem::isPlatformX11()) {
-        KWinWaylandInterface *kwin = KWinWaylandInterface::instance();
-        const KWinWaylandClient client = kwin->client(kwin->activeWindow());
+    KWinWaylandInterface *kwin = KWinWaylandInterface::instance();
+    const KWinWaylandClient client = kwin->client(kwin->activeWindow());
 
-        // KDE applications hand the menu to KWin over org_kde_kwin_appmenu and
-        // it arrives with the window. Everything built on plain Qt only talks
-        // to the registrar, where the pid of the exporting process is the one
-        // thing both sides agree on.
-        QString serviceName = client.appMenuServiceName;
-        QString objectPath = client.appMenuObjectPath;
+    QString serviceName = client.appMenuServiceName;
+    QString objectPath = client.appMenuObjectPath;
 
-        if ((serviceName.isEmpty() || objectPath.isEmpty()) && client.pid > 0) {
-            if (MenuImporter *importer = MenuImporter::instance()) {
-                serviceName = importer->serviceForPid(static_cast<uint>(client.pid));
-                objectPath = importer->pathForPid(static_cast<uint>(client.pid));
-            }
+    if ((serviceName.isEmpty() || objectPath.isEmpty()) && client.pid > 0) {
+        if (MenuImporter *importer = MenuImporter::instance()) {
+            serviceName = importer->serviceForPid(static_cast<uint>(client.pid));
+            objectPath = importer->pathForPid(static_cast<uint>(client.pid));
         }
-
-        if (!serviceName.isEmpty() && !objectPath.isEmpty()) {
-            setMenuAvailable(true);
-            updateApplicationMenu(serviceName, objectPath);
-            setVisible(true);
-            emit modelNeedsUpdate();
-        } else {
-            setVisible(false);
-        }
-
-        return;
     }
 
-    // 为了兼容旧版本，不使用新的 API
-//    KWindowInfo info(KX11Extras::activeWindow(),
-//                     NET::WMState | NET::WMVisibleName,
-//                     NET::WM2AppMenuObjectPath | NET::WM2AppMenuServiceName);
-//    const QString objectPath = info.applicationMenuObjectPath();
-//    const QString serviceName = info.applicationMenuServiceName();
-
-    const QString objectPath = QString::fromUtf8(getWindowPropertyString(KX11Extras::activeWindow(), "_KDE_NET_WM_APPMENU_OBJECT_PATH"));
-    const QString serviceName = QString::fromUtf8(getWindowPropertyString(KX11Extras::activeWindow(), "_KDE_NET_WM_APPMENU_SERVICE_NAME"));
-
-    if (!objectPath.isEmpty() && !serviceName.isEmpty()) {
+    if (!serviceName.isEmpty() && !objectPath.isEmpty()) {
         setMenuAvailable(true);
         updateApplicationMenu(serviceName, objectPath);
         setVisible(true);
         emit modelNeedsUpdate();
     } else {
-        // setMenuAvailable(false);
         setVisible(false);
     }
+
+    return;
 }
 
 QHash<int, QByteArray> AppMenuModel::roleNames() const

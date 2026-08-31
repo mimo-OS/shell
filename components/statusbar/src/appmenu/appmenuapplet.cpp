@@ -9,7 +9,6 @@
 #include <QQuickWindow>
 #include <QScreen>
 #include <QTimer>
-#include <KWindowSystem>
 
 int AppMenuApplet::s_refs = 0;
 
@@ -95,9 +94,8 @@ void AppMenuApplet::trigger(QQuickItem *ctx, int idx)
 
     QMenu *actionMenu = createMenu(idx);
     if (actionMenu) {
-        // this is a workaround where Qt will fail to realize a mouse has been released
-        // this happens if a window which does not accept focus spawns a new window that takes focus and X grab
-        // whilst the mouse is depressed
+        // Work around Qt failing to realize that a mouse was released when a
+        // popup is opened while the pointer is pressed.
         // https://bugreports.qt.io/browse/QTBUG-59044
         // this causes the next click to go missing
 
@@ -128,13 +126,6 @@ void AppMenuApplet::trigger(QQuickItem *ctx, int idx)
         actionMenu->winId(); // create window handle
         actionMenu->windowHandle()->setTransientParent(ctx->window());
 
-        // hide the old menu only after showing the new one to avoid brief focus flickering on X11.
-        // on wayland, you can't have more than one grabbing popup at a time so we show it after
-        // the menu has hidden. thankfully, wayland doesn't have this flickering.
-        if (!KWindowSystem::isPlatformWayland()) {
-            actionMenu->popup(pos);
-        }
-
         QMenu *oldMenu = m_currentMenu;
         m_currentMenu = actionMenu;
         if (oldMenu && oldMenu != actionMenu) {
@@ -143,9 +134,7 @@ void AppMenuApplet::trigger(QQuickItem *ctx, int idx)
             oldMenu->hide();
         }
 
-        if (KWindowSystem::isPlatformWayland()) {
-            actionMenu->popup(pos);
-        }
+        actionMenu->popup(pos);
 
         setCurrentIndex(idx);
 

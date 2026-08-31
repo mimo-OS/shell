@@ -12,17 +12,17 @@ static const char *kLauncherId = "cutefish-launcher";
 
 ApplicationModel::ApplicationModel(QObject *parent)
     : QAbstractListModel(parent)
-    , m_iface(XWindowInterface::instance())
+    , m_iface(WindowInterface::instance())
     , m_sysAppMonitor(SystemAppMonitor::self())
 {
-    connect(m_iface, &XWindowInterface::windowAdded, this, &ApplicationModel::onWindowAdded);
-    connect(m_iface, &XWindowInterface::windowRemoved, this, &ApplicationModel::onWindowRemoved);
-    connect(m_iface, &XWindowInterface::windowChanged, this, &ApplicationModel::onWindowChanged);
-    connect(m_iface, &XWindowInterface::activeChanged, this, &ApplicationModel::onActiveChanged);
+    connect(m_iface, &WindowInterface::windowAdded, this, &ApplicationModel::onWindowAdded);
+    connect(m_iface, &WindowInterface::windowRemoved, this, &ApplicationModel::onWindowRemoved);
+    connect(m_iface, &WindowInterface::windowChanged, this, &ApplicationModel::onWindowChanged);
+    connect(m_iface, &WindowInterface::activeChanged, this, &ApplicationModel::onActiveChanged);
 
     initPinnedApplications();
 
-    QTimer::singleShot(100, m_iface, &XWindowInterface::startInitWindows);
+    QTimer::singleShot(100, m_iface, &WindowInterface::startInitWindows);
 }
 
 int ApplicationModel::rowCount(const QModelIndex &parent) const
@@ -262,19 +262,6 @@ void ApplicationModel::unPin(const QString &appId)
     }
 
     savePinAndUnPinList();
-}
-
-void ApplicationModel::updateGeometries(const QString &id, QRect rect)
-{
-    ApplicationItem *item = findItemById(id);
-
-    // If not found
-    if (!item)
-        return;
-
-    for (quint64 id : item->wids) {
-        m_iface->setIconGeometry(id, rect);
-    }
 }
 
 void ApplicationModel::move(int from, int to)

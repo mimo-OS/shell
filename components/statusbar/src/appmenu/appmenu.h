@@ -2,7 +2,6 @@
 #define APPMENU_H
 
 #include <QObject>
-#include <xcb/xcb.h>
 
 #include "menuimporter.h"
 #include <QPointer>
@@ -18,7 +17,7 @@ class AppMenu : public QObject, protected QDBusContext
 
 public:
     explicit AppMenu(QObject *parent = nullptr);
-    ~AppMenu() override;
+    ~AppMenu() override = default;
 
     bool eventFilter(QObject *object, QEvent *event) override;
 
@@ -39,13 +38,6 @@ Q_SIGNALS:
     void menuHidden(const QString &service, const QDBusObjectPath &objectPath);
 
 private Q_SLOTS:
-    /**
-     * A new window was registered to AppMenu
-     *
-     * For compatibility this will set the DBus service name and menu object path as properties
-     * on the window so we keep working with clients that use the DBusMenu "properly".
-     */
-    void slotWindowRegistered(WId id, const QString &serviceName, const QDBusObjectPath &menuObjectPath);
     /**
      * Show menu at QPoint(x,y) for DBus serviceName and menuObjectPath
      * if x or y == -1, show in application window
@@ -70,7 +62,6 @@ private:
     AppmenuDBus *m_appmenuDBus;
     QDBusServiceWatcher *m_menuViewWatcher;
     QPointer<VerticalMenu> m_menu;
-    xcb_connection_t *m_xcbConn = nullptr;
 };
 
 #endif // APPMENU_H

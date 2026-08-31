@@ -8,8 +8,6 @@
 #include <QSettings>
 #include <QDebug>
 
-#include <KX11Extras>
-
 static Utils *INSTANCE = nullptr;
 
 Utils *Utils::instance()
@@ -65,13 +63,13 @@ QStringList Utils::commandFromPid(quint32 pid)
     return QStringList();
 }
 
-QString Utils::desktopPathFromMetadata(const QString &appId, quint32 pid, const QString &xWindowWMClassName)
+QString Utils::desktopPathFromMetadata(const QString &appId, quint32 pid, const QString &windowClassName)
 {
     QStringList commands = commandFromPid(pid);
 
     // The value returned from the commandFromPid() may be empty.
     // Calling first() and last() below will cause the statusbar to crash.
-    if (commands.isEmpty() || xWindowWMClassName.isEmpty())
+    if (commands.isEmpty() || windowClassName.isEmpty())
         return "";
 
     QString command = commands.first();
@@ -82,7 +80,7 @@ QString Utils::desktopPathFromMetadata(const QString &appId, quint32 pid, const 
 
     QString result;
 
-    if (!appId.isEmpty() && !xWindowWMClassName.isEmpty()) {
+    if (!appId.isEmpty() && !windowClassName.isEmpty()) {
         for (SystemAppItem *item : m_sysAppMonitor->applications()) {
             // Start search.
             const QFileInfo desktopFileInfo(item->path);
@@ -99,10 +97,10 @@ QString Utils::desktopPathFromMetadata(const QString &appId, quint32 pid, const 
             // window with the given string as its WM class or WM name hint.
             // ref: https://specifications.freedesktop.org/startup-notification-spec/startup-notification-0.1.txt
             if (item->startupWMClass.startsWith(appId, Qt::CaseInsensitive) ||
-                item->startupWMClass.startsWith(xWindowWMClassName, Qt::CaseInsensitive))
+                item->startupWMClass.startsWith(windowClassName, Qt::CaseInsensitive))
                 founded = true;
 
-            if (!founded && item->iconName.startsWith(xWindowWMClassName, Qt::CaseInsensitive))
+            if (!founded && item->iconName.startsWith(windowClassName, Qt::CaseInsensitive))
                 founded = true;
 
             // Icon name and cmdline.
@@ -114,14 +112,14 @@ QString Utils::desktopPathFromMetadata(const QString &appId, quint32 pid, const 
                 founded = true;
 
             // Try matching mapped name against 'Name'.
-            if (!founded && item->name.startsWith(xWindowWMClassName, Qt::CaseInsensitive))
+            if (!founded && item->name.startsWith(windowClassName, Qt::CaseInsensitive))
                 founded = true;
 
             // exec
-            if (!founded && item->exec.startsWith(xWindowWMClassName, Qt::CaseInsensitive))
+            if (!founded && item->exec.startsWith(windowClassName, Qt::CaseInsensitive))
                 founded = true;
 
-            if (!founded && desktopFileInfo.baseName().startsWith(xWindowWMClassName, Qt::CaseInsensitive))
+            if (!founded && desktopFileInfo.baseName().startsWith(windowClassName, Qt::CaseInsensitive))
                 founded = true;
 
             // For exec path.

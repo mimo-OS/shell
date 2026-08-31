@@ -32,15 +32,12 @@
 #include <QFile>
 #include <QDebug>
 
-#include <KWindowSystem>
-
 struct ServiceRegistration {
     const char *service;
     const char *path;
 };
 
-// Kept identical to the names the separate binaries used, so cutefish-settings,
-// chotkeys and anything else on the bus keeps working.
+// Keep the service names stable for clients on the session bus.
 static const ServiceRegistration s_services[] = {
     { "com.cutefish.Shell",     "/Shell"     },
     { "com.cutefish.Statusbar", "/Statusbar" },
@@ -148,8 +145,7 @@ void Shell::start()
     m_dock = new MainWindow(m_engine);
     bus.registerObject(QStringLiteral("/Dock"), m_dock);
 
-    if (!KWindowSystem::isPlatformX11())
-        m_desktops = new DesktopManager(m_engine, this);
+    m_desktops = new DesktopManager(m_engine, this);
 
     m_statusBar = new StatusBar(m_engine);
     bus.registerObject(QStringLiteral("/Statusbar"), m_statusBar);
@@ -160,6 +156,4 @@ void Shell::start()
 
     m_dock->show();
 
-    if (KWindowSystem::isPlatformX11())
-        m_desktops = new DesktopManager(m_engine, this);
 }

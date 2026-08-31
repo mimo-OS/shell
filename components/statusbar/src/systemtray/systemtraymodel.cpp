@@ -3,8 +3,6 @@
 #include <QApplication>
 #include <QDebug>
 
-#include <KX11Extras>
-
 static QStringList noColorOverlayList = {
     "netease-cloud-music",
     "chrome_status_icon_1",

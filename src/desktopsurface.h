@@ -9,7 +9,7 @@
  * The desktop window for one screen.
  *
  * This class deliberately knows nothing about files. It owns the window -- its
- * geometry, its X11 type and stacking -- and hands the screen it belongs to
+ * geometry and stacking -- and hands the screen it belongs to
  * over to the DesktopView item from "org.cutefish.filemanager.desktop", which
  * is where the wallpaper, icons, layout, selection, drag and drop, menus and
  * every file operation actually live.

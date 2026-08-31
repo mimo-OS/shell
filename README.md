@@ -17,7 +17,7 @@ creates a window per screen and hands the desktop the screen it belongs to.
 ```bash
 sudo apt install cmake extra-cmake-modules pkg-config build-essential \
     qt6-base-dev qt6-declarative-dev qt6-tools-dev \
-    libkf6windowsystem-dev kwayland-dev libxcb1-dev
+    kwayland-dev
 ```
 
 [FishUI](https://github.com/cutefishos/fishui) and
@@ -44,11 +44,9 @@ been installed:
 QT_QPA_PLATFORM=wayland ./build/cutefish-shell
 ```
 
-The shell keeps its X11/EWMH integration for X11 sessions, but does not call
-those APIs on Wayland. Under KWin Wayland, the dock and active-window service
-use KDE's Plasma Window Management protocol for client discovery, focus, close,
-maximize and minimize/restore. X11-only dock struts and appmenu properties are
-intentionally skipped.
+Under KWin Wayland, the dock and active-window service use KDE's Plasma Window
+Management protocol for client discovery, focus, close, maximize and
+minimize/restore.
 
 Only one shell instance can run at a time because it owns the legacy Cutefish
 D-Bus service names. If another shell is already running, stop it before

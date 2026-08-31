@@ -12,7 +12,8 @@
 	<interface name="com.canonical.AppMenu.Registrar" xmlns:dox="http://www.ayatana.org/dbus/dox.dtd">
 		<dox:d>
 		  An interface to register a menu from an application's window to be displayed in another
-		  window.  This manages that association between XWindow Window IDs and the dbus
+		  window. This compatibility interface treats the numeric ID as an opaque
+		  registration token and associates it with the dbus
 		  address and object that provides the menu using the dbusmenu dbus interface.
 		</dox:d>
 		<method name="RegisterWindow">
@@ -24,7 +25,7 @@
 			    ensure this method is called with the same connection that implmenets the object.
 			]]></dox:d>
 			<arg name="windowId" type="u" direction="in">
-				<dox:d>The XWindow ID of the window</dox:d>
+				<dox:d>An opaque registration token supplied by the application</dox:d>
 			</arg>
 			<arg name="menuObjectPath" type="o" direction="in">
 				<dox:d>The object on the dbus interface implementing the dbusmenu interface</dox:d>
@@ -37,13 +38,13 @@
 			  important for testing.
 			</dox:d>
 			<arg name="windowId" type="u" direction="in">
-				<dox:d>The XWindow ID of the window</dox:d>
+				<dox:d>The application's opaque registration token</dox:d>
 			</arg>
 		</method>
 		<method name="GetMenuForWindow">
 			<dox:d>Gets the registered menu for a given window ID.</dox:d>
 			<arg name="windowId" type="u" direction="in">
-				<dox:d>The XWindow ID of the window to get</dox:d>
+				<dox:d>The opaque registration token to query</dox:d>
 			</arg>
 			<arg name="service" type="s" direction="out">
 				<dox:d>The address of the connection on DBus (e.g. :1.23 or org.example.service)</dox:d>

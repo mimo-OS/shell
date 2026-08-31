@@ -40,7 +40,6 @@ struct KWinWaylandClient
     bool skipSwitcher = false;
     bool maximized = false;
     bool floating = true;
-    bool xwayland = false;
     bool pinned = false;
     int fullscreen = 0;
     int fullscreenClient = 0;
