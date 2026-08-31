@@ -132,6 +132,14 @@ void AppMenuApplet::trigger(QQuickItem *ctx, int idx)
             // don't initialize the currentIndex when another menu is already shown
             disconnect(oldMenu, &QMenu::aboutToHide, this, &AppMenuApplet::onMenuAboutToHide);
             oldMenu->hide();
+
+            // QGuiApplication and QApplication close all popups when the application loses
+            // focus. QtWayland re-evaluates the focused window asynchronously, even though
+            // oldMenu->hide() has already been called. Destroying the old window handle forces
+            // Qt to re-evaluate the focused window before the new menu can be dismissed.
+            if (oldMenu->windowHandle()) {
+                oldMenu->windowHandle()->destroy();
+            }
         }
 
         actionMenu->popup(pos);
@@ -182,12 +190,14 @@ bool AppMenuApplet::eventFilter(QObject *watched, QEvent *event)
             return false;
         }
 
-        const QPointF &windowLocalPos = m_buttonGrid->window()->mapFromGlobal(e->globalPos());
-        const QPointF &buttonGridLocalPos = m_buttonGrid->mapFromScene(windowLocalPos);
+        const QPointF windowLocalPos = m_buttonGrid->window()->mapFromGlobal(e->globalPosition().toPoint());
+        const QPointF buttonGridLocalPos = m_buttonGrid->mapFromScene(windowLocalPos);
 
         // Reduce the number of transmission signal.
-        if (buttonGridLocalPos.x() < m_buttonGrid->window()->x() ||
-            buttonGridLocalPos.y() > m_buttonGrid->window()->height())
+        if (buttonGridLocalPos.x() < 0 ||
+            buttonGridLocalPos.x() > m_buttonGrid->width() ||
+            buttonGridLocalPos.y() < 0 ||
+            buttonGridLocalPos.y() > m_buttonGrid->height())
             return false;
 
         emit mousePosChanged(buttonGridLocalPos.x(), buttonGridLocalPos.y());
