@@ -16,6 +16,13 @@
 #include "mainwindow.h"
 #include "docksettings.h"
 
+#include "notificationmanager.h"
+#include "notificationsmodel.h"
+#include "historymodel.h"
+#include "notificationcenterdialog.h"
+#include "notificationpopup.h"
+#include "screenhelper.h"
+
 #include "launcher.h"
 #include "launchermodel.h"
 #include "pagemodel.h"
@@ -43,6 +50,7 @@ static const ServiceRegistration s_services[] = {
     { "com.cutefish.Statusbar", "/Statusbar" },
     { "com.cutefish.Dock",      "/Dock"      },
     { "com.cutefish.Launcher",  "/Launcher"  },
+    { "com.cutefish.Notification", "/Notification" },
 };
 
 Shell::Shell(QObject *parent)
@@ -52,6 +60,7 @@ Shell::Shell(QObject *parent)
     , m_dock(nullptr)
     , m_launcher(nullptr)
     , m_desktops(nullptr)
+    , m_notifications(nullptr)
 {
     QPixmapCache::setCacheLimit(2048);
 
@@ -61,6 +70,7 @@ Shell::Shell(QObject *parent)
 
 Shell::~Shell()
 {
+    delete m_notifications;
     delete m_desktops;
     delete m_launcher;
     delete m_dock;
@@ -80,6 +90,13 @@ void Shell::registerQmlTypes()
     qmlRegisterType<PowerActions>(statusBarUri, 1, 0, "PowerActions");
     qmlRegisterType<Notifications>(statusBarUri, 1, 0, "Notifications");
     qmlRegisterType<BackgroundHelper>(statusBarUri, 1, 0, "BackgroundHelper");
+
+    const char *notificationUri = "Cutefish.Notification";
+    qmlRegisterType<NotificationsModel>(notificationUri, 1, 0, "NotificationsModel");
+    qmlRegisterType<HistoryModel>(notificationUri, 1, 0, "HistoryModel");
+    qmlRegisterType<ScreenHelper>(notificationUri, 1, 0, "ScreenHelper");
+    qmlRegisterType<NotificationPopup>(notificationUri, 1, 0, "NotificationPopup");
+    qmlRegisterType<NotificationCenterDialog>(notificationUri, 1, 0, "NotificationCenterDialog");
 
     qmlRegisterType<DockSettings>("Cutefish.Dock", 1, 0, "DockSettings");
 
@@ -102,7 +119,8 @@ void Shell::loadTranslations()
     // translations are reused as they are.
     const QStringList components = { QStringLiteral("statusbar"),
                                      QStringLiteral("dock"),
-                                     QStringLiteral("launcher") };
+                                     QStringLiteral("launcher"),
+                                     QStringLiteral("notification") };
 
     for (const QString &component : components) {
         const QString path = QStringLiteral("/usr/share/cutefish-shell/translations/%1_%2.qm")
@@ -146,6 +164,12 @@ void Shell::start()
     bus.registerObject(QStringLiteral("/Dock"), m_dock);
 
     m_desktops = new DesktopManager(m_engine, this);
+
+    // The notification service comes up before the status bar: the status bar's
+    // QML holds the notification centre window and reads the models the
+    // manager publishes on the engine's root context.
+    m_notifications = new NotificationManager(m_engine, this);
+    bus.registerObject(QStringLiteral("/Notification"), m_notifications);
 
     m_statusBar = new StatusBar(m_engine);
     bus.registerObject(QStringLiteral("/Statusbar"), m_statusBar);

@@ -43,9 +43,64 @@ static quint32 anchorFor(Qt::Edge edge)
     return 0;
 }
 
+StrutRegistry *StrutRegistry::self()
+{
+    static StrutRegistry registry;
+    return &registry;
+}
+
+void StrutRegistry::add(StrutSpacer *spacer)
+{
+    if (!m_spacers.contains(spacer))
+        m_spacers.append(spacer);
+}
+
+void StrutRegistry::remove(StrutSpacer *spacer)
+{
+    m_spacers.removeOne(spacer);
+    emit changed();
+}
+
+void StrutRegistry::notify()
+{
+    emit changed();
+}
+
+QRect StrutRegistry::availableGeometry(QScreen *screen) const
+{
+    if (!screen)
+        return QRect();
+
+    QRect rect = screen->geometry();
+
+    for (const StrutSpacer *spacer : m_spacers) {
+        if (spacer->m_screen != screen || spacer->m_thickness <= 0)
+            continue;
+
+        switch (spacer->m_edge) {
+        case Qt::TopEdge:
+            rect.setTop(rect.top() + spacer->m_thickness);
+            break;
+        case Qt::BottomEdge:
+            rect.setBottom(rect.bottom() - spacer->m_thickness);
+            break;
+        case Qt::LeftEdge:
+            rect.setLeft(rect.left() + spacer->m_thickness);
+            break;
+        case Qt::RightEdge:
+            rect.setRight(rect.right() - spacer->m_thickness);
+            break;
+        }
+    }
+
+    return rect;
+}
+
 StrutSpacer::StrutSpacer(QObject *parent)
     : QObject(parent)
 {
+    StrutRegistry::self()->add(this);
+
     // The layer shell may not have been announced yet when a panel is built.
     connect(KWinWaylandInterface::instance(), &KWinWaylandInterface::layerShellReady,
             this, &StrutSpacer::update);
@@ -53,6 +108,7 @@ StrutSpacer::StrutSpacer(QObject *parent)
 
 StrutSpacer::~StrutSpacer()
 {
+    StrutRegistry::self()->remove(this);
     destroySurface();
 }
 
@@ -62,6 +118,7 @@ void StrutSpacer::setEdge(Qt::Edge edge)
         return;
 
     m_edge = edge;
+    StrutRegistry::self()->notify();
 
     // The anchor cannot be changed on a mapped surface without a new configure
     // round trip; starting over is simpler and happens only when the user moves
@@ -77,6 +134,7 @@ void StrutSpacer::setThickness(int thickness)
         return;
 
     m_thickness = thickness;
+    StrutRegistry::self()->notify();
     update();
 }
 
@@ -86,6 +144,7 @@ void StrutSpacer::setScreen(QScreen *screen)
         return;
 
     m_screen = screen;
+    StrutRegistry::self()->notify();
     destroySurface();
     update();
 }

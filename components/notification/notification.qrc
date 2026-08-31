@@ -1,0 +1,12 @@
+<RCC>
+    <qresource prefix="/notification">
+        <file>qml/NotificationPopups.qml</file>
+        <file>qml/NotificationCenter.qml</file>
+        <file>qml/QmlNotificationPopup.qml</file>
+        <file>qml/IconButton.qml</file>
+        <file>images/dark/close.svg</file>
+        <file>images/dark/clear.svg</file>
+        <file>images/light/close.svg</file>
+        <file>images/light/clear.svg</file>
+    </qresource>
+</RCC>

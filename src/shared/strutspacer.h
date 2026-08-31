@@ -3,7 +3,9 @@
 
 #include <QObject>
 #include <QPointer>
+#include <QRect>
 #include <QScreen>
+#include <QVector>
 
 struct wl_surface;
 struct zwlr_layer_surface_v1;
@@ -32,6 +34,40 @@ class Surface;
  * screen edge, carrying the exclusive zone. It is invisible, it never receives
  * a click, and it needs none of the QPA integration.
  */
+class StrutSpacer;
+
+/**
+ * Every strut the shell currently reserves, and the screen area left over.
+ *
+ * Qt cannot answer that question on Wayland: QScreen::availableGeometry() is
+ * the full output there, because no Wayland protocol tells a client about
+ * other clients' exclusive zones. The shell does know, though - it is the one
+ * reserving the space - so anything that wants to lay itself out inside the
+ * work area (the notification banners, the notification centre) asks here.
+ */
+class StrutRegistry : public QObject
+{
+    Q_OBJECT
+
+public:
+    static StrutRegistry *self();
+
+    //! @p screen minus every strut currently reserved on it.
+    QRect availableGeometry(QScreen *screen) const;
+
+signals:
+    void changed();
+
+private:
+    friend class StrutSpacer;
+
+    void add(StrutSpacer *spacer);
+    void remove(StrutSpacer *spacer);
+    void notify();
+
+    QVector<StrutSpacer *> m_spacers;
+};
+
 class StrutSpacer : public QObject
 {
     Q_OBJECT
@@ -57,6 +93,8 @@ public:
     static void closedCallback(void *data, zwlr_layer_surface_v1 *surface);
 
 private:
+    friend class StrutRegistry;
+
     void update();
     void destroySurface();
     void handleConfigure(quint32 serial, quint32 width, quint32 height);

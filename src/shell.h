@@ -8,6 +8,7 @@ class StatusBar;
 class MainWindow;
 class Launcher;
 class DesktopManager;
+class NotificationManager;
 
 /**
  * cutefish-shell: the status bar, the dock, the launcher and the desktop in one
@@ -44,6 +45,7 @@ private:
     MainWindow *m_dock;
     Launcher *m_launcher;
     DesktopManager *m_desktops;
+    NotificationManager *m_notifications;
 };
 
 #endif // SHELL_H

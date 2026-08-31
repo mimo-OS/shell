@@ -369,12 +369,26 @@ Item {
         StandardItem {
             id: datetimeItem
 
+            checked: notificationCenter.item ? notificationCenter.item.visible : false
             animationEnabled: true
             Layout.fillHeight: true
             Layout.preferredWidth: _dateTimeLayout.implicitWidth + FishUI.Units.smallSpacing
 
             onClicked: {
-                process.startDetached("cutefish-notificationd", ["-s"])
+                toggleDialog()
+            }
+
+            function toggleDialog() {
+                if (!notificationCenter.item)
+                    return
+
+                if (notificationCenter.item.visible)
+                    notificationCenter.item.close()
+                else {
+                    notificationCenter.item.position = Qt.point(0, 0)
+                    notificationCenter.item.position = mapToGlobal(0, 0)
+                    notificationCenter.item.open()
+                }
             }
 
             RowLayout {
@@ -465,6 +479,31 @@ Item {
         id: controlCenter
         sourceComponent: ControlCenter {}
         asynchronous: true
+    }
+
+    // The notification centre lives in the notification component's resources,
+    // so it comes in by URL rather than as an inline component.
+    Loader {
+        id: notificationCenter
+        source: "qrc:/notification/qml/NotificationCenter.qml"
+        asynchronous: true
+
+        // Anchor the popup to the status bar. Without a transient parent Qt
+        // has nothing to make an xdg_popup out of and falls back to an
+        // ordinary toplevel, which KWin then decorates and places itself -
+        // exactly what the notification centre used to look like when it lived
+        // in its own process.
+        onLoaded: item.transientParent = rootItem.Window.window
+    }
+
+    // `cutefish-notificationd -s` used to pop the window up from another
+    // process; now com.cutefish.Notification.showWindow() lands here.
+    Connections {
+        target: notificationManager
+
+        function onWindowRequested() {
+            datetimeItem.toggleDialog()
+        }
     }
 
     Loader {

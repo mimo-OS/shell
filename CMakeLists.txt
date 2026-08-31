@@ -158,6 +158,38 @@ qt6_add_dbus_adaptor(DOCK_GENERATED components/dock/src/com.cutefish.Dock.xml
                      components/dock/src/mainwindow.h MainWindow)
 
 # ---------------------------------------------------------------------------
+# Notifications
+#
+# What cutefish-notificationd was: the org.freedesktop.Notifications server,
+# the banners, and the notification centre. The centre is now a popup window
+# declared in the status bar's QML, the way the control centre is.
+# ---------------------------------------------------------------------------
+set(NOTIFICATION_SRCS
+    components/notification/src/notificationmanager.cpp
+    components/notification/src/notificationserver.cpp
+    components/notification/src/notificationsmodel.cpp
+    components/notification/src/notificationcenterdialog.cpp
+    components/notification/src/notificationpopup.cpp
+    components/notification/src/historymodel.cpp
+    components/notification/src/notification.cpp
+    components/notification/src/screenhelper.cpp
+    components/notification/src/datehelper.cpp
+    components/notification/src/settings.cpp
+    components/notification/src/notificationutils.cpp
+    components/notification/src/dbus/notificationsadaptor.cpp
+
+    components/notification/notification.qrc
+)
+
+qt6_add_dbus_adaptor(NOTIFICATION_GENERATED
+    components/notification/src/com.cutefish.Notification.xml
+    components/notification/src/notificationmanager.h
+    NotificationManager
+    notificationadaptor
+    NotificationAdaptor
+)
+
+# ---------------------------------------------------------------------------
 # Launcher
 # ---------------------------------------------------------------------------
 set(LAUNCHER_SRCS
@@ -184,7 +216,8 @@ qt6_add_dbus_adaptor(LAUNCHER_GENERATED
 
 # The adaptors qt6_add_dbus_adaptor generates already contain their moc output,
 # so AUTOMOC must leave them alone.
-set_source_files_properties(${DOCK_GENERATED} ${LAUNCHER_GENERATED} PROPERTIES SKIP_AUTOGEN ON)
+set_source_files_properties(${DOCK_GENERATED} ${LAUNCHER_GENERATED} ${NOTIFICATION_GENERATED}
+                           PROPERTIES SKIP_AUTOGEN ON)
 
 add_executable(cutefish-shell
     ${WAYLAND_PROTOCOL_SRCS}
@@ -195,6 +228,8 @@ add_executable(cutefish-shell
     ${DOCK_GENERATED}
     ${LAUNCHER_SRCS}
     ${LAUNCHER_GENERATED}
+    ${NOTIFICATION_SRCS}
+    ${NOTIFICATION_GENERATED}
 )
 
 target_include_directories(cutefish-shell PRIVATE
@@ -203,6 +238,7 @@ target_include_directories(cutefish-shell PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/components/statusbar/src
     ${CMAKE_CURRENT_SOURCE_DIR}/components/dock/src
     ${CMAKE_CURRENT_SOURCE_DIR}/components/launcher/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/components/notification/src
     ${CMAKE_CURRENT_BINARY_DIR}
 )
 
