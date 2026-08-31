@@ -43,8 +43,6 @@ NotificationPopup {
 
     FishUI.WindowBlur {
         view: control
-        geometry: Qt.rect(control.surfacePosition.x, control.surfacePosition.y,
-                          control.width, control.height)
         windowRadius: _background.radius
         enabled: true
     }

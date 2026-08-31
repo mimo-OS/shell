@@ -79,14 +79,12 @@ Item {
 
     FishUI.WindowShadow {
         view: mainWindow
-        geometry: Qt.rect(root.x, root.y, root.width, root.height)
         strength: 1
         radius: _background.radius
     }
 
     FishUI.WindowBlur {
         view: mainWindow
-        geometry: Qt.rect(root.x, root.y, root.width, root.height)
         windowRadius: _background.radius
         enabled: true
     }

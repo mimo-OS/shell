@@ -89,7 +89,6 @@ NotificationCenterDialog {
 
     FishUI.WindowBlur {
         view: control
-        geometry: Qt.rect(control.x, control.y, control.width, control.height)
         windowRadius: _background.radius
         enabled: true
     }

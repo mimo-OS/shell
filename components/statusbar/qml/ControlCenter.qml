@@ -120,14 +120,12 @@ ControlCenterDialog {
 
     FishUI.WindowBlur {
         view: control
-        geometry: Qt.rect(control.x, control.y, control.width, control.height)
         windowRadius: _background.radius
         enabled: true
     }
 
     FishUI.WindowShadow {
         view: control
-        geometry: Qt.rect(control.x, control.y, control.width, control.height)
         radius: _background.radius
     }
 
