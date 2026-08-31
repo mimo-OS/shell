@@ -8,7 +8,8 @@ static WindowInterface *INSTANCE = nullptr;
 static bool isBlockedClient(const QString &appId)
 {
     const QString normalized = appId.toLower();
-    return normalized == QStringLiteral("cutefish-shell");
+    return normalized == QStringLiteral("cutefish-shell")
+        || normalized == QStringLiteral("org.kde.xwaylandvideobridge");
 }
 
 WindowInterface *WindowInterface::instance()
