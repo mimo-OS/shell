@@ -11,6 +11,7 @@
 #include "fakewindow.h"
 #include "trashmanager.h"
 #include "strutspacer.h"
+#include "dockmetrics.h"
 
 class MainWindow : public ShellSurface
 {
@@ -18,6 +19,7 @@ class MainWindow : public ShellSurface
     Q_PROPERTY(QRect primaryGeometry READ primaryGeometry NOTIFY primaryGeometryChanged)
     Q_PROPERTY(int direction READ direction NOTIFY directionChanged)
     Q_PROPERTY(int visibility READ visibility NOTIFY visibilityChanged)
+    Q_PROPERTY(QVariantMap metrics READ metrics NOTIFY metricsChanged)
 
 public:
     explicit MainWindow(QQmlEngine *engine);
@@ -32,6 +34,7 @@ public:
     int direction() const;
 
     int visibility() const;
+    QVariantMap metrics() const;
 
     void setDirection(int direction);
     void setIconSize(int iconSize);
@@ -43,9 +46,13 @@ signals:
     void directionChanged();
     void primaryGeometryChanged();
     void visibilityChanged();
+    void metricsChanged();
 
 private:
+    DockMetrics metricsFor(int itemCount, int maxLength) const;
+    void updateMetrics();
     QRect windowRect() const;
+    void applyGeometry();
     void resizeWindow();
     void initScreens();
     void updateViewStruts();
@@ -69,6 +76,7 @@ protected:
 private:
     Activity *m_activity;
     DockSettings *m_settings;
+    DockMetrics m_metrics;
     ApplicationModel *m_appModel;
     FakeWindow *m_fakeWindow;
     StrutSpacer *m_strutSpacer;

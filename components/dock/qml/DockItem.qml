@@ -194,15 +194,15 @@ Item {
     Rectangle {
         id: activeRect
 
-        property var leftX: 2
+        // The dot sits in the dedicated strip the dock keeps between the icons
+        // and the screen edge, outside this delegate.
+        property var leftX: -(root.activeDotGap + width)
         property var leftY: (parent.height - height) / 2
 
         property var bottomX: (parent.width - width) / 2
-        // Keep the dot in the dedicated area below the icon. The dock root
-        // supplies the remaining bottom padding outside this delegate.
         property var bottomY: parent.height + root.activeDotGap
 
-        property var rightX: icon.x + icon.width + activeRect.width / 2 - 1
+        property var rightX: parent.width + root.activeDotGap
         property var rightY: (parent.height - height) / 2
 
         property var circleSize: root.activeDotSize

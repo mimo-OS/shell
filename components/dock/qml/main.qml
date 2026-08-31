@@ -29,24 +29,25 @@ Item {
     id: root
     visible: true
 
+    property bool isLeft: Settings.direction === DockSettings.Left
+    property bool isRight: Settings.direction === DockSettings.Right
     property bool isHorizontal: Settings.direction === DockSettings.Bottom
-    property real windowRadius: (isHorizontal ? root.height : root.width) * 28 / 86
-    // Figma baseline (default IconSize 53):
-    // dock height = 16 top + 54 icon + 8 icon/dot gap + 4 dot + 4 bottom.
+
+    // Geometry shared with MainWindow, see src/dockmetrics.h. The dock is a
+    // row (or column) of icons with padding at both ends, and the running dot
+    // lives between the icons and the screen edge.
+    property var metrics: mainWindow.metrics
+    property int iconGap: metrics.iconGap
+    property int lengthPadding: metrics.lengthPadding
+    property int outerPadding: metrics.outerPadding
+    property int activeDotGap: metrics.dotGap
+    property int activeDotSize: metrics.dotSize
+    property int edgePadding: metrics.edgePadding
+    property int dotAreaSize: edgePadding + activeDotSize + activeDotGap
+    property int thickness: isHorizontal ? root.height : root.width
+    property real windowRadius: thickness * 28 / 86
     property real iconSizeRatio: 1.0
-    property real sizeScale: Settings.iconSize / 53.0
-    property int sidePadding: Math.max(1, Math.round(16 * sizeScale))
-    property int topPadding: Math.max(1, Math.round(16 * sizeScale))
-    property int iconGap: Math.max(1, Math.round(16 * sizeScale))
-    property int activeDotGap: Math.max(1, Math.round(8 * sizeScale))
-    property int activeDotSize: Math.max(1, Math.round(4 * sizeScale))
-    property int bottomPadding: Math.max(1, Math.round(4 * sizeScale))
-    property int itemSize: isHorizontal
-                             ? Math.max(1, Math.round(root.height - root.topPadding
-                                                       - root.activeDotGap
-                                                       - root.activeDotSize
-                                                       - root.bottomPadding))
-                             : Math.max(1, Math.round(root.width - root.sidePadding * 2))
+    property int itemSize: Math.max(1, thickness - root.dotAreaSize - root.outerPadding)
 
     DropArea {
         anchors.fill: parent
@@ -99,15 +100,16 @@ Item {
     GridLayout {
         id: mainLayout
         anchors.fill: parent
-        anchors.leftMargin: root.sidePadding
-        anchors.rightMargin: root.sidePadding
-        anchors.topMargin: root.topPadding
-        anchors.bottomMargin: isHorizontal
-                              ? root.activeDotGap + root.activeDotSize + root.bottomPadding
-                              : root.bottomPadding
+        // The dot area is always on the side that faces the screen edge.
+        anchors.leftMargin: isHorizontal ? root.lengthPadding
+                                         : isLeft ? root.dotAreaSize : root.outerPadding
+        anchors.rightMargin: isHorizontal ? root.lengthPadding
+                                          : isRight ? root.dotAreaSize : root.outerPadding
+        anchors.topMargin: isHorizontal ? root.outerPadding : root.lengthPadding
+        anchors.bottomMargin: isHorizontal ? root.dotAreaSize : root.lengthPadding
         flow: isHorizontal ? Grid.LeftToRight : Grid.TopToBottom
-        columnSpacing: isHorizontal && appItemView.count > 0 ? root.iconGap : 0
-        rowSpacing: !isHorizontal && appItemView.count > 0 ? root.iconGap : 0
+        columnSpacing: isHorizontal ? root.iconGap : 0
+        rowSpacing: isHorizontal ? 0 : root.iconGap
 
         ListView {
             id: appItemView
@@ -116,7 +118,8 @@ Item {
             snapMode: ListView.SnapToItem
             interactive: false
             model: appModel
-            // The active dot is positioned in the dock's bottom padding area.
+            // The running dot is drawn outside the delegate, in the dock's
+            // own padding area next to the screen edge.
             clip: false
 
             Layout.fillHeight: true
@@ -124,8 +127,8 @@ Item {
 
             delegate: AppItem {
                 id: appItemDelegate
-                implicitWidth: isHorizontal ? appItemView.height : appItemView.width
-                implicitHeight: isHorizontal ? appItemView.height : appItemView.width
+                implicitWidth: root.itemSize
+                implicitHeight: root.itemSize
                 iconSizeRatio: root.iconSizeRatio
             }
 

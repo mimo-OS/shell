@@ -25,9 +25,9 @@ FakeWindow::FakeWindow(QQuickView *parent)
              Qt::WindowStaysOnTopHint |
              Qt::NoDropShadowWindowHint |
              Qt::WindowDoesNotAcceptFocus);
-    // setScreen(qApp->primaryScreen());
-    // updateGeometry();
-    show();
+    // Not shown here: the window is mapped by updateGeometry() once it knows
+    // where the screen edge is. Showing it beforehand maps it at the default
+    // size, which swallows the pointer and pops the dock straight back out.
 
     m_delayedMouseTimer.setSingleShot(true);
     m_delayedMouseTimer.setInterval(50);
@@ -113,15 +113,17 @@ void FakeWindow::updatePlasmaSurface()
 void FakeWindow::updateGeometry()
 {
 
-    int length = 5;
-    const QRect screenRect = qApp->primaryScreen()->geometry();
+    // A thin strip along the screen edge the dock hides behind, so that the
+    // pointer reaching that edge brings the dock back.
+    const int length = 5;
+    const QRect screenRect = screen() ? screen()->geometry()
+                                      : qApp->primaryScreen()->geometry();
     QRect newRect;
 
     switch (DockSettings::self()->direction())
     {
         case DockSettings::Left:
-            newRect = QRect(screenRect.x() - (length * 2),
-                            (screenRect.height() + length) / 2,
+            newRect = QRect(screenRect.x(), screenRect.y(),
                             length, screenRect.height());
             break;
         case DockSettings::Bottom:
@@ -137,5 +139,9 @@ void FakeWindow::updateGeometry()
     }
 
     setGeometry(newRect);
+
+    if (!isVisible())
+        show();
+
     updatePlasmaSurface();
 }

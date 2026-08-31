@@ -38,8 +38,9 @@ MainWindow::MainWindow(QQmlEngine *engine)
     setContextProperty("mainWindow", this);
     setContextProperty("trash", m_trashManager);
 
-    setSource(QUrl(QStringLiteral("qrc:/dock/qml/main.qml")));
     setScreen(qApp->primaryScreen());
+    updateMetrics();
+    setSource(QUrl(QStringLiteral("qrc:/dock/qml/main.qml")));
     initScreens();
     configureSurfaceRole(SurfaceRole::Dock);
 
@@ -118,78 +119,58 @@ void MainWindow::setVisibility(int visibility)
     DockSettings::self()->setVisibility(static_cast<DockSettings::Visibility>(visibility));
 }
 
+DockMetrics MainWindow::metricsFor(int itemCount, int maxLength) const
+{
+    DockMetrics metrics = DockMetrics::forIconSize(m_settings->iconSize());
+
+    // Not enough room for every icon: shrink until the dock fits, keeping the
+    // paddings in proportion with the icons.
+    while (metrics.length(itemCount) > maxLength && metrics.iconSize > 1)
+        metrics = DockMetrics::forIconSize(metrics.iconSize - 1);
+
+    return metrics;
+}
+
+QVariantMap MainWindow::metrics() const
+{
+    return m_metrics.toVariantMap();
+}
+
 QRect MainWindow::windowRect() const
 {
     const QRect screenGeometry = screen()->geometry();
     const QRect availableGeometry = screen()->availableGeometry();
 
-    bool isHorizontal = m_settings->direction() == DockSettings::Bottom;
+    const bool isHorizontal = m_settings->direction() == DockSettings::Bottom;
+
+    // Add the trash item.
+    const int itemCount = m_appModel->rowCount() + 1;
+    const int margins = m_settings->edgeMargins() / 2;
+    const int maxLength = (isHorizontal ? screenGeometry.width()
+                                        : availableGeometry.height())
+            - m_settings->edgeMargins();
+
+    const DockMetrics metrics = metricsFor(itemCount, maxLength);
+    const int length = metrics.length(itemCount);
+    const int thickness = metrics.thickness();
 
     QSize newSize(0, 0);
     QPoint position(0, 0);
-    int maxLength = isHorizontal ? screenGeometry.width() - m_settings->edgeMargins()
-                                 : availableGeometry.height() - m_settings->edgeMargins();;
-
-    struct DockMetrics {
-        int sidePadding;
-        int topPadding;
-        int iconGap;
-        int iconDotGap;
-        int dotSize;
-        int bottomPadding;
-    };
-
-    const auto metricsForScale = [](qreal scale) {
-        DockMetrics metrics;
-        metrics.sidePadding = qMax(1, qRound(16 * scale));
-        metrics.topPadding = qMax(1, qRound(16 * scale));
-        metrics.iconGap = qMax(1, qRound(16 * scale));
-        metrics.iconDotGap = qMax(1, qRound(8 * scale));
-        metrics.dotSize = qMax(1, qRound(4 * scale));
-        metrics.bottomPadding = qMax(1, qRound(4 * scale));
-        return metrics;
-    };
-
-    // Add trash item.
-    const int appCount = m_appModel->rowCount() + 1;
-    const auto lengthForIconSize = [isHorizontal, appCount](int iconSize,
-                                                             const DockMetrics &metrics) {
-        const int iconGaps = qMax(0, appCount - 1) * metrics.iconGap;
-        if (isHorizontal) {
-            return metrics.sidePadding * 2 + appCount * iconSize + iconGaps;
-        }
-
-        return metrics.topPadding + metrics.bottomPadding + appCount * iconSize + iconGaps;
-    };
-
-    const qreal sizeScale = m_settings->iconSize() / 53.0;
-    int iconSize = qMax(1, qRound(54 * sizeScale));
-    DockMetrics metrics = metricsForScale(sizeScale);
-    int length = lengthForIconSize(iconSize, metrics);
-    int margins = DockSettings::self()->edgeMargins() / 2;
-
-    while (length > maxLength && iconSize > 1) {
-        --iconSize;
-        metrics = metricsForScale(iconSize / 54.0);
-        length = lengthForIconSize(iconSize, metrics);
-    }
 
     switch (m_settings->direction()) {
     case DockSettings::Left:
-        newSize = QSize(metrics.sidePadding * 2 + iconSize, length);
+        newSize = QSize(thickness, length);
         position.setX(screenGeometry.x() + margins);
         // Handle the top statusbar.
         position.setY(availableGeometry.y() + (availableGeometry.height() - newSize.height()) / 2);
         break;
     case DockSettings::Bottom:
-        newSize = QSize(length,
-                        metrics.topPadding + iconSize + metrics.iconDotGap
-                        + metrics.dotSize + metrics.bottomPadding);
+        newSize = QSize(length, thickness);
         position.setX(screenGeometry.x() + (screenGeometry.width() - newSize.width()) / 2);
         position.setY(screenGeometry.y() + screenGeometry.height() - newSize.height() - margins);
         break;
     case DockSettings::Right:
-        newSize = QSize(metrics.sidePadding * 2 + iconSize, length);
+        newSize = QSize(thickness, length);
         position.setX(screenGeometry.x() + screenGeometry.width() - newSize.width() - margins);
         position.setY(availableGeometry.y() + (availableGeometry.height() - newSize.height()) / 2);
         break;
@@ -200,11 +181,37 @@ QRect MainWindow::windowRect() const
     return QRect(position, newSize);
 }
 
-void MainWindow::resizeWindow()
+void MainWindow::updateMetrics()
 {
+    const bool isHorizontal = m_settings->direction() == DockSettings::Bottom;
+    const int itemCount = m_appModel->rowCount() + 1;
+    const int maxLength = (isHorizontal ? screen()->geometry().width()
+                                        : screen()->availableGeometry().height())
+            - m_settings->edgeMargins();
+
+    const DockMetrics metrics = metricsFor(itemCount, maxLength);
+    if (metrics == m_metrics)
+        return;
+
+    m_metrics = metrics;
+    emit metricsChanged();
+}
+
+// Moving a plasma-shell surface takes more than QWindow::setGeometry(): the
+// compositor places it at the position given to the shell surface, so every
+// geometry change has to update both.
+void MainWindow::applyGeometry()
+{
+    updateMetrics();
+
     const QRect rect = windowRect();
     setGeometry(rect);
     setSurfacePosition(rect.topLeft());
+}
+
+void MainWindow::resizeWindow()
+{
+    applyGeometry();
     updateViewStruts();
 
     emit resizingFished();
@@ -324,20 +331,16 @@ void MainWindow::onPositionChanged()
 {
     initScreens();
 
+    // The window is moved in place, never unmapped and mapped again: a remap
+    // reads to KWin as a window opening, which runs the open animation and the
+    // startup feedback on it.
+    applyGeometry();
+    setVisible(true);
+    updateViewStruts();
+
     if (m_settings->visibility() == DockSettings::AlwaysHide ||
             m_settings->visibility() == DockSettings::IntellHide) {
-        setVisible(false);
-        // Setting geometry needs to be displayed, otherwise it will be invalid.
-        setVisible(true);
-        setGeometry(windowRect());
-        updateViewStruts();
-
         m_hideTimer->start();
-    } else if (m_settings->visibility() == DockSettings::AlwaysShow) {
-        setVisible(false);
-        setVisible(true);
-        setGeometry(windowRect());
-        updateViewStruts();
     }
 
     emit directionChanged();
@@ -345,9 +348,7 @@ void MainWindow::onPositionChanged()
 
 void MainWindow::onIconSizeChanged()
 {
-    const QRect rect = windowRect();
-    setGeometry(rect);
-    setSurfacePosition(rect.topLeft());
+    applyGeometry();
     updateViewStruts();
 
     emit iconSizeChanged();
@@ -369,7 +370,7 @@ void MainWindow::onVisibilityChanged()
     if (m_settings->visibility() == DockSettings::AlwaysShow) {
         m_hideTimer->stop();
 
-        setGeometry(windowRect());
+        applyGeometry();
         setVisible(true);
         updateViewStruts();
 
@@ -381,7 +382,7 @@ void MainWindow::onVisibilityChanged()
 
     if (m_settings->visibility() == DockSettings::IntellHide) {
         clearViewStruts();
-        setGeometry(windowRect());
+        applyGeometry();
 
         if (m_activity->existsWindowMaximized() && !m_hideBlocked) {
             setVisible(false);
@@ -396,7 +397,7 @@ void MainWindow::onVisibilityChanged()
     // Always hide
     if (m_settings->visibility() == DockSettings::AlwaysHide) {
         clearViewStruts();
-        setGeometry(windowRect());
+        applyGeometry();
         setVisible(m_hideBlocked);
 
         // Create
