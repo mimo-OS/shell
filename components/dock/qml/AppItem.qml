@@ -79,7 +79,7 @@ DockItem {
         onTriggered: mainWindow.updateIconGeometry(icon, windowIds)
     }
 
-    onRightClicked: if (model.appId !== "cutefish-launcher") contextMenu.show()
+    onRightClicked: if (model.appId !== "cutefish-launcher") popupMenu(contextMenu, mouse)
 
     onClicked: {
         if (mouse.button === Qt.LeftButton)

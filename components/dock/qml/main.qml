@@ -148,7 +148,7 @@ Item {
             enableActivateDot: false
             iconName: trash.count === 0 ? "user-trash-empty" : "user-trash-full"
             onClicked: trash.openTrash()
-            onRightClicked: trashMenu.popup()
+            onRightClicked: popupMenu(trashMenu, mouse)
 
             dropArea.enabled: true
 

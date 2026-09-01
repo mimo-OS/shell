@@ -75,6 +75,12 @@ Item {
                                           root.mapToGlobal(0, 0).y - popupTips.height - FishUI.Units.smallSpacing)
     }
 
+    function popupMenu(menu, mouse) {
+        var iconPosition = icon.mapToGlobal(0, 0)
+        var clickPosition = control.mapToGlobal(mouse.x, mouse.y)
+        menu.popupAt(iconPosition.x, clickPosition.y)
+    }
+
     function refreshIcon() {
         if (icon && icon.width > 0 && icon.height > 0)
             icon.updateIcon()
