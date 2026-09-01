@@ -180,6 +180,7 @@ void Shell::start()
     m_launcher = new Launcher(m_engine);
     bus.registerObject(QStringLiteral("/Launcher"),
                        QStringLiteral("com.cutefish.Launcher"), m_launcher);
+    m_dock->setLauncher(m_launcher);
 
     m_dock->show();
 

@@ -14,6 +14,8 @@
 #include "strutspacer.h"
 #include "dockmetrics.h"
 
+class Launcher;
+
 class MainWindow : public ShellSurface
 {
     Q_OBJECT
@@ -40,6 +42,7 @@ public:
     void setDirection(int direction);
     void setIconSize(int iconSize);
     void setVisibility(int visibility);
+    void setLauncher(Launcher *launcher);
 
     Q_INVOKABLE void updateIconGeometry(QQuickItem *item,
                                         const QStringList &windowIds);

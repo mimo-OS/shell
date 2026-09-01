@@ -124,6 +124,11 @@ void MainWindow::setVisibility(int visibility)
     DockSettings::self()->setVisibility(static_cast<DockSettings::Visibility>(visibility));
 }
 
+void MainWindow::setLauncher(Launcher *launcher)
+{
+    m_appModel->setLauncher(launcher);
+}
+
 void MainWindow::updateIconGeometry(QQuickItem *item, const QStringList &windowIds)
 {
     if (!item || item->width() <= 0 || item->height() <= 0)

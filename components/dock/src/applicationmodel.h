@@ -24,6 +24,8 @@ public:
 
     explicit ApplicationModel(QObject *parent = nullptr);
 
+    void setLauncher(class Launcher *launcher);
+
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     QHash<int, QByteArray> roleNames() const override;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
@@ -73,6 +75,7 @@ private:
 private:
     WindowInterface *m_iface;
     QList<ApplicationItem *> m_appItems;
+    Launcher *m_launcher = nullptr;
     bool m_pinsInitialized = false;
 };
 

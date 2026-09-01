@@ -2,9 +2,8 @@
 #include "applicationlauncher.h"
 #include "applicationregistry.h"
 #include "desktopentry.h"
+#include "launcher.h"
 
-#include <QDBusConnection>
-#include <QDBusInterface>
 #include <QFileInfo>
 #include <QSettings>
 
@@ -32,6 +31,11 @@ ApplicationModel::ApplicationModel(QObject *parent)
         onApplicationsChanged();
 
     QTimer::singleShot(100, m_iface, &WindowInterface::startInitWindows);
+}
+
+void ApplicationModel::setLauncher(Launcher *launcher)
+{
+    m_launcher = launcher;
 }
 
 int ApplicationModel::rowCount(const QModelIndex &parent) const
@@ -240,13 +244,11 @@ bool ApplicationModel::openNewInstance(const QString &appId)
     // The launcher lives in this very process now, so open it directly rather
     // than trying to run a binary that no longer exists.
     if (item->id == QLatin1String(kLauncherId)) {
-        QDBusInterface iface("com.cutefish.Launcher", "/Launcher",
-                             "com.cutefish.Launcher", QDBusConnection::sessionBus());
-        if (iface.isValid()) {
-            iface.asyncCall("toggle");
-            return true;
-        }
-        return false;
+        if (!m_launcher)
+            return false;
+
+        m_launcher->toggle();
+        return true;
     }
 
     if (DesktopEntry *entry = ApplicationRegistry::instance()->byId(item->id))
