@@ -39,6 +39,7 @@ Item {
     property real maxSpacing: horizontalSpacing > verticalSpacing ? horizontalSpacing : verticalSpacing
     property bool showed: launcher.showed
     property int iconSize: root.height < 960 ? 96 : 128
+    property real wallpaperQuality: 0.5
 
     property alias uninstallDialog: _uninstallDialog
 
@@ -169,8 +170,8 @@ Item {
         id: wallpaperImage
         anchors.fill: parent
         source: "file://" + backend.path
-        sourceSize: Qt.size(launcher.screenRect.width,
-                            launcher.screenRect.height)
+        sourceSize: Qt.size(Math.max(1, Math.round(launcher.screenRect.width * root.wallpaperQuality)),
+                            Math.max(1, Math.round(launcher.screenRect.height * root.wallpaperQuality)))
         fillMode: Image.PreserveAspectCrop
         asynchronous: false
         cache: false
@@ -183,23 +184,18 @@ Item {
     FastBlur {
         id: wallpaperBlur
         anchors.fill: parent
-        radius: FishUI.Theme.blurEnabled ? 72 : 0
+        radius: 48
         source: wallpaperImage
-        cached: false
+        cached: true
         visible: wallpaperImage.visible
     }
 
-    ColorOverlay {
-        id: wallpaperColor
+    Rectangle {
+        id: wallpaperDimmer
         anchors.fill: parent
-        // Sampling the root here makes the effect include itself and the
-        // transparent layer-surface buffer.  Use the blurred wallpaper as
-        // the source instead, which preserves the original visual effect
-        // without the recursive transparent result on Qt6.
-        source: wallpaperBlur
         color: "#000000"
         opacity: backend.dimsWallpaper ? 0.5 : 0.4
-        visible: wallpaperBlur.visible
+        visible: wallpaperImage.visible
     }
 
     LauncherModel {
