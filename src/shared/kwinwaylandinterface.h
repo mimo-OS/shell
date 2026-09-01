@@ -4,6 +4,7 @@
 #include <QHash>
 #include <QList>
 #include <QObject>
+#include <QRect>
 #include <QString>
 
 struct zwlr_layer_shell_v1;
@@ -19,6 +20,7 @@ class PlasmaWindow;
 class PlasmaWindowManagement;
 class Registry;
 class ShmPool;
+class Surface;
 }
 }
 
@@ -99,6 +101,8 @@ public:
     void closeWindow(quint64 id);
     void toggleMaximize(quint64 id);
     void startMove(quint64 id);
+    void setMinimizedGeometry(quint64 id, KWayland::Client::Surface *panel,
+                              const QRect &geometry);
 
 signals:
     void layerShellReady();

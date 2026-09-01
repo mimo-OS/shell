@@ -26,6 +26,7 @@ DockItem {
     id: appItem
 
     property var windowCount: model.windowCount
+    property var windowIds: model.windowIds
     property var dragSource: null
 
     iconName: model.iconName ? model.iconName : "application-x-desktop"
@@ -34,6 +35,49 @@ DockItem {
     enableActivateDot: windowCount !== 0
     draggable: !model.fixed
     dragItemIndex: index
+
+    function updateMinimizedGeometry() {
+        minimizedGeometryTimer.restart()
+    }
+
+    onWindowIdsChanged: updateMinimizedGeometry()
+
+    Component.onCompleted: updateMinimizedGeometry()
+
+    Connections {
+        target: icon
+
+        function onXChanged() {
+            appItem.updateMinimizedGeometry()
+        }
+
+        function onYChanged() {
+            appItem.updateMinimizedGeometry()
+        }
+
+        function onWidthChanged() {
+            appItem.updateMinimizedGeometry()
+        }
+
+        function onHeightChanged() {
+            appItem.updateMinimizedGeometry()
+        }
+    }
+
+    Connections {
+        target: mainWindow
+
+        function onMinimizedGeometrySurfaceChanged() {
+            appItem.updateMinimizedGeometry()
+        }
+    }
+
+    Timer {
+        id: minimizedGeometryTimer
+        interval: 0
+        repeat: false
+        onTriggered: mainWindow.updateIconGeometry(icon, windowIds)
+    }
 
     onRightClicked: if (model.appId !== "cutefish-launcher") contextMenu.show()
 

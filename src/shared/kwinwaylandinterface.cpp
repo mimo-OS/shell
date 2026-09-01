@@ -8,6 +8,7 @@
 #include <KWayland/Client/connection_thread.h>
 #include <KWayland/Client/plasmashell.h>
 #include <KWayland/Client/shm_pool.h>
+#include <KWayland/Client/surface.h>
 
 #include "layershell.h"
 #include <KWayland/Client/plasmawindowmanagement.h>
@@ -297,6 +298,16 @@ void KWinWaylandInterface::focusWindow(quint64 id)
 {
     if (PlasmaWindow *target = window(id))
         target->requestActivate();
+}
+
+void KWinWaylandInterface::setMinimizedGeometry(quint64 id, Surface *panel,
+                                                  const QRect &geometry)
+{
+    if (!panel)
+        return;
+
+    if (PlasmaWindow *target = window(id))
+        target->setMinimizedGeometry(panel, geometry);
 }
 
 void KWinWaylandInterface::minimizeWindow(quint64 id)

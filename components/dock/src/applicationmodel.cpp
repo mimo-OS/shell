@@ -49,6 +49,7 @@ QHash<int, QByteArray> ApplicationModel::roleNames() const
     roles[VisibleNameRole] = "visibleName";
     roles[ActiveRole] = "isActive";
     roles[WindowCountRole] = "windowCount";
+    roles[WindowIdsRole] = "windowIds";
     roles[IsPinnedRole] = "isPinned";
     roles[DesktopFileRole] = "desktopFile";
     roles[FixedItemRole] = "fixed";
@@ -73,6 +74,12 @@ QVariant ApplicationModel::data(const QModelIndex &index, int role) const
         return item->isActive;
     case WindowCountRole:
         return item->wids.count();
+    case WindowIdsRole: {
+        QStringList windowIds;
+        for (quint64 wid : item->wids)
+            windowIds.append(QString::number(wid));
+        return windowIds;
+    }
     case IsPinnedRole:
         return item->isPinned;
     case DesktopFileRole:

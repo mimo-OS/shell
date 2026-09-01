@@ -16,6 +16,7 @@ public:
         VisibleNameRole,
         ActiveRole,
         WindowCountRole,
+        WindowIdsRole,
         IsPinnedRole,
         DesktopFileRole,
         FixedItemRole

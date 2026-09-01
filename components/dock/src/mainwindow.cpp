@@ -9,6 +9,12 @@
 #include <QQmlContext>
 #include <QQmlProperty>
 #include <QMetaEnum>
+#include <QQuickItem>
+#include <QExposeEvent>
+
+#include <KWayland/Client/surface.h>
+
+#include "kwinwaylandinterface.h"
 
 MainWindow::MainWindow(QQmlEngine *engine)
     : ShellSurface(engine)
@@ -116,6 +122,31 @@ void MainWindow::setIconSize(int iconSize)
 void MainWindow::setVisibility(int visibility)
 {
     DockSettings::self()->setVisibility(static_cast<DockSettings::Visibility>(visibility));
+}
+
+void MainWindow::updateIconGeometry(QQuickItem *item, const QStringList &windowIds)
+{
+    if (!item || item->width() <= 0 || item->height() <= 0)
+        return;
+
+    QQuickWindow *itemWindow = item->window();
+    if (!itemWindow)
+        return;
+
+    KWayland::Client::Surface *surface = KWayland::Client::Surface::fromWindow(itemWindow);
+    if (!surface)
+        return;
+
+    const QRect geometry = item->mapRectToScene(
+        QRectF(0, 0, item->width(), item->height())).toRect();
+    KWinWaylandInterface *kwin = KWinWaylandInterface::instance();
+
+    for (const QString &windowId : windowIds) {
+        bool ok = false;
+        const quint64 id = windowId.toULongLong(&ok);
+        if (ok)
+            kwin->setMinimizedGeometry(id, surface, geometry);
+    }
 }
 
 DockMetrics MainWindow::metricsFor(int itemCount, int maxLength) const
@@ -424,6 +455,14 @@ void MainWindow::onHideTimeout()
     }
 
     setVisible(false);
+}
+
+void MainWindow::exposeEvent(QExposeEvent *e)
+{
+    ShellSurface::exposeEvent(e);
+
+    if (isExposed())
+        emit minimizedGeometrySurfaceChanged();
 }
 
 bool MainWindow::eventFilter(QObject *obj, QEvent *e)

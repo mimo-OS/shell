@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QTimer>
+#include <QStringList>
 
 #include "shellsurface.h"
 
@@ -40,9 +41,13 @@ public:
     void setIconSize(int iconSize);
     void setVisibility(int visibility);
 
+    Q_INVOKABLE void updateIconGeometry(QQuickItem *item,
+                                        const QStringList &windowIds);
+
 signals:
     void resizingFished();
     void iconSizeChanged();
+    void minimizedGeometrySurfaceChanged();
     void directionChanged();
     void primaryGeometryChanged();
     void visibilityChanged();
@@ -71,6 +76,7 @@ private slots:
 
 protected:
     bool eventFilter(QObject *obj, QEvent *e) override;
+    void exposeEvent(QExposeEvent *e) override;
     void resizeEvent(QResizeEvent *) override;
 
 private:
