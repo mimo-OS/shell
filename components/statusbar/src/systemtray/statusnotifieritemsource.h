@@ -52,6 +52,7 @@ private slots:
 private:
     QPixmap KDbusImageStructToPixmap(const KDbusImageStruct &image) const;
     QIcon imageVectorToPixmap(const KDbusImageVector &vector) const;
+    QIcon applicationIcon() const;
 
 private:
     bool m_valid;

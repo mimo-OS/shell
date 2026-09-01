@@ -60,7 +60,10 @@ QVariant SystemTrayModel::data(const QModelIndex &index, int role) const
     case IconNameRole:
         return item->iconName();
     case IconRole: {
-        if (!item->icon().isNull())
+        // Keep theme-resolved icons as names so they can be reloaded when the
+        // icon theme changes. Expose a QIcon only for pixmaps or desktop-entry
+        // fallbacks that do not have a usable theme name.
+        if (item->iconName().isEmpty() && !item->icon().isNull())
             return item->icon();
         else
             return QVariant();

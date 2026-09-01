@@ -95,6 +95,7 @@ ListView {
             anchors.centerIn: parent
             width: rootItem.iconSize
             height: width
+            z: 1
             source: iconItem
             color: rootItem.textColor
             opacity: rootItem.darkMode ? 1 : 0.7
@@ -106,10 +107,13 @@ ListView {
             anchors.centerIn: parent
             width: rootItem.iconSize
             height: width
-            source: model.iconName ? model.iconName : model.icon
+            source: model.icon ? model.icon : (model.iconName ? model.iconName : "application-x-desktop")
             antialiasing: true
             smooth: true
-            visible: !dragStarted && !iconOverlay.visible
+            // ColorOverlay captures this item as its source. Keep the source
+            // visible so the effect can render it; Drag.imageSource still
+            // uses the unmodified icon while dragging.
+            visible: !dragStarted
         }
 
         onClicked: {

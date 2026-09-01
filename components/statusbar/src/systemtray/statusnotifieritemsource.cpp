@@ -2,8 +2,14 @@
 #include "systemtraytypes.h"
 
 #include "../libdbusmenuqt/dbusmenuimporter.h"
+#include "applicationregistry.h"
+#include "applicationresolver.h"
+#include "desktopentry.h"
 
+#include <QDBusConnectionInterface>
+#include <QDBusReply>
 #include <QDebug>
+#include <QDir>
 #include <netinet/in.h>
 
 class TrayMenuImporter : public DBusMenuImporter
@@ -52,6 +58,12 @@ StatusNotifierItemSource::StatusNotifierItemSource(const QString &notifierItemId
     m_refreshTimer.setSingleShot(true);
     m_refreshTimer.setInterval(10);
     connect(&m_refreshTimer, &QTimer::timeout, this, &StatusNotifierItemSource::performRefresh);
+
+    connect(ApplicationRegistry::instance(), &ApplicationRegistry::applicationsChanged,
+            this, [this]() {
+        if (m_iconName.isEmpty() && m_icon.isNull())
+            refresh();
+    });
 
     m_valid = !service.isEmpty() && m_statusNotifierItemInterface->isValid();
 
@@ -105,6 +117,34 @@ QString StatusNotifierItemSource::iconName() const
 QIcon StatusNotifierItemSource::icon() const
 {
     return m_icon;
+}
+
+QIcon StatusNotifierItemSource::applicationIcon() const
+{
+    const int slash = m_id.indexOf(QLatin1Char('/'));
+    if (slash == -1)
+        return {};
+
+    const QString service = m_id.left(slash);
+    const QDBusReply<uint> pidReply = QDBusConnection::sessionBus().interface()->servicePid(service);
+    if (!pidReply.isValid())
+        return {};
+
+    DesktopEntry *entry = ApplicationResolver::instance()->resolve(m_appId,
+                                                                    pidReply.value(),
+                                                                    m_appId);
+    if (!entry || entry->icon().isEmpty())
+        return {};
+
+    const QString iconName = entry->icon();
+    if (QDir::isAbsolutePath(iconName))
+        return QIcon(iconName);
+
+    QIcon icon = QIcon::fromTheme(iconName);
+    if (icon.isNull() && !iconName.endsWith(QStringLiteral("-symbolic")))
+        icon = QIcon::fromTheme(iconName + QStringLiteral("-symbolic"));
+
+    return icon;
 }
 
 void StatusNotifierItemSource::activate(int x, int y)
@@ -240,24 +280,45 @@ void StatusNotifierItemSource::refreshCallback(QDBusPendingCallWatcher *call)
         m_valid = false;
     } else {
         QVariantMap properties = reply.argumentAt<0>();
-        QString path = properties[QStringLiteral("IconThemePath")].toString();
+        const QString iconThemePath = properties[QStringLiteral("IconThemePath")].toString();
+
+        if (!iconThemePath.isEmpty()) {
+            const QString path = QDir::cleanPath(iconThemePath);
+            QStringList fallbackSearchPaths = QIcon::fallbackSearchPaths();
+            if (!fallbackSearchPaths.contains(path)) {
+                fallbackSearchPaths.append(path);
+                QIcon::setFallbackSearchPaths(fallbackSearchPaths);
+            }
+        }
 
         m_title = properties[QStringLiteral("Title")].toString();
-        m_iconName = properties[QStringLiteral("IconName")].toString();
+        m_appId = properties[QStringLiteral("Id")].toString();
 
-        // Kate: search icon by id
-        QString id = properties[QStringLiteral("Id")].toString();
-        if (!QIcon::fromTheme(id).isNull()) {
-            m_iconName = id;
-        }
-        m_appId = id;
-        // qDebug() << m_appId;
+        const QString iconName = properties[QStringLiteral("IconName")].toString();
+        m_iconName.clear();
+        m_icon = QIcon();
 
-        // Reion: For icon theme path
-        QString iconThemePath = properties[QStringLiteral("IconThemePath")].toString();
-        if (!iconThemePath.isEmpty()) {
-            QIcon::setFallbackSearchPaths(QStringList() << iconThemePath);
-        }
+        auto loadIconByName = [](const QString &name) {
+            if (name.isEmpty())
+                return QString();
+
+            QIcon icon = QIcon::fromTheme(name);
+            if (icon.isNull() && !name.endsWith(QStringLiteral("-symbolic"))) {
+                const QString symbolicName = name + QStringLiteral("-symbolic");
+                icon = QIcon::fromTheme(symbolicName);
+                if (!icon.isNull())
+                    return symbolicName;
+            }
+
+            if (!icon.isNull())
+                return name;
+
+            return QString();
+        };
+
+        m_iconName = loadIconByName(iconName);
+        if (m_iconName.isEmpty())
+            m_iconName = loadIconByName(m_appId);
 
         // ToolTip
         KDbusToolTipStruct toolTip;
@@ -268,9 +329,14 @@ void StatusNotifierItemSource::refreshCallback(QDBusPendingCallWatcher *call)
         // Icon
         KDbusImageVector image;
         properties[QStringLiteral("IconPixmap")].value<QDBusArgument>() >> image;
-        if (!image.isEmpty()) {
+        if (m_icon.isNull() && !image.isEmpty()) {
             m_icon = imageVectorToPixmap(image);
         }
+
+        // Some tray clients do not expose a usable SNI icon. Try the icon
+        // from the matching desktop entry before presenting a generic one.
+        if (m_icon.isNull())
+            m_icon = applicationIcon();
 
         // Menu
         if (!m_menuImporter) {
