@@ -208,7 +208,7 @@ ControlCenterDialog {
 
             Rectangle {
                 anchors.fill: parent
-                color: "white"
+                color: FishUI.Theme.secondBackgroundColor
                 radius: FishUI.Theme.bigRadius
                 opacity: FishUI.Theme.blurEnabled ? (FishUI.Theme.darkMode ? 0.2 : 0.7) : 1
             }
@@ -312,7 +312,7 @@ ControlCenterDialog {
             Rectangle {
                 id: brightnessItemBg
                 anchors.fill: parent
-                color: "white"
+                color: FishUI.Theme.secondBackgroundColor
                 radius: FishUI.Theme.bigRadius
                 opacity: FishUI.Theme.blurEnabled ? (FishUI.Theme.darkMode ? 0.2 : 0.7) : 1
             }
@@ -369,7 +369,7 @@ ControlCenterDialog {
             Rectangle {
                 id: volumeItemBg
                 anchors.fill: parent
-                color: "white"
+                color: FishUI.Theme.secondBackgroundColor
                 radius: FishUI.Theme.bigRadius
                 opacity: FishUI.Theme.blurEnabled ? (FishUI.Theme.darkMode ? 0.2 : 0.7) : 1
             }
