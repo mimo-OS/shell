@@ -25,6 +25,7 @@ import Qt5Compat.GraphicalEffects
 
 import Cutefish.Accounts 1.0 as Accounts
 import Cutefish.System 1.0 as System
+import Cutefish.Shell 1.0
 import Cutefish.StatusBar 1.0
 import Cutefish.NetworkManagement 1.0 as NM
 import FishUI 1.0 as FishUI
@@ -96,8 +97,142 @@ Item {
         id: popupTips
     }
 
+    // Wayland tells a client nothing about the panels, so the menus are given
+    // the work area the shell itself reserves.
+    ScreenHelper {
+        id: screenHelper
+    }
+
+    // Application menu
+    //
+    // The menu bar behaves the way macOS does: the pointer switches between
+    // the menus while one of them is open, and so do the arrow keys. Both
+    // reuse a single popup window - closing and reopening one would hand the
+    // keyboard grab back and forth and lose the menu the user is in.
+    property int appMenuIndex: -1
+
+    function openAppMenu(index, keyboard) {
+        if (index < 0 || index >= appMenuView.count)
+            return
+
+        var item = appMenuView.itemAtIndex(index)
+        if (!item)
+            return
+
+        var menuObject = appMenuModel.menuAt(index)
+
+        // A menu bar entry can be a plain action instead of a menu.
+        if (!menuObject) {
+            rootItem.closeAppMenu()
+            appMenuModel.trigger(index)
+            return
+        }
+
+        appMenuPopup.closeSubmenus()
+        appMenuPopup.menuModel = null
+        appMenuPopupModel.menu = menuObject
+        appMenuPopup.menuModel = appMenuPopupModel
+        appMenuPopup.setCurrentIndex(-1)
+        appMenuPopup.keyboardNavigation = !!keyboard
+
+        rootItem.appMenuIndex = index
+
+        appMenuPopup.transientParent = rootItem.Window.window
+        var pos = item.mapToGlobal(0, item.height + FishUI.Units.smallSpacing)
+        appMenuPopup.popupAt(pos.x, pos.y)
+    }
+
+    function closeAppMenu() {
+        rootItem.appMenuIndex = -1
+
+        if (appMenuPopup.visible)
+            appMenuPopup.dismissAllPopups()
+    }
+
+    // Switch to the menu of the menu bar entry under @p globalPos, if the
+    // pointer is over another one than the menu that is open.
+    function switchAppMenuAt(globalPos) {
+        if (!appMenuPopup.visible)
+            return
+
+        var pos = appMenuView.mapFromGlobal(globalPos.x, globalPos.y)
+        if (pos.x < 0 || pos.x > appMenuView.width ||
+                pos.y < 0 || pos.y > appMenuView.height)
+            return
+
+        var index = appMenuView.indexAt(pos.x + appMenuView.contentX, pos.y)
+        if (index >= 0 && index !== rootItem.appMenuIndex)
+            rootItem.openAppMenu(index)
+    }
+
+    // Left and right walk to the neighbouring menu, wrapping around.
+    function stepAppMenu(step) {
+        var count = appMenuView.count
+        if (count === 0)
+            return
+
+        rootItem.openAppMenu((rootItem.appMenuIndex + step + count) % count, true)
+    }
+
+    QMenuModel {
+        id: appMenuPopupModel
+    }
+
+    QMenuPopup {
+        id: appMenuPopup
+
+        availableGeometry: screenHelper.availableScreenRect
+
+        onKeyNavigationLeft: rootItem.stepAppMenu(-1)
+        onKeyNavigationRight: rootItem.stepAppMenu(1)
+
+        onVisibleChanged: {
+            if (!visible)
+                rootItem.appMenuIndex = -1
+        }
+
+        // An open menu holds the pointer grab, so the pointer may be reported
+        // to the menu rather than to the menu bar underneath it.
+        onMouseMoved: function (globalPos) {
+            rootItem.switchAppMenuAt(globalPos)
+        }
+    }
+
+    // ... and on some compositors to neither of them, in which case the
+    // cursor position is all that is left to follow.
+    Timer {
+        id: appMenuHoverTimer
+
+        interval: 80
+        repeat: true
+        running: appMenuPopup.visible
+
+        property point lastPos: Qt.point(-1, -1)
+
+        onRunningChanged: lastPos = Qt.point(-1, -1)
+
+        onTriggered: {
+            var pos = appMenuPopup.globalCursorPos()
+            var known = lastPos.x >= 0 || lastPos.y >= 0
+
+            // Only an actual movement is worth acting on. The first reading
+            // is just where the pointer already was - acting on it would pull
+            // the menu back under a pointer the user has left behind while
+            // walking the menu bar with the arrow keys.
+            if (known && pos.x === lastPos.x && pos.y === lastPos.y)
+                return
+
+            lastPos = pos
+
+            if (known)
+                rootItem.switchAppMenuAt(pos)
+        }
+    }
+
     FishUI.DesktopMenu {
         id: acticityMenu
+
+        availableGeometry: screenHelper.availableScreenRect
 
         MenuItem {
             text: qsTr("Close")
@@ -206,25 +341,16 @@ Item {
 
                 model: appMenuModel
 
-                // Initialize the current index
                 onVisibleChanged: {
                     if (!visible)
-                        appMenuView.currentIndex = -1
+                        rootItem.closeAppMenu()
                 }
 
                 delegate: StandardItem {
                     id: _menuItem
                     width: _actionText.width + FishUI.Units.largeSpacing
                     height: ListView.view.height
-                    checked: appMenuApplet.currentIndex === index
-
-                    onClicked: {
-                        appMenuApplet.trigger(_menuItem, index)
-
-                        checked = Qt.binding(function() {
-                            return appMenuApplet.currentIndex === index
-                        })
-                    }
+                    checked: rootItem.appMenuIndex === index
 
                     Text {
                         id: _actionText
@@ -240,46 +366,31 @@ Item {
                         }
                     }
 
-                    // QMenu opens on press, so we'll replicate that here
+                    // A menu opens on press, the way it does everywhere else.
+                    // While one is open, moving onto another entry switches to
+                    // it: whether the pointer event reaches the menu bar or
+                    // the menu depends on how the compositor routes the popup
+                    // grab, so both are wired up to the same switch.
                     MouseArea {
                         anchors.fill: parent
-                        hoverEnabled: appMenuApplet.currentIndex !== -1
-                        onPressed: parent.clicked(null)
-                        onEntered: parent.clicked(null)
+                        hoverEnabled: rootItem.appMenuIndex !== -1
+                        onPressed: rootItem.openAppMenu(index)
+                        onEntered: {
+                            if (rootItem.appMenuIndex !== -1 &&
+                                    rootItem.appMenuIndex !== index)
+                                rootItem.openAppMenu(index)
+                        }
                     }
                 }
 
                 AppMenuModel {
                     id: appMenuModel
-                    onRequestActivateIndex: appMenuApplet.requestActivateIndex(appMenuView.currentIndex)
-                    Component.onCompleted: {
-                        appMenuView.model = appMenuModel
+
+                    // An application can ask for one of its menus to be
+                    // opened, which is how a menu shortcut arrives here.
+                    onRequestActivateIndex: function (index) {
+                        rootItem.openAppMenu(index, true)
                     }
-                }
-
-                AppMenuApplet {
-                    id: appMenuApplet
-                    model: appMenuModel
-                }
-
-                Component.onCompleted: {
-                    appMenuApplet.buttonGrid = appMenuView
-
-                    // Handle left and right shortcut keys.
-                    appMenuApplet.requestActivateIndex.connect(function (index) {
-                        var idx = Math.max(0, Math.min(appMenuView.count - 1, index))
-                        var button = appMenuView.itemAtIndex(index)
-                        if (button) {
-                            button.clicked(null)
-                        }
-                    });
-
-                    // Handle mouse movement.
-                    appMenuApplet.mousePosChanged.connect(function (x, y) {
-                        var item = itemAt(x, y)
-                        if (item)
-                            item.clicked(null)
-                    });
                 }
             }
         }

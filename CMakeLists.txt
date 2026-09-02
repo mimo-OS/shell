@@ -69,6 +69,7 @@ set(SHELL_SRCS
     src/shared/applicationresolver.cpp
     src/shared/kwinwaylandinterface.cpp
     src/shared/strutspacer.cpp
+    src/shared/screenhelper.cpp
     src/shared/processprovider.cpp
 
     shell.qrc
@@ -105,8 +106,9 @@ set(STATUSBAR_SRCS
     components/statusbar/src/appmenu/verticalmenu.cpp
     components/statusbar/src/appmenu/menuimporter.cpp
     components/statusbar/src/appmenu/appmenumodel.cpp
-    components/statusbar/src/appmenu/appmenuapplet.cpp
     components/statusbar/src/appmenu/dbusmenu_interface.cpp
+
+    components/statusbar/src/qmenu/qmenumodel.cpp
 
     components/statusbar/statusbar.qrc
 )
@@ -173,7 +175,6 @@ set(NOTIFICATION_SRCS
     components/notification/src/notificationpopup.cpp
     components/notification/src/historymodel.cpp
     components/notification/src/notification.cpp
-    components/notification/src/screenhelper.cpp
     components/notification/src/datehelper.cpp
     components/notification/src/settings.cpp
     components/notification/src/notificationutils.cpp

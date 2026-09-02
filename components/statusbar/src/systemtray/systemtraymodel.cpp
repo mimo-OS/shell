@@ -2,6 +2,7 @@
 
 #include <QApplication>
 #include <QDebug>
+#include <QQmlEngine>
 
 static QStringList noColorOverlayList = {
     "netease-cloud-music",
@@ -109,15 +110,25 @@ void SystemTrayModel::leftButtonClick(const QString &id, int x, int y)
     }
 }
 
-void SystemTrayModel::rightButtonClick(const QString &id, QQuickItem *iconItem, int x, int y)
+QObject *SystemTrayModel::contextMenu(const QString &id, int x, int y)
 {
     StatusNotifierItemSource *item = findItemById(id);
 
-    if (item) {
-        item->contextMenu(x * qApp->devicePixelRatio(),
-                          y * qApp->devicePixelRatio(),
-                          iconItem);
+    if (!item)
+        return nullptr;
+
+    if (QMenu *menu = item->contextMenuObject()) {
+        // The menu of a tray item has no parent, so QML would take ownership
+        // of it and the garbage collector would delete a menu the importer
+        // still uses.
+        QQmlEngine::setObjectOwnership(menu, QQmlEngine::CppOwnership);
+        return menu;
     }
+
+    item->requestContextMenu(x * qApp->devicePixelRatio(),
+                             y * qApp->devicePixelRatio());
+
+    return nullptr;
 }
 
 void SystemTrayModel::middleButtonClick(const QString &id, int x, int y)

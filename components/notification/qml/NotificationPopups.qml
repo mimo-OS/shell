@@ -12,6 +12,7 @@ import QtQuick.Window 2.12
 import Qt5Compat.GraphicalEffects
 import FishUI 1.0 as FishUI
 import Cutefish.Notification 1.0
+import Cutefish.Shell 1.0
 
 Item {
     id: root

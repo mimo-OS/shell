@@ -2,6 +2,7 @@
     <qresource prefix="/statusbar">
         <file>qml/main.qml</file>
         <file>qml/StandardItem.qml</file>
+        <file>qml/QMenuPopup.qml</file>
         <file>images/dark/audio-volume-high-symbolic.svg</file>
         <file>images/dark/audio-volume-low-symbolic.svg</file>
         <file>images/dark/audio-volume-medium-symbolic.svg</file>

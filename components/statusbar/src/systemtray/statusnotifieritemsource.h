@@ -31,7 +31,10 @@ public:
     void activate(int x, int y);
     void secondaryActivate(int x, int y);
     void scroll(int delta, const QString &direction);
-    void contextMenu(int x, int y, QQuickItem *item);
+    // The item's exported menu, ready to be shown, or nullptr when the item
+    // has none - then the item has to be asked to show its own menu.
+    QMenu *contextMenuObject();
+    void requestContextMenu(int x, int y);
 
 signals:
     void contextMenuReady(QMenu *menu);

@@ -176,36 +176,26 @@ void StatusNotifierItemSource::scroll(int delta, const QString &direction)
     }
 }
 
-void StatusNotifierItemSource::contextMenu(int x, int y, QQuickItem *item)
+QMenu *StatusNotifierItemSource::contextMenuObject()
 {
-    if (m_menuImporter) {
-        // Popup menu
-        QMenu *menu = m_menuImporter->menu();
+    if (!m_menuImporter)
+        return nullptr;
 
-        if (menu) {
-            m_menuImporter->updateMenu();
+    QMenu *menu = m_menuImporter->menu();
+    if (!menu)
+        return nullptr;
 
-            menu->winId();
+    m_menuImporter->updateMenu();
 
-            if (item) {
-                QRect screenItemRect(item->mapToScene(QPointF(0, 0)).toPoint(), QSize(item->width(), item->height()));
+    return menu;
+}
 
-                if (item->window()) {
-                    screenItemRect.moveTopLeft(item->window()->mapToGlobal(screenItemRect.topLeft()));
-                    menu->windowHandle()->setTransientParent(item->window());
-                }
+void StatusNotifierItemSource::requestContextMenu(int x, int y)
+{
+    qWarning() << "Could not find DBusMenu interface, falling back to calling ContextMenu()";
 
-                menu->popup(QPoint(screenItemRect.left(),
-                                   screenItemRect.bottom() + 5));
-            } else {
-                menu->popup(QPoint(x, y + 5));
-            }
-        }
-    } else {
-        qWarning() << "Could not find DBusMenu interface, falling back to calling ContextMenu()";
-        if (m_statusNotifierItemInterface && m_statusNotifierItemInterface->isValid()) {
-            m_statusNotifierItemInterface->call(QDBus::NoBlock, QStringLiteral("ContextMenu"), x, y);
-        }
+    if (m_statusNotifierItemInterface && m_statusNotifierItemInterface->isValid()) {
+        m_statusNotifierItemInterface->call(QDBus::NoBlock, QStringLiteral("ContextMenu"), x, y);
     }
 }
 

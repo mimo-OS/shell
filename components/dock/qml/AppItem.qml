@@ -20,6 +20,7 @@
 import QtQuick 2.12
 import QtQuick.Controls 2.12
 import Cutefish.Dock 1.0
+import Cutefish.Shell 1.0
 import FishUI 1.0 as FishUI
 
 DockItem {
@@ -114,8 +115,13 @@ DockItem {
         }
     }
 
+    ScreenHelper {
+        id: _screenHelper
+    }
+
     FishUI.DesktopMenu {
         id: contextMenu
+        availableGeometry: _screenHelper.availableScreenRect
         blurEnabled: FishUI.Theme.blurEnabled
 
         MenuItem {

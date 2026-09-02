@@ -23,6 +23,7 @@ import QtQuick.Layouts 1.12
 import Qt5Compat.GraphicalEffects
 
 import Cutefish.Dock 1.0
+import Cutefish.Shell 1.0
 import FishUI 1.0 as FishUI
 
 Item {
@@ -175,8 +176,13 @@ Item {
                 }
             }
 
+            ScreenHelper {
+                id: _screenHelper
+            }
+
             FishUI.DesktopMenu {
                 id: trashMenu
+                availableGeometry: _screenHelper.availableScreenRect
                 blurEnabled: FishUI.Theme.blurEnabled
 
                 MenuItem {

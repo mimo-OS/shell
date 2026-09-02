@@ -6,6 +6,7 @@
 #include <QDBusServiceWatcher>
 #include <QGuiApplication>
 #include <QMenu>
+#include <QQmlEngine>
 
 #include "../libdbusmenuqt/dbusmenuimporter.h"
 #include "kwinwaylandinterface.h"
@@ -169,6 +170,38 @@ QVariant AppMenuModel::data(const QModelIndex &index, int role) const
     }
 
     return QVariant();
+}
+
+QObject *AppMenuModel::menuAt(int row) const
+{
+    if (!m_menuAvailable || !m_menu)
+        return nullptr;
+
+    const auto actions = m_menu->actions();
+    if (row < 0 || row >= actions.count())
+        return nullptr;
+
+    QMenu *menu = actions.at(row)->menu();
+
+    // The menu belongs to the importer; QML must not collect it.
+    if (menu)
+        QQmlEngine::setObjectOwnership(menu, QQmlEngine::CppOwnership);
+
+    return menu;
+}
+
+void AppMenuModel::trigger(int row)
+{
+    if (!m_menuAvailable || !m_menu)
+        return;
+
+    const auto actions = m_menu->actions();
+    if (row < 0 || row >= actions.count())
+        return;
+
+    QAction *action = actions.at(row);
+    if (!action->menu())
+        action->trigger();
 }
 
 void AppMenuModel::updateApplicationMenu(const QString &serviceName, const QString &menuObjectPath)

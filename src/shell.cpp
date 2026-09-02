@@ -5,7 +5,7 @@
 #include "controlcenterdialog.h"
 #include "systemtray/systemtraymodel.h"
 #include "appmenu/appmenumodel.h"
-#include "appmenu/appmenuapplet.h"
+#include "qmenu/qmenumodel.h"
 #include "poweractions.h"
 #include "notifications.h"
 #include "backgroundhelper.h"
@@ -82,6 +82,10 @@ void Shell::registerQmlTypes()
 {
     registerApplicationsQmlTypes();
 
+    // Shell-wide helpers. The work area is one: on Wayland only the shell
+    // knows it, because it is the shell that reserves the struts.
+    qmlRegisterType<ScreenHelper>("Cutefish.Shell", 1, 0, "ScreenHelper");
+
     const char *statusBarUri = "Cutefish.StatusBar";
     qmlRegisterType<SystemTrayModel>(statusBarUri, 1, 0, "SystemTrayModel");
     qmlRegisterType<ControlCenterDialog>(statusBarUri, 1, 0, "ControlCenterDialog");
@@ -89,7 +93,7 @@ void Shell::registerQmlTypes()
     qmlRegisterType<Brightness>(statusBarUri, 1, 0, "Brightness");
     qmlRegisterType<Battery>(statusBarUri, 1, 0, "Battery");
     qmlRegisterType<AppMenuModel>(statusBarUri, 1, 0, "AppMenuModel");
-    qmlRegisterType<AppMenuApplet>(statusBarUri, 1, 0, "AppMenuApplet");
+    qmlRegisterType<QMenuModel>(statusBarUri, 1, 0, "QMenuModel");
     qmlRegisterType<PowerActions>(statusBarUri, 1, 0, "PowerActions");
     qmlRegisterType<Notifications>(statusBarUri, 1, 0, "Notifications");
     qmlRegisterType<BackgroundHelper>(statusBarUri, 1, 0, "BackgroundHelper");
@@ -97,7 +101,6 @@ void Shell::registerQmlTypes()
     const char *notificationUri = "Cutefish.Notification";
     qmlRegisterType<NotificationsModel>(notificationUri, 1, 0, "NotificationsModel");
     qmlRegisterType<HistoryModel>(notificationUri, 1, 0, "HistoryModel");
-    qmlRegisterType<ScreenHelper>(notificationUri, 1, 0, "ScreenHelper");
     qmlRegisterType<NotificationPopup>(notificationUri, 1, 0, "NotificationPopup");
     qmlRegisterType<NotificationCenterDialog>(notificationUri, 1, 0, "NotificationCenterDialog");
 

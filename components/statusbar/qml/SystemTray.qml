@@ -3,6 +3,7 @@ import QtQuick.Layouts 1.12
 import QtQuick.Controls 2.12
 import Qt5Compat.GraphicalEffects
 
+import Cutefish.Shell 1.0
 import Cutefish.StatusBar 1.0
 import FishUI 1.0 as FishUI
 
@@ -24,6 +25,40 @@ ListView {
         id: trayModel
     }
 
+    QMenuModel {
+        id: trayMenuModel
+    }
+
+    // One popup for every tray item: the model it shows is swapped as menus
+    // are opened.
+    ScreenHelper {
+        id: screenHelper
+    }
+
+    QMenuPopup {
+        id: trayMenu
+        menuModel: trayMenuModel
+        availableGeometry: screenHelper.availableScreenRect
+    }
+
+    function openContextMenu(item, globalPos) {
+        var menuObject = trayModel.contextMenu(item.itemId, globalPos.x, globalPos.y)
+
+        // An item without an exported menu was asked to show its own.
+        if (!menuObject)
+            return
+
+        trayMenu.closeSubmenus()
+        trayMenu.menuModel = null
+        trayMenuModel.menu = menuObject
+        trayMenu.menuModel = trayMenuModel
+        trayMenu.setCurrentIndex(-1)
+
+        trayMenu.transientParent = item.Window.window
+        var pos = item.mapToGlobal(0, item.height + FishUI.Units.smallSpacing)
+        trayMenu.popupAt(pos.x, pos.y)
+    }
+
     moveDisplaced: Transition {
         NumberAnimation {
             properties: "x, y"
@@ -34,6 +69,8 @@ ListView {
 
     delegate: StandardItem {
         id: _trayItem
+
+        property string itemId: model.id
 
         property bool darkMode: rootItem.darkMode
         property int dragItemIndex: index
@@ -122,7 +159,7 @@ ListView {
             if (mouse.button === Qt.LeftButton) {
                 trayModel.leftButtonClick(model.id, pos.x, pos.y)
             } else if (mouse.button === Qt.RightButton) {
-                trayModel.rightButtonClick(model.id, _trayItem, pos.x, pos.y)
+                trayView.openContextMenu(_trayItem, pos)
             } else if (mouse.button === Qt.MiddleButton) {
                 trayModel.middleButtonClick(model.id, pos.x, pos.y)
             }

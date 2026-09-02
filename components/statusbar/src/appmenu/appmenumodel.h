@@ -38,6 +38,11 @@ public:
 
     bool visible() const;
 
+    // The submenu of the menu bar entry at @p row, for QMenuModel to show,
+    // or nullptr when the entry is a plain action.
+    Q_INVOKABLE QObject *menuAt(int row) const;
+    Q_INVOKABLE void trigger(int row);
+
 Q_SIGNALS:
     void requestActivateIndex(int index);
 

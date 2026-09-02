@@ -36,7 +36,10 @@ public:
     StatusNotifierItemSource *findItemById(const QString &id);
 
     Q_INVOKABLE void leftButtonClick(const QString &id, int x, int y);
-    Q_INVOKABLE void rightButtonClick(const QString &id, QQuickItem *iconItem, int x, int y);
+    // The menu of the tray item, for QMenuModel to show. Returns nullptr for
+    // an item that exports no menu; such an item is asked over DBus to show
+    // its own instead.
+    Q_INVOKABLE QObject *contextMenu(const QString &id, int x, int y);
     Q_INVOKABLE void middleButtonClick(const QString &id, int x, int y);
 
     Q_INVOKABLE void move(int from, int to);
