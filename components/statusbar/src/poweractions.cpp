@@ -1,7 +1,6 @@
 #include "poweractions.h"
-#include <QCommandLineParser>
+#include <QDebug>
 #include <QDBusInterface>
-#include <QApplication>
 
 const static QString s_dbusName = "com.cutefish.Session";
 const static QString s_pathName = "/Session";
@@ -20,25 +19,38 @@ PowerActions::PowerActions(QObject *parent)
 void PowerActions::shutdown()
 {
     QDBusInterface iface(s_dbusName, s_pathName, s_interfaceName, QDBusConnection::sessionBus());
-    if (iface.isValid()) {
-        iface.call("powerOff");
+    if (!iface.isValid()) {
+        qWarning() << "Unable to request shutdown: session service is unavailable";
+        return;
     }
+
+    const QDBusMessage reply = iface.call(QStringLiteral("powerOff"));
+    if (reply.type() == QDBusMessage::ErrorMessage)
+        qWarning() << "Unable to request shutdown:" << reply.errorName() << reply.errorMessage();
 }
 
 void PowerActions::logout()
 {
     QDBusInterface iface(s_dbusName, s_pathName, s_interfaceName, QDBusConnection::sessionBus());
-    if (iface.isValid()) {
-        iface.call("logout");
+    if (!iface.isValid()) {
+        qWarning() << "Unable to request logout: session service is unavailable";
+        return;
     }
+
+    iface.call(QStringLiteral("logout"));
 }
 
 void PowerActions::reboot()
 {
     QDBusInterface iface(s_dbusName, s_pathName, s_interfaceName, QDBusConnection::sessionBus());
-    if (iface.isValid()) {
-        iface.call("reboot");
+    if (!iface.isValid()) {
+        qWarning() << "Unable to request reboot: session service is unavailable";
+        return;
     }
+
+    const QDBusMessage reply = iface.call(QStringLiteral("reboot"));
+    if (reply.type() == QDBusMessage::ErrorMessage)
+        qWarning() << "Unable to request reboot:" << reply.errorName() << reply.errorMessage();
 }
 
 void PowerActions::lockScreen()
@@ -49,6 +61,8 @@ void PowerActions::lockScreen()
                          QDBusConnection::sessionBus());
     if (iface.isValid()) {
         iface.asyncCall(QStringLiteral("Lock"));
+    } else {
+        qWarning() << "Unable to request screen lock: screen saver service is unavailable";
     }
 }
 
@@ -56,7 +70,12 @@ void PowerActions::suspend()
 {
     QDBusInterface iface(s_dbusName, s_pathName, s_interfaceName, QDBusConnection::sessionBus());
 
-    if (iface.isValid()) {
-        iface.call("suspend");
+    if (!iface.isValid()) {
+        qWarning() << "Unable to request suspend: session service is unavailable";
+        return;
     }
+
+    const QDBusMessage reply = iface.call(QStringLiteral("suspend"));
+    if (reply.type() == QDBusMessage::ErrorMessage)
+        qWarning() << "Unable to request suspend:" << reply.errorName() << reply.errorMessage();
 }
