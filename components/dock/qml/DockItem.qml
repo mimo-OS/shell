@@ -127,7 +127,7 @@ Item {
         id: iconDropArea
         anchors.fill: icon
         enabled: draggable
-        onDropped: control.dropped(drop)
+        onDropped: function(drop) { control.dropped(drop) }
     }
 
     MouseArea {
@@ -137,19 +137,19 @@ Item {
         acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
         drag.axis: Drag.XAndYAxis
 
-        onClicked: {
+        onClicked: function(mouse) {
             if (mouse.button === Qt.RightButton)
                 control.rightClicked(mouse)
             else
                 control.clicked(mouse)
         }
 
-        onPressed: {
+        onPressed: function(mouse) {
             control.pressed(mouse)
             popupTips.hide()
         }
 
-        onPositionChanged: {
+        onPositionChanged: function(mouse) {
             if (pressed) {
                 if (control.draggable && mouse.source !== Qt.MouseEventSynthesizedByQt) {
                     drag.target = icon
@@ -164,7 +164,7 @@ Item {
             control.positionChanged()
         }
 
-        onPressAndHold : control.pressAndHold(mouse)
+        onPressAndHold: function(mouse) { control.pressAndHold(mouse) }
         onReleased: {
             drag.target = null
             control.released()

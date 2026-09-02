@@ -80,16 +80,19 @@ DockItem {
         onTriggered: dock.updateIconGeometry(icon, windowIds)
     }
 
-    onRightClicked: if (model.appId !== "cutefish-launcher") popupMenu(contextMenu, mouse)
+    onRightClicked: function(mouse) {
+        if (model.appId !== "cutefish-launcher")
+            popupMenu(contextMenu, mouse)
+    }
 
-    onClicked: {
+    onClicked: function(mouse) {
         if (mouse.button === Qt.LeftButton)
             appModel.clicked(model.appId)
         else if (mouse.button === Qt.MiddleButton)
             appModel.openNewInstance(model.appId)
     }
 
-    dropArea.onEntered: {
+    dropArea.onEntered: function(drag) {
         appItem.dragSource = drag.source
         dropTimer.restart()
     }

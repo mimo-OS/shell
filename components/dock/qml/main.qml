@@ -149,11 +149,11 @@ Item {
             enableActivateDot: false
             iconName: trash.count === 0 ? "user-trash-empty" : "user-trash-full"
             onClicked: trash.openTrash()
-            onRightClicked: popupMenu(trashMenu, mouse)
+            onRightClicked: function(mouse) { popupMenu(trashMenu, mouse) }
 
             dropArea.enabled: true
 
-            onDropped: {
+            onDropped: function(drop) {
                 if (drop.hasUrls) {
                     trash.moveToTrash(drop.urls)
                 }
