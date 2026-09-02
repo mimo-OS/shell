@@ -100,13 +100,16 @@ StatusNotifierItemSource *SystemTrayModel::findItemById(const QString &id)
     return m_items.at(index);
 }
 
+// The x/y handed to StatusNotifierItem are the logical global position of the
+// item, straight from popupPosition(). They are only a hint for where the app
+// should put its own window; on Wayland there is no global pixel space to
+// convert them into, so they are passed through unscaled.
 void SystemTrayModel::leftButtonClick(const QString &id, int x, int y)
 {
     StatusNotifierItemSource *item = findItemById(id);
 
     if (item) {
-        item->activate(x * qApp->devicePixelRatio(),
-                       y * qApp->devicePixelRatio());
+        item->activate(x, y);
     }
 }
 
@@ -125,8 +128,7 @@ QObject *SystemTrayModel::contextMenu(const QString &id, int x, int y)
         return menu;
     }
 
-    item->requestContextMenu(x * qApp->devicePixelRatio(),
-                             y * qApp->devicePixelRatio());
+    item->requestContextMenu(x, y);
 
     return nullptr;
 }
@@ -136,8 +138,7 @@ void SystemTrayModel::middleButtonClick(const QString &id, int x, int y)
     StatusNotifierItemSource *item = findItemById(id);
 
     if (item) {
-        item->secondaryActivate(x * qApp->devicePixelRatio(),
-                                y * qApp->devicePixelRatio());
+        item->secondaryActivate(x, y);
     }
 }
 
