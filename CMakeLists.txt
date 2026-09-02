@@ -199,7 +199,6 @@ set(LAUNCHER_SRCS
     components/launcher/src/launchermodel.cpp
     components/launcher/src/appitem.cpp
     components/launcher/src/pagemodel.cpp
-    components/launcher/src/ucunits.cpp
     components/launcher/src/listmodelmanager.cpp
     components/launcher/src/iconitem.cpp
     components/launcher/src/appmanager.cpp
