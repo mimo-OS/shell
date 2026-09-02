@@ -77,7 +77,7 @@ public:
     //! Where the compositor should put this surface. It cannot be read back
     //! from QWindow::geometry(): Qt's Wayland plugin resets a toplevel's
     //! position to (0, 0) because plain xdg-shell has no global coordinates.
-    void setSurfacePosition(const QPoint &position);
+    void setSurfacePosition(const QPoint &position, bool requestRepaint = true);
 
     /**
      * Runs @p update whenever the metrics of @p screen change, and until the

@@ -21,6 +21,7 @@ public:
     bool isActive = false;
     bool isPinned = false;
     bool fixed = false;
+    int animationToken = 0;
 
     bool operator==(ApplicationItem item) {
         return item.id == this->id;

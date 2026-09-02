@@ -19,10 +19,13 @@ public:
         WindowIdsRole,
         IsPinnedRole,
         DesktopFileRole,
-        FixedItemRole
+        FixedItemRole,
+        AnimationTokenRole
     };
 
     explicit ApplicationModel(QObject *parent = nullptr);
+
+    bool initialWindowsLoaded() const { return m_initialWindowsLoaded; }
 
     void setLauncher(class Launcher *launcher);
 
@@ -62,6 +65,7 @@ private:
     bool contains(const QString &id);
     int indexOf(const QString &id);
     void initPinnedApplications();
+    int animationTokenForNewItem();
     void savePinAndUnPinList();
     void onApplicationsChanged();
 
@@ -77,6 +81,8 @@ private:
     QList<ApplicationItem *> m_appItems;
     Launcher *m_launcher = nullptr;
     bool m_pinsInitialized = false;
+    bool m_initialWindowsLoaded = false;
+    int m_nextAnimationToken = 0;
 };
 
 #endif // APPLICATIONMODEL_H

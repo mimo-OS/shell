@@ -123,12 +123,77 @@ Item {
 
             Layout.fillHeight: true
             Layout.fillWidth: true
+            Layout.preferredWidth: root.isHorizontal
+                                  ? Math.max(0, root.width - 2 * root.lengthPadding
+                                             - root.iconGap - root.itemSize)
+                                  : -1
+            Layout.preferredHeight: root.isHorizontal
+                                   ? -1
+                                   : Math.max(0, root.height - 2 * root.lengthPadding
+                                              - root.iconGap - root.itemSize)
 
             delegate: AppItem {
                 id: appItemDelegate
-                implicitWidth: root.itemSize
-                implicitHeight: root.itemSize
+                property bool shouldAnimateOnAdd: dock.geometryAnimationAdding
+                                                 && model.animationToken === dock.geometryAnimationToken
+                property real addProgress: shouldAnimateOnAdd
+                                          ? dock.geometryAnimationProgress : 1.0
+                property real layoutProgress: addProgress
+                property real layoutWidth: root.itemSize * layoutProgress
+                property real layoutHeight: root.itemSize * layoutProgress
+
+                width: root.isHorizontal ? layoutWidth : root.itemSize
+                height: root.isHorizontal ? root.itemSize : layoutHeight
+                scale: addProgress
+                transformOrigin: Item.Center
+                opacity: addProgress
                 iconSizeRatio: root.iconSizeRatio
+
+                // The dock exposes one eased progress value for the window,
+                // the new slot, the icon scale, and its opacity. Keeping all
+                // four bound to that value makes the icon grow from its own
+                // center while the panel makes exactly enough room for it.
+            }
+
+            // Let the icon disappear into itself instead of vanishing when a
+            // window closes or an application is unpinned.
+            remove: Transition {
+                ParallelAnimation {
+                    NumberAnimation {
+                        property: "layoutProgress"
+                        to: 0.0
+                        duration: 180
+                        easing.type: Easing.OutCubic
+                    }
+                    NumberAnimation {
+                        property: "scale"
+                        to: 0.0
+                        duration: 180
+                        easing.type: Easing.InCubic
+                    }
+                    NumberAnimation {
+                        property: "opacity"
+                        to: 0.0
+                        duration: 140
+                        easing.type: Easing.InCubic
+                    }
+                }
+            }
+
+            addDisplaced: Transition {
+                NumberAnimation {
+                    properties: "x, y"
+                    duration: 180
+                    easing.type: Easing.OutCubic
+                }
+            }
+
+            removeDisplaced: Transition {
+                NumberAnimation {
+                    properties: "x, y"
+                    duration: 180
+                    easing.type: Easing.OutCubic
+                }
             }
 
             moveDisplaced: Transition {

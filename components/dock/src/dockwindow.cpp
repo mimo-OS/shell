@@ -27,6 +27,7 @@ DockWindow::DockWindow(QQmlEngine *engine)
     , m_hideBlocked(false)
     , m_showTimer(new QTimer(this))
     , m_hideTimer(new QTimer(this))
+    , m_geometryAnimation(new QVariantAnimation(this))
 {
     new DockAdaptor(this);
 
@@ -61,6 +62,23 @@ DockWindow::DockWindow(QQmlEngine *engine)
     m_hideTimer->setInterval(500);
     connect(m_hideTimer, &QTimer::timeout, this, &DockWindow::onHideTimeout);
 
+    m_geometryAnimation->setDuration(180);
+    m_geometryAnimation->setEasingCurve(QEasingCurve::OutCubic);
+    connect(m_geometryAnimation, &QVariantAnimation::valueChanged, this,
+            [this](const QVariant &value) {
+                setDockGeometry(value.toRect(), false);
+
+                const qreal linearProgress = qBound<qreal>(
+                    0.0,
+                    static_cast<qreal>(m_geometryAnimation->currentTime())
+                        / m_geometryAnimation->duration(),
+                    1.0);
+                setGeometryAnimationProgress(
+                    m_geometryAnimation->easingCurve().valueForProgress(linearProgress));
+            });
+    connect(m_geometryAnimation, &QVariantAnimation::finished, this,
+            [this] { setGeometryAnimationProgress(1.0); });
+
     // When the current window changes.
     connect(m_activity, &Activity::launchPadChanged, this, &DockWindow::onVisibilityChanged);
     connect(m_activity, &Activity::existsWindowMaximizedChanged, this, &DockWindow::onVisibilityChanged);
@@ -69,7 +87,23 @@ DockWindow::DockWindow(QQmlEngine *engine)
     connect(qGuiApp, &QGuiApplication::primaryScreenChanged, this, &DockWindow::onPrimaryScreenChanged);
     watchScreen(screen(), [this] { resizeWindow(); });
 
-    connect(m_appModel, &ApplicationModel::countChanged, this, &DockWindow::resizeWindow);
+    connect(m_appModel, &ApplicationModel::countChanged, this,
+            [this] { resizeWindow(m_appModel->initialWindowsLoaded()); });
+    connect(m_appModel, &ApplicationModel::itemAdded, this, [this] {
+        if (m_appModel->initialWindowsLoaded()) {
+            m_geometryAnimationAdding = true;
+            ++m_geometryAnimationToken;
+            emit geometryAnimationAddingChanged();
+            emit geometryAnimationTokenChanged();
+            setGeometryAnimationProgress(0.0);
+        }
+    });
+    connect(m_appModel, &ApplicationModel::itemRemoved, this, [this] {
+        if (m_appModel->initialWindowsLoaded() && m_geometryAnimationAdding) {
+            m_geometryAnimationAdding = false;
+            emit geometryAnimationAddingChanged();
+        }
+    });
     connect(m_settings, &DockSettings::directionChanged, this, &DockWindow::onPositionChanged);
     connect(m_settings, &DockSettings::iconSizeChanged, this, &DockWindow::onIconSizeChanged);
     connect(m_settings, &DockSettings::visibilityChanged, this, &DockWindow::onVisibilityChanged);
@@ -107,6 +141,21 @@ int DockWindow::direction() const
 int DockWindow::visibility() const
 {
     return DockSettings::self()->visibility();
+}
+
+qreal DockWindow::geometryAnimationProgress() const
+{
+    return m_geometryAnimationProgress;
+}
+
+bool DockWindow::geometryAnimationAdding() const
+{
+    return m_geometryAnimationAdding;
+}
+
+int DockWindow::geometryAnimationToken() const
+{
+    return m_geometryAnimationToken;
 }
 
 void DockWindow::setDirection(int direction)
@@ -237,16 +286,56 @@ void DockWindow::updateMetrics()
 // geometry change has to update both.
 void DockWindow::applyGeometry()
 {
+    stopGeometryAnimation();
     updateMetrics();
 
     const QRect rect = windowRect();
-    setGeometry(rect);
-    setSurfacePosition(rect.topLeft());
+    setDockGeometry(rect);
 }
 
-void DockWindow::resizeWindow()
+void DockWindow::animateToGeometry(const QRect &rect)
 {
-    applyGeometry();
+    if (m_currentGeometry == rect) {
+        stopGeometryAnimation();
+        return;
+    }
+
+    m_geometryAnimation->stop();
+    m_geometryAnimation->setStartValue(m_currentGeometry);
+    m_geometryAnimation->setEndValue(rect);
+    setGeometryAnimationProgress(0.0);
+    m_geometryAnimation->start();
+}
+
+void DockWindow::stopGeometryAnimation()
+{
+    if (m_geometryAnimation->state() != QAbstractAnimation::Stopped)
+        m_geometryAnimation->stop();
+
+    setGeometryAnimationProgress(1.0);
+}
+
+void DockWindow::setGeometryAnimationProgress(qreal progress)
+{
+    if (qFuzzyCompare(m_geometryAnimationProgress, progress))
+        return;
+
+    m_geometryAnimationProgress = progress;
+    emit geometryAnimationProgressChanged();
+}
+
+void DockWindow::resizeWindow(bool animate)
+{
+    updateMetrics();
+
+    const QRect rect = windowRect();
+    if (animate) {
+        animateToGeometry(rect);
+    } else {
+        stopGeometryAnimation();
+        setDockGeometry(rect);
+    }
+
     updateViewStruts();
 
     // The auto-hide trigger is a strip along the screen edge, so it has to
@@ -255,6 +344,19 @@ void DockWindow::resizeWindow()
         m_fakeWindow->updateGeometry();
 
     emit resizingFished();
+}
+
+void DockWindow::setDockGeometry(const QRect &rect, bool requestRepaint)
+{
+    // QWindow::geometry() does not retain a reliable global position on
+    // Wayland. Keep the requested geometry ourselves so a new animation can
+    // start from the current animation frame rather than from (0, 0).
+    if (m_currentGeometry == rect)
+        return;
+
+    m_currentGeometry = rect;
+    setGeometry(rect);
+    setSurfacePosition(rect.topLeft(), requestRepaint);
 }
 
 void DockWindow::initScreens()

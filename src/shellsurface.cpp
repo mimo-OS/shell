@@ -172,7 +172,7 @@ void ShellSurface::watchScreen(QScreen *screen, const std::function<void()> &upd
     watch(&QScreen::physicalDotsPerInchChanged);
 }
 
-void ShellSurface::setSurfacePosition(const QPoint &position)
+void ShellSurface::setSurfacePosition(const QPoint &position, bool requestRepaint)
 {
     const bool moved = m_surfacePosition != position;
     m_surfacePosition = position;
@@ -185,7 +185,7 @@ void ShellSurface::setSurfacePosition(const QPoint &position)
     // KWin applies the position with the next commit of the surface, and a
     // panel that only moves has nothing new to draw: the dock kept landing
     // where the *previous* screen change had put it, one resolution behind.
-    if (moved)
+    if (moved && requestRepaint)
         requestUpdate();
 }
 

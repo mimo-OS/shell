@@ -30,7 +30,10 @@ ApplicationModel::ApplicationModel(QObject *parent)
     if (!registry->loading())
         onApplicationsChanged();
 
-    QTimer::singleShot(100, m_iface, &WindowInterface::startInitWindows);
+    QTimer::singleShot(100, this, [this] {
+        m_iface->startInitWindows();
+        m_initialWindowsLoaded = true;
+    });
 }
 
 void ApplicationModel::setLauncher(Launcher *launcher)
@@ -57,6 +60,7 @@ QHash<int, QByteArray> ApplicationModel::roleNames() const
     roles[IsPinnedRole] = "isPinned";
     roles[DesktopFileRole] = "desktopFile";
     roles[FixedItemRole] = "fixed";
+    roles[AnimationTokenRole] = "animationToken";
     return roles;
 }
 
@@ -90,6 +94,8 @@ QVariant ApplicationModel::data(const QModelIndex &index, int role) const
         return item->desktopPath;
     case FixedItemRole:
         return item->fixed;
+    case AnimationTokenRole:
+        return item->animationToken;
     default:
         return QVariant();
     }
@@ -136,6 +142,7 @@ void ApplicationModel::addItem(const QString &desktopFile)
     ApplicationItem *item = new ApplicationItem;
     updateFromDesktopEntry(item, entry);
     item->isPinned = true;
+    item->animationToken = animationTokenForNewItem();
 
     m_appItems << item;
     endInsertRows();
@@ -160,6 +167,11 @@ void ApplicationModel::removeItem(const QString &desktopFile)
     if (item) {
         ApplicationModel::unPin(item->id);
     }
+}
+
+int ApplicationModel::animationTokenForNewItem()
+{
+    return m_initialWindowsLoaded ? ++m_nextAnimationToken : 0;
 }
 
 bool ApplicationModel::desktopContains(const QString &desktopFile)
@@ -432,6 +444,7 @@ void ApplicationModel::initPinnedApplications()
             if (item->exec.isEmpty())
                 item->exec = savedExec;
             item->isPinned = true;
+            item->animationToken = animationTokenForNewItem();
             m_appItems.append(item);
             endInsertRows();
 
@@ -447,6 +460,7 @@ void ApplicationModel::initPinnedApplications()
             item->visibleName = savedName;
             item->exec = savedExec;
             item->isPinned = true;
+            item->animationToken = animationTokenForNewItem();
             m_appItems.append(item);
             endInsertRows();
 
@@ -583,6 +597,7 @@ void ApplicationModel::onWindowAdded(quint64 wid)
         item->isActive = info.value("active").toBool();
         item->wids.append(wid);
         item->desktopPath = desktopPath;
+        item->animationToken = animationTokenForNewItem();
 
         if (entry)
             updateFromDesktopEntry(item, entry);
