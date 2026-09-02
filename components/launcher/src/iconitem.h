@@ -32,12 +32,17 @@ public:
 private:
     void loadPixmap();
 
+    // The scale the icon must be rasterised at: the window's, not the
+    // application's, so a second screen with another scale is handled too.
+    qreal scaleFactor() const;
+
 signals:
     void sourceChanged();
     void paintedSizeChanged();
 
 private:
     QVariant m_source;
+    qreal m_pixmapScale = 0;
     QPixmap m_iconPixmap;
     bool m_pixmapChanged = true;
 };

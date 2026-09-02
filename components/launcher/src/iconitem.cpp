@@ -44,9 +44,23 @@ int IconItem::paintedHeight() const
     return boundingRect().size().toSize().height();
 }
 
+qreal IconItem::scaleFactor() const
+{
+    if (QQuickWindow *w = window())
+        return w->effectiveDevicePixelRatio();
+
+    return qApp->devicePixelRatio();
+}
+
 QSGNode *IconItem::updatePaintNode(QSGNode *oldNode, QQuickItem::UpdatePaintNodeData *updatePaintNodeData)
 {
     Q_UNUSED(updatePaintNodeData);
+
+    // Nothing about the item changes when the output scale does - same source,
+    // same logical geometry - so the icon has to be re-rasterised here or it
+    // keeps the resolution it was first built at and is upscaled from there.
+    if (!qFuzzyCompare(m_pixmapScale, scaleFactor()))
+        loadPixmap();
 
     if (m_iconPixmap.isNull() || width() == 0.0 || height() == 0.0) {
         delete oldNode;
@@ -111,7 +125,12 @@ void IconItem::loadPixmap()
     if (!isComponentComplete())
         return;
 
-    int size = qMin(qRound(width()), qRound(height()));
+    // Recorded before the early returns below, so a null result is not retried
+    // on every frame by updatePaintNode().
+    const qreal scale = scaleFactor();
+    m_pixmapScale = scale;
+
+    const int size = qMin(qRound(width()), qRound(height()));
 
     if (size <= 0) {
         // Clear pixmap
@@ -129,14 +148,11 @@ void IconItem::loadPixmap()
 
     if (m_source.canConvert<QIcon>()) {
         QIcon icon = m_source.value<QIcon>();
-        m_iconPixmap = icon.pixmap(QSize(size * qApp->devicePixelRatio(),
-                                         size * qApp->devicePixelRatio()));
-        m_iconPixmap.setDevicePixelRatio(qApp->devicePixelRatio());
+        m_iconPixmap = icon.pixmap(QSize(size, size), scale);
     } else if (m_source.canConvert<QImage>()) {
         QImage image = m_source.value<QImage>();
-        m_iconPixmap = QPixmap::fromImage(image).scaled(QSize(size * qApp->devicePixelRatio(),
-                                                              size * qApp->devicePixelRatio()));
-        m_iconPixmap.setDevicePixelRatio(qApp->devicePixelRatio());
+        m_iconPixmap = QPixmap::fromImage(image).scaled(QSize(size, size) * scale);
+        m_iconPixmap.setDevicePixelRatio(scale);
     } else if (!m_source.isNull()) {
         QString localFile;
 
@@ -152,18 +168,15 @@ void IconItem::loadPixmap()
         if (!localFile.isEmpty()) {
             m_iconPixmap.load(localFile);
             if (!m_iconPixmap.isNull()) {
-                m_iconPixmap = m_iconPixmap.scaled(QSize(size * qApp->devicePixelRatio(),
-                                                         size * qApp->devicePixelRatio()));
-                m_iconPixmap.setDevicePixelRatio(qApp->devicePixelRatio());
+                m_iconPixmap = m_iconPixmap.scaled(QSize(size, size) * scale);
+                m_iconPixmap.setDevicePixelRatio(scale);
             }
         }
     }
 
     if (m_iconPixmap.isNull()) {
         QIcon icon = QIcon::fromTheme(sourceString, QIcon::fromTheme("application-x-desktop"));
-        m_iconPixmap = icon.pixmap(QSize(size * qApp->devicePixelRatio(),
-                                         size * qApp->devicePixelRatio()));
-        m_iconPixmap.setDevicePixelRatio(qApp->devicePixelRatio());
+        m_iconPixmap = icon.pixmap(QSize(size, size), scale);
     }
 
     m_pixmapChanged = true;
