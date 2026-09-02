@@ -39,12 +39,33 @@ Item {
     property int labelHeight: 32
     property int spacing: 12
 
-    property var dragLayer: null
+    // The AllAppsView this delegate belongs to.
+    property Item view: null
 
     readonly property int itemIndex: index
-    readonly property bool dragging: iconMouseArea.drag.active
+    readonly property bool dragging: control.Drag.active
+
+    // Tracked by hand: a window-level drag takes the mouse grab away, so the
+    // MouseArea never sees the release and would stay pressed after the drop.
+    property bool iconPressed: false
 
     z: dragging ? 2 : 0
+
+    // A window-level drag: the compositor carries the icon, so it can be
+    // dropped on another shell window and not only back into this grid.
+    Drag.dragType: Drag.Automatic
+    Drag.supportedActions: Qt.MoveAction
+    Drag.proposedAction: Qt.MoveAction
+    Drag.mimeData: ({ "application/x-cutefish-desktop-id": model.appId })
+    Drag.keys: ["application/x-cutefish-desktop-id"]
+    Drag.hotSpot.x: control.iconSize / 2
+    Drag.hotSpot.y: control.iconSize / 2
+
+    Drag.onActiveChanged: {
+        launcher.setDragging(control.Drag.active)
+        if (!control.Drag.active)
+            control.iconPressed = false
+    }
 
     IconItem {
         id: icon
@@ -63,7 +84,7 @@ Item {
             source: icon
             color: "#000000"
             opacity: 0.5
-            visible: iconMouseArea.pressed && !control.dragging
+            visible: control.iconPressed && !control.dragging
         }
     }
 
@@ -71,7 +92,7 @@ Item {
         id: dropArea
 
         anchors.fill: parent
-        keys: ["cutefish-launcher"]
+        keys: ["application/x-cutefish-desktop-id"]
         enabled: !control.searchMode
 
         onEntered: reorderTimer.restart()
@@ -80,7 +101,7 @@ Item {
         // The dwell below already reordered; the drop just ends the drag.
         onDropped: function (drop) {
             reorderTimer.stop()
-            drop.accept()
+            drop.accept(Qt.MoveAction)
         }
     }
 
@@ -89,25 +110,25 @@ Item {
     Timer {
         id: reorderTimer
 
-        interval: 150
+        interval: 90
 
         onTriggered: {
-            if (!dropArea.containsDrag || !control.dragLayer)
+            if (!dropArea.containsDrag || !control.view)
                 return
 
             // Wait out the previous swap's animation.
-            if (control.dragLayer.dragProxy.settling) {
+            if (control.view.settling) {
                 reorderTimer.restart()
                 return
             }
 
             var source = dropArea.drag.source
-            if (!source || source === control)
+            if (!source || source === control || source.itemIndex === undefined)
                 return
 
             launcherModel.move(source.itemIndex, control.itemIndex,
                                control.pageIndex, control.pageCount)
-            control.dragLayer.dragProxy.startSettle()
+            control.view.startSettle()
         }
     }
 
@@ -171,39 +192,60 @@ Item {
 
         acceptedButtons: Qt.LeftButton | Qt.RightButton
 
-        // In-scene drag. Drag.Automatic would hand it to the compositor, which
-        // needs a data-device grab our shell surface never gets on Wayland.
-        drag.target: control.searchMode || !control.dragLayer ? null
-                                                             : control.dragLayer.dragProxy
-        drag.axis: Drag.XAndYAxis
-        drag.smoothed: false
+        // The view is a Flickable and would steal the grab on the first few
+        // pixels of movement, paging the grid instead of starting the drag.
+        // Dragging the view from anywhere else still works.
+        preventStealing: true
 
-        onPressed: {
-            if (control.searchMode || !control.dragLayer)
-                return
+        // The drag threshold is tracked by hand: MouseArea's own drag machinery
+        // needs a target item to move, and here the compositor moves the icon.
+        property point pressPoint
+        property url dragImage
+        // One drag per press.
+        property bool dragArmed: false
 
-            // Sit the proxy on the icon so it does not jump when the drag starts.
-            var proxy = control.dragLayer.dragProxy
-            var pos = control.mapToItem(control.dragLayer, icon.x, icon.y)
-            proxy.iconName = model.iconName
-            proxy.sourceItem = control
-            proxy.x = pos.x
-            proxy.y = pos.y
+        onPressed: function (mouse) {
+            control.iconPressed = true
+            iconMouseArea.dragArmed = true
+            iconMouseArea.pressPoint = Qt.point(mouse.x, mouse.y)
+            iconMouseArea.dragImage = ""
+            icon.grabToImage(function (result) {
+                iconMouseArea.dragImage = result.url
+            })
         }
 
-        drag.onActiveChanged: {
-            if (!control.dragLayer)
+        onReleased: control.iconPressed = false
+        onCanceled: control.iconPressed = false
+
+        onPositionChanged: function (mouse) {
+            if (!iconMouseArea.dragArmed || !(mouse.buttons & Qt.LeftButton)
+                    || control.searchMode || control.Drag.active)
                 return
 
-            if (!iconMouseArea.drag.active)
-                control.dragLayer.dragProxy.finish()
-            else
-                control.dragLayer.dragProxy.dragging = true
-        }
+            const dx = mouse.x - iconMouseArea.pressPoint.x
+            const dy = mouse.y - iconMouseArea.pressPoint.y
+            if (dx * dx + dy * dy < Math.pow(Qt.styleHints.startDragDistance, 2))
+                return
 
-        onCanceled: {
-            if (control.dragLayer)
-                control.dragLayer.dragProxy.abort()
+            // The image the compositor carries has to exist before the drag
+            // goes active. It is grabbed on press so this does not have to
+            // wait a frame for it.
+            iconMouseArea.dragArmed = false
+
+            if (iconMouseArea.dragImage != "") {
+                control.Drag.imageSource = iconMouseArea.dragImage
+                control.Drag.active = true
+                return
+            }
+
+            icon.grabToImage(function (result) {
+                // grabToImage is asynchronous; the button may be up by now.
+                if (!control.iconPressed)
+                    return
+
+                control.Drag.imageSource = result.url
+                control.Drag.active = true
+            })
         }
 
         onClicked: function (mouse) {

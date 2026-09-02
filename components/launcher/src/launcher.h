@@ -54,6 +54,13 @@ public:
 
     Q_INVOKABLE void clearPixmapCache();
 
+    /**
+     * A window-level drag hands the pointer to the compositor, which can cost
+     * this window its activation. Without this the launcher would hide itself
+     * out from under the icon being dragged.
+     */
+    Q_INVOKABLE void setDragging(bool dragging);
+
     QRect screenRect();
 
 signals:
@@ -79,6 +86,7 @@ private:
     QRect m_screenRect;
     QTimer *m_hideTimer;
     bool m_showed;
+    bool m_dragging;
 
     int m_topMargin;
     int m_leftMargin;

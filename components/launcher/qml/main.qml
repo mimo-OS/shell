@@ -178,6 +178,14 @@ Item {
         onClicked: launcher.hideWindow()
     }
 
+    // The whole surface accepts the drag. Without it the cursor flips to "no
+    // drop" in every gap between the icons. The per-icon drop areas sit deeper
+    // in the tree, so they still get the event first.
+    DropArea {
+        anchors.fill: parent
+        keys: ["application/x-cutefish-desktop-id"]
+    }
+
     ColumnLayout {
         id: mainLayout
         anchors.fill: parent

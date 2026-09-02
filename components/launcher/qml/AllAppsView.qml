@@ -28,6 +28,10 @@ ListView {
 
     property bool searchMode: false
 
+    // True while a swap is still animating. Without it the delegates sliding
+    // past the cursor each claim the drag and it bounces.
+    readonly property bool settling: _settleTimer.running
+
     property var sourceModel: launcherModel
     property int modelCount: sourceModel.count
 
@@ -87,6 +91,15 @@ ListView {
     currentIndex: -1
     clip: true
 
+    Timer {
+        id: _settleTimer
+        interval: 270
+    }
+
+    function startSettle() {
+        _settleTimer.restart()
+    }
+
     NumberAnimation on contentX {
         id: scrollAnim
 
@@ -107,8 +120,25 @@ ListView {
     // MouseArea inside a page never sees the ones an icon declines.
     WheelHandler {
         target: null
+
+        // A touchpad sends many small deltas. Page once per notch's worth of
+        // them, or a two-finger scroll runs through the whole grid.
+        property real accumulated: 0
+
         onWheel: function (event) {
-            if (event.angleDelta.y > 0)
+            const delta = event.angleDelta.y !== 0 ? event.angleDelta.y : event.angleDelta.x
+            if (delta === 0)
+                return
+
+            if ((accumulated > 0) !== (delta > 0))
+                accumulated = 0
+
+            accumulated += delta
+            if (Math.abs(accumulated) < 120)
+                return
+
+            accumulated = 0
+            if (delta > 0)
                 control.scrollPreviousPage()
             else
                 control.scrollNextPage()
@@ -122,7 +152,6 @@ ListView {
         height: control.height
 
         readonly property int pageIndex: index
-        property alias dragProxy: _dragProxy
 
         // Anything that is not an icon or the search field dismisses.
         MouseArea {
@@ -145,16 +174,26 @@ ListView {
             displaced: Transition {
                 NumberAnimation {
                     properties: "x, y"
-                    duration: 250
-                    easing.type: Easing.OutCubic
+                    duration: 260
+                    easing.type: Easing.OutQuint
                 }
             }
 
             moveDisplaced: Transition {
                 NumberAnimation {
                     properties: "x, y"
-                    duration: 250
-                    easing.type: Easing.OutCubic
+                    duration: 260
+                    easing.type: Easing.OutQuint
+                }
+            }
+
+            // The dragged item is hidden, but its slot still has to travel with
+            // the rest or it snaps into place when the drag ends.
+            move: Transition {
+                NumberAnimation {
+                    properties: "x, y"
+                    duration: 260
+                    easing.type: Easing.OutQuint
                 }
             }
 
@@ -175,65 +214,7 @@ ListView {
                 labelPixelSize: control.labelPixelSize
                 labelHeight: control.labelHeight
                 spacing: control.cellSpacing
-                dragLayer: _pageItem
-            }
-        }
-
-        // One drag proxy per page, above the grid. Kept out of the delegate so
-        // the grid's displace animation does not drag it around.
-        Item {
-            id: _dragProxy
-
-            property var sourceItem: null
-            property var iconName: ""
-            property bool dragging: false
-
-            // True while a swap is still animating. Without it the delegates
-            // sliding past the cursor each claim the drag and it bounces.
-            readonly property bool settling: _settleTimer.running
-
-            Timer {
-                id: _settleTimer
-                interval: 240
-            }
-
-            function startSettle() {
-                _settleTimer.restart()
-            }
-
-            width: control.iconSize
-            height: control.iconSize
-            z: 100
-            visible: dragging
-            scale: dragging ? 1.08 : 1.0
-            opacity: 0.9
-
-            Drag.active: _dragProxy.dragging
-            Drag.source: _dragProxy.sourceItem
-            Drag.keys: ["cutefish-launcher"]
-            Drag.hotSpot.x: width / 2
-            Drag.hotSpot.y: height / 2
-
-            Behavior on scale {
-                NumberAnimation { duration: 120 }
-            }
-
-            IconItem {
-                anchors.fill: parent
-                source: _dragProxy.iconName
-            }
-
-            function finish() {
-                if (Drag.active)
-                    Drag.drop()
-                dragging = false
-                sourceItem = null
-            }
-
-            // Ends the drag without dropping, when the grab is taken away.
-            function abort() {
-                dragging = false
-                sourceItem = null
+                view: control
             }
         }
     }

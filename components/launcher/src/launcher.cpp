@@ -16,6 +16,7 @@ Launcher::Launcher(QQmlEngine *engine, bool firstShow)
     , m_dock(nullptr)
     , m_hideTimer(new QTimer)
     , m_showed(false)
+    , m_dragging(false)
     , m_topMargin(StatusBar::Height)
     , m_leftMargin(0)
     , m_rightMargin(0)
@@ -146,6 +147,7 @@ void Launcher::hide()
 void Launcher::hideWindow()
 {
     m_showed = false;
+    m_dragging = false;
     emit showedChanged();
     setVisible(false);
 
@@ -180,6 +182,11 @@ void Launcher::removeFromDock(const QString &desktop)
 {
     if (m_dock)
         m_dock->remove(desktop);
+}
+
+void Launcher::setDragging(bool dragging)
+{
+    m_dragging = dragging;
 }
 
 void Launcher::clearPixmapCache()
@@ -253,7 +260,7 @@ void Launcher::resizeEvent(QResizeEvent *e)
 
 void Launcher::onActiveChanged()
 {
-    if (isActive())
+    if (isActive() || m_dragging)
         return;
 
     // A context menu is a separate Qt::Popup window. Opening it makes this
@@ -261,6 +268,9 @@ void Launcher::onActiveChanged()
     // open.
     QTimer::singleShot(0, this, [this] {
         if (isActive())
+            return;
+
+        if (m_dragging)
             return;
 
         for (QWindow *window : QGuiApplication::allWindows()) {
