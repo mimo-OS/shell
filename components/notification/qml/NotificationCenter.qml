@@ -33,7 +33,7 @@ NotificationCenterDialog {
     // Same positioning contract as ControlCenter: the status bar sets
     // `position` to the global position of the item that opened the window,
     // and the window keeps itself on screen from there.
-    property var margin: 4 * Screen.devicePixelRatio
+    property var margin: 4
     // Defaults to the right hand edge, so opening the centre over D-Bus rather
     // than from the status bar item still lands it where it belongs.
     property point position: Qt.point(StatusBar.screenRect.x + StatusBar.screenRect.width, 0)

@@ -35,7 +35,7 @@ ControlCenterDialog {
     width: 450
     height: _mainLayout.implicitHeight + FishUI.Units.largeSpacing * 2
 
-    property var margin: 4 * Screen.devicePixelRatio
+    property var margin: 4
     property point position: Qt.point(0, 0)
     property var defaultSink: paSinkModel.defaultSink
 
