@@ -34,14 +34,28 @@ Item {
     // equivalent of the old QQuickView::SizeRootObjectToView behavior.
     anchors.fill: parent
 
-    property real horizontalSpacing: launcher.screenRect.width * 0.01
-    property real verticalSpacing: launcher.screenRect.height * 0.01
-    property real maxSpacing: horizontalSpacing > verticalSpacing ? horizontalSpacing : verticalSpacing
     property bool showed: launcher.showed
-    property int iconSize: root.height < 960 ? 96 : 128
     property real wallpaperQuality: 0.5
 
     property alias uninstallDialog: _uninstallDialog
+
+    // Margins are a fraction of the surface, clamped at both ends.
+    readonly property int outerMarginH: Math.max(16, Math.min(96, Math.round(root.width * 0.035)))
+    readonly property int outerMarginV: Math.max(16, Math.min(64, Math.round(root.height * 0.035)))
+    readonly property int sectionSpacing: Math.max(10, Math.min(48, Math.round(root.height * 0.025)))
+
+    // The status bar and the dock keep drawing on top of this full-screen
+    // surface; C++ is the side that knows where the dock is.
+    readonly property int panelTop: launcher.topMargin
+    readonly property int panelLeft: launcher.leftMargin
+    readonly property int panelRight: launcher.rightMargin
+    readonly property int panelBottom: launcher.bottomMargin
+
+    // Scales with the surface, or it is a lost little pill on a 4K screen.
+    readonly property int searchPixelSize: Math.max(12, Math.min(22, Math.round(root.height * 0.017)))
+    readonly property int searchFieldWidth: Math.round(Math.max(240, Math.min(root.width * 0.22,
+                                                                              root.height * 0.42)))
+    readonly property int searchFieldHeight: Math.round(root.searchPixelSize * 2.3)
 
     AppManager {
         id: appManager
@@ -104,58 +118,6 @@ Item {
         }
     }
 
-//    onShowedChanged: {
-//        appViewOpacityAni.restart()
-//        blurAnimation.restart()
-//    }
-
-//    NumberAnimation {
-//        id: rootOpacityAni
-//        from: root.showed ? 1 : 0
-//        to: root.showed ? 0 : 1
-//        target: root
-//        property: "opacity"
-//        duration: 200
-//    }
-
-//    NumberAnimation {
-//        id: blurAnimation
-//        target: wallpaperBlur
-//        property: "radius"
-//        duration: 300
-//        from: root.showed ? 72 : 0
-//        to: root.showed ? 0 : 72
-//    }
-
-//    NumberAnimation {
-//        id: wallpaperColorAni
-//        target: wallpaperColor
-//        property: "opacity"
-//        from: root.showed ? 0.4 : 0.0
-//        to: root.showed ? 0.0 : 0.4
-//        duration: 250
-//    }
-
-//    NumberAnimation {
-//        id: appViewScaleAni
-//        target: appView
-//        property: "scale"
-//        easing.type: Easing.OutCubic
-//        from: root.showed ? 1.0 : 1.2
-//        to: root.showed ? 1.2 : 1.0
-//        duration: 180
-//    }
-
-//    NumberAnimation {
-//        id: appViewOpacityAni
-//        target: appView
-//        property: "opacity"
-//        easing.type: Easing.OutCubic
-//        from: root.showed ? 1.0 : 0.0
-//        to: root.showed ? 0.0 : 1.0
-//        duration: 250
-//    }
-
     System.Wallpaper {
         id: backend
     }
@@ -210,41 +172,42 @@ Item {
         }
     }
 
+    // Catches the outer margins and the search row.
+    MouseArea {
+        anchors.fill: parent
+        onClicked: launcher.hideWindow()
+    }
+
     ColumnLayout {
         id: mainLayout
         anchors.fill: parent
-        anchors.topMargin: 28
-        // The launcher is a full-screen overlay.  The dock is drawn above it,
-        // so its geometry must not shrink the launcher's content area.
-        anchors.leftMargin: 28
-        anchors.rightMargin: 28
-        anchors.bottomMargin: 28
-        spacing: 0
+        anchors.topMargin: root.outerMarginV + root.panelTop
+        anchors.leftMargin: root.outerMarginH + root.panelLeft
+        anchors.rightMargin: root.outerMarginH + root.panelRight
+        anchors.bottomMargin: root.outerMarginV + root.panelBottom
+        spacing: root.sectionSpacing
 
         Item {
             id: searchItem
-            Layout.fillWidth: true
-            height: fontMetrics.height + FishUI.Units.largeSpacing
 
-            TextMetrics {
-                id: fontMetrics
-                text: _placeLabel.text
-            }
+            Layout.fillWidth: true
+            Layout.preferredHeight: root.searchFieldHeight
 
             TextField {
                 id: textField
                 anchors.centerIn: parent
-                width: searchItem.width * 0.2
-                height: parent.height
+                width: root.searchFieldWidth
+                height: root.searchFieldHeight
 
                 leftPadding: textField.activeFocus ? _placeImage.width + FishUI.Units.largeSpacing : FishUI.Units.largeSpacing
                 rightPadding: FishUI.Units.largeSpacing
 
                 selectByMouse: true
 
-                // placeholderText: qsTr("Search")
                 wrapMode: Text.NoWrap
 
+                font: Qt.font({ family: Qt.application.font.family,
+                                pixelSize: root.searchPixelSize })
                 color: "white"
 
                 Item {
@@ -267,7 +230,7 @@ Item {
 
                         Image {
                             id: _placeImage
-                            height: placeHolderItem.height - FishUI.Units.largeSpacing
+                            height: Math.round(placeHolderItem.height * 0.5)
                             width: height
                             sourceSize: Qt.size(width, height)
                             source: "qrc:/launcher/images/system-search-symbolic.svg"
@@ -276,6 +239,8 @@ Item {
                         Label {
                             id: _placeLabel
                             color: "white"
+                            font: Qt.font({ family: Qt.application.font.family,
+                                            pixelSize: root.searchPixelSize })
                             text: qsTr("Search")
                             visible: !textField.length && !textField.preeditText && (!textField.activeFocus || textField.horizontalAlignment !== Qt.AlignHCenter)
                         }
@@ -284,7 +249,7 @@ Item {
 
                 background: Rectangle {
                     opacity: 0.2
-                    radius: textField.height * 0.2
+                    radius: textField.height * 0.25
                     color: "white"
                     border.width: 0
                 }
@@ -309,10 +274,6 @@ Item {
         }
 
         Item {
-            height: 14
-        }
-
-        Item {
             id: gridItem
             Layout.fillHeight: true
             Layout.fillWidth: true
@@ -323,14 +284,11 @@ Item {
             AllAppsView {
                 id: appView
                 anchors.fill: parent
-                anchors.leftMargin: gridItem.width * 0.1
-                anchors.rightMargin: gridItem.width * 0.1
-                Layout.alignment: Qt.AlignHCenter
-                searchMode: textField.text
+                searchMode: textField.text.length > 0
                 focus: true
 
                 Keys.enabled: true
-                Keys.onPressed: {
+                Keys.onPressed: function (event) {
                     if (event.key === Qt.Key_Escape)
                         launcher.hideWindow()
 
@@ -352,7 +310,8 @@ Item {
                 Label {
                     anchors.centerIn: parent
                     text: qsTr("Not found")
-                    font.pointSize: 30
+                    font: Qt.font({ family: Qt.application.font.family,
+                                    pixelSize: Math.max(20, Math.min(48, Math.round(root.height * 0.035))) })
                     color: "white"
                     visible: appView.count === 0
                 }
@@ -361,29 +320,24 @@ Item {
 
         PageIndicator {
             id: pageIndicator
+
             count: appView.count
             currentIndex: appView.currentIndex
-            onCurrentIndexChanged: appView.currentIndex = currentIndex
-            interactive: true
+
+            // Purely an indicator: clicks here dismiss the launcher like any
+            // other non-icon area.
+            interactive: false
+
             spacing: FishUI.Units.largeSpacing
             Layout.alignment: Qt.AlignHCenter
             visible: appView.count > 1
 
             delegate: Rectangle {
-                width: 10
+                width: Math.max(8, Math.min(12, Math.round(root.height * 0.009)))
                 height: width
                 radius: width / 2
                 color: index === pageIndicator.currentIndex ? "white" : Qt.darker("white", 1.8)
             }
-        }
-    }
-
-    MouseArea {
-        anchors.fill: parent
-        z: -1
-
-        onClicked: {
-            launcher.hideWindow()
         }
     }
 

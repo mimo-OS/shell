@@ -3,6 +3,7 @@
 #include "activity.h"
 #include "kwinwaylandinterface.h"
 #include "dockwindow.h"
+#include "statusbar.h"
 
 #include <QApplication>
 #include <QPixmapCache>
@@ -15,6 +16,7 @@ Launcher::Launcher(QQmlEngine *engine, bool firstShow)
     , m_dock(nullptr)
     , m_hideTimer(new QTimer)
     , m_showed(false)
+    , m_topMargin(StatusBar::Height)
     , m_leftMargin(0)
     , m_rightMargin(0)
     , m_bottomMargin(0)
@@ -50,6 +52,11 @@ Launcher::Launcher(QQmlEngine *engine, bool firstShow)
     connect(kwin, &KWinWaylandInterface::clientAdded, this, [this](quint64 address) {
         focusWaylandWindow(address);
     });
+}
+
+int Launcher::topMargin() const
+{
+    return m_topMargin;
 }
 
 int Launcher::leftMargin() const
@@ -187,6 +194,8 @@ QRect Launcher::screenRect()
 
 void Launcher::updateMargins()
 {
+    // The status bar and the dock draw on top of the launcher.
+    m_topMargin = StatusBar::Height;
     m_leftMargin = 0;
     m_rightMargin = 0;
     m_bottomMargin = 0;

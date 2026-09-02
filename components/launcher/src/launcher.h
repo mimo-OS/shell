@@ -13,6 +13,7 @@ class Launcher : public ShellSurface
     Q_OBJECT
     Q_PROPERTY(QRect screenRect READ screenRect NOTIFY screenRectChanged)
     Q_PROPERTY(bool showed READ showed NOTIFY showedChanged)
+    Q_PROPERTY(int topMargin READ topMargin NOTIFY marginsChanged)
     Q_PROPERTY(int leftMargin READ leftMargin NOTIFY marginsChanged)
     Q_PROPERTY(int rightMargin READ rightMargin NOTIFY marginsChanged)
     Q_PROPERTY(int bottomMargin READ bottomMargin NOTIFY marginsChanged)
@@ -20,6 +21,7 @@ class Launcher : public ShellSurface
 public:
     Launcher(QQmlEngine *engine, bool firstShow = false);
 
+    int topMargin() const;
     int leftMargin() const;
     int rightMargin() const;
     int bottomMargin() const;
@@ -78,6 +80,7 @@ private:
     QTimer *m_hideTimer;
     bool m_showed;
 
+    int m_topMargin;
     int m_leftMargin;
     int m_rightMargin;
     int m_bottomMargin;
