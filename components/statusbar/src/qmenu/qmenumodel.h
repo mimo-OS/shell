@@ -4,6 +4,7 @@
 #include <QAbstractListModel>
 #include <QPointer>
 #include <QHash>
+#include <QSet>
 
 class QAction;
 class QMenu;
@@ -71,6 +72,9 @@ private:
     QPointer<QMenu> m_menu;
     QList<QAction *> m_actions;
     QHash<QAction *, QMenuModel *> m_submenus;
+    // The actions that were invisible when the rows were last built, so that
+    // a change of visibility can be told from any other change.
+    QSet<QAction *> m_hidden;
     bool m_refreshPending = false;
 };
 

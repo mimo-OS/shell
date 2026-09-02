@@ -180,6 +180,7 @@ void QMenuModel::aboutToHide()
 void QMenuModel::rebuild()
 {
     m_actions.clear();
+    m_hidden.clear();
 
     if (!m_menu)
         return;
@@ -189,9 +190,23 @@ void QMenuModel::rebuild()
         connect(action, &QAction::changed, this, &QMenuModel::onActionChanged, Qt::UniqueConnection);
         connect(action, &QObject::destroyed, this, &QMenuModel::onActionDestroyed, Qt::UniqueConnection);
 
-        if (action->isVisible())
-            m_actions.append(action);
+        if (!action->isVisible()) {
+            m_hidden.insert(action);
+            continue;
+        }
+
+        // An application groups its menu with separators and then hides the
+        // entries that do not apply, which leaves runs of separators behind -
+        // and a menu exported over DBus often ends with one as well. A
+        // separator is only worth a line when it sits between two entries.
+        if (action->isSeparator() && (m_actions.isEmpty() || m_actions.constLast()->isSeparator()))
+            continue;
+
+        m_actions.append(action);
     }
+
+    while (!m_actions.isEmpty() && m_actions.constLast()->isSeparator())
+        m_actions.removeLast();
 }
 
 void QMenuModel::scheduleRefresh()
@@ -221,16 +236,17 @@ void QMenuModel::onActionChanged()
     if (!action)
         return;
 
-    const int row = m_actions.indexOf(action);
-
     // An action that appeared or disappeared changes the rows themselves;
     // anything else is a property of a row that is already there. Resetting
-    // the model unnecessarily would tear down an open submenu.
-    if ((row >= 0) != action->isVisible()) {
+    // the model unnecessarily would tear down an open submenu. Absence from
+    // the rows is not the test: a separator that was folded away is visible
+    // and still has no row of its own.
+    if (action->isVisible() == m_hidden.contains(action)) {
         scheduleRefresh();
         return;
     }
 
+    const int row = m_actions.indexOf(action);
     if (row >= 0)
         emit dataChanged(index(row, 0), index(row, 0));
 }
@@ -243,6 +259,7 @@ void QMenuModel::onActionDestroyed(QObject *object)
     QAction *action = static_cast<QAction *>(object);
 
     delete m_submenus.take(action);
+    m_hidden.remove(action);
 
     const int row = m_actions.indexOf(action);
     if (row < 0)
