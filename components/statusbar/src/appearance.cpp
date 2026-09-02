@@ -141,18 +141,3 @@ void Appearance::setAccentColor(int accentColor)
     }
 }
 
-double Appearance::devicePixelRatio() const
-{
-    return m_interface.property("devicePixelRatio").toDouble();
-}
-
-void Appearance::setDevicePixelRatio(double value)
-{
-    QDBusInterface iface("com.cutefish.Settings",
-                         "/Theme",
-                         "com.cutefish.Theme",
-                         QDBusConnection::sessionBus(), this);
-    if (iface.isValid()) {
-        iface.call("setDevicePixelRatio", value);
-    }
-}
