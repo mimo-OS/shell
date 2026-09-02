@@ -33,10 +33,10 @@ Item {
     property bool isRight: Settings.direction === DockSettings.Right
     property bool isHorizontal: Settings.direction === DockSettings.Bottom
 
-    // Geometry shared with MainWindow, see src/dockmetrics.h. The dock is a
+    // Geometry shared with Dock, see src/dockmetrics.h. The dock is a
     // row (or column) of icons with padding at both ends, and the running dot
     // lives between the icons and the screen edge.
-    property var metrics: mainWindow.metrics
+    property var metrics: dock.metrics
     property int iconGap: metrics.iconGap
     property int lengthPadding: metrics.lengthPadding
     property int outerPadding: metrics.outerPadding
@@ -78,13 +78,13 @@ Item {
     }
 
     FishUI.WindowShadow {
-        view: mainWindow
+        view: dock
         strength: 1
         radius: _background.radius
     }
 
     FishUI.WindowBlur {
-        view: mainWindow
+        view: dock
         windowRadius: _background.radius
         enabled: FishUI.Theme.blurEnabled
     }
@@ -202,7 +202,7 @@ Item {
     }
 
     Connections {
-        target: mainWindow
+        target: dock
 
         function onVisibleChanged() {
             popupTips.hide()

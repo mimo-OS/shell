@@ -5,7 +5,7 @@
 
 class QQmlEngine;
 class StatusBar;
-class MainWindow;
+class DockWindow;
 class Launcher;
 class DesktopManager;
 class NotificationManager;
@@ -42,7 +42,7 @@ private:
     QQmlEngine *m_engine;
 
     StatusBar *m_statusBar;
-    MainWindow *m_dock;
+    DockWindow *m_dock;
     Launcher *m_launcher;
     DesktopManager *m_desktops;
     NotificationManager *m_notifications;

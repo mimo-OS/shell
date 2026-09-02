@@ -121,7 +121,7 @@ Item {
         MenuItem {
             id: sendToDock
             text: qsTr("Send to dock")
-            onTriggered: launcherModel.sendToDock(model.appId)
+            onTriggered: launcher.sendToDock(model.appId)
         }
 
         MenuItem {
@@ -133,7 +133,7 @@ Item {
         MenuItem {
             id: removeFromDock
             text: qsTr("Remove from dock")
-            onTriggered: launcherModel.removeFromDock(model.appId)
+            onTriggered: launcher.removeFromDock(model.appId)
         }
 
         MenuItem {

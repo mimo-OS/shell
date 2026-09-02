@@ -1,4 +1,4 @@
-#include "mainwindow.h"
+#include "dockwindow.h"
 #include "processprovider.h"
 #include "dockadaptor.h"
 
@@ -16,7 +16,7 @@
 
 #include "kwinwaylandinterface.h"
 
-MainWindow::MainWindow(QQmlEngine *engine)
+DockWindow::DockWindow(QQmlEngine *engine)
     : ShellSurface(engine)
     , m_activity(Activity::self())
     , m_settings(DockSettings::self())
@@ -41,7 +41,7 @@ MainWindow::MainWindow(QQmlEngine *engine)
     setContextProperty("appModel", m_appModel);
     setContextProperty("process", new ProcessProvider(this));
     setContextProperty("Settings", m_settings);
-    setContextProperty("mainWindow", this);
+    setContextProperty("dock", this);
     setContextProperty("trash", m_trashManager);
 
     setScreen(qApp->primaryScreen());
@@ -59,77 +59,77 @@ MainWindow::MainWindow(QQmlEngine *engine)
 
     m_hideTimer->setSingleShot(true);
     m_hideTimer->setInterval(500);
-    connect(m_hideTimer, &QTimer::timeout, this, &MainWindow::onHideTimeout);
+    connect(m_hideTimer, &QTimer::timeout, this, &DockWindow::onHideTimeout);
 
     // When the current window changes.
-    connect(m_activity, &Activity::launchPadChanged, this, &MainWindow::onVisibilityChanged);
-    connect(m_activity, &Activity::existsWindowMaximizedChanged, this, &MainWindow::onVisibilityChanged);
+    connect(m_activity, &Activity::launchPadChanged, this, &DockWindow::onVisibilityChanged);
+    connect(m_activity, &Activity::existsWindowMaximizedChanged, this, &DockWindow::onVisibilityChanged);
 
     // Screen change.
-    connect(qGuiApp, &QGuiApplication::primaryScreenChanged, this, &MainWindow::onPrimaryScreenChanged);
+    connect(qGuiApp, &QGuiApplication::primaryScreenChanged, this, &DockWindow::onPrimaryScreenChanged);
     watchScreen(screen(), [this] { resizeWindow(); });
 
-    connect(m_appModel, &ApplicationModel::countChanged, this, &MainWindow::resizeWindow);
-    connect(m_settings, &DockSettings::directionChanged, this, &MainWindow::onPositionChanged);
-    connect(m_settings, &DockSettings::iconSizeChanged, this, &MainWindow::onIconSizeChanged);
-    connect(m_settings, &DockSettings::visibilityChanged, this, &MainWindow::onVisibilityChanged);
+    connect(m_appModel, &ApplicationModel::countChanged, this, &DockWindow::resizeWindow);
+    connect(m_settings, &DockSettings::directionChanged, this, &DockWindow::onPositionChanged);
+    connect(m_settings, &DockSettings::iconSizeChanged, this, &DockWindow::onIconSizeChanged);
+    connect(m_settings, &DockSettings::visibilityChanged, this, &DockWindow::onVisibilityChanged);
 }
 
-MainWindow::~MainWindow()
+DockWindow::~DockWindow()
 {
 }
 
-void MainWindow::add(const QString &desktop)
+void DockWindow::add(const QString &desktop)
 {
     m_appModel->addItem(desktop);
 }
 
-void MainWindow::remove(const QString &desktop)
+void DockWindow::remove(const QString &desktop)
 {
     m_appModel->removeItem(desktop);
 }
 
-bool MainWindow::pinned(const QString &desktop)
+bool DockWindow::pinned(const QString &desktop)
 {
     return m_appModel->isDesktopPinned(desktop);
 }
 
-QRect MainWindow::primaryGeometry() const
+QRect DockWindow::primaryGeometry() const
 {
     return geometry();
 }
 
-int MainWindow::direction() const
+int DockWindow::direction() const
 {
     return DockSettings::self()->direction();
 }
 
-int MainWindow::visibility() const
+int DockWindow::visibility() const
 {
     return DockSettings::self()->visibility();
 }
 
-void MainWindow::setDirection(int direction)
+void DockWindow::setDirection(int direction)
 {
     DockSettings::self()->setDirection(static_cast<DockSettings::Direction>(direction));
 }
 
-void MainWindow::setIconSize(int iconSize)
+void DockWindow::setIconSize(int iconSize)
 {
     DockSettings::self()->setIconSize(iconSize);
 }
 
-void MainWindow::setVisibility(int visibility)
+void DockWindow::setVisibility(int visibility)
 {
     DockSettings::self()->setVisibility(static_cast<DockSettings::Visibility>(visibility));
 }
 
-void MainWindow::setLauncher(Launcher *launcher)
+void DockWindow::setLauncher(Launcher *launcher)
 {
     m_appModel->setLauncher(launcher);
 }
 
-void MainWindow::updateIconGeometry(QQuickItem *item, const QStringList &windowIds)
+void DockWindow::updateIconGeometry(QQuickItem *item, const QStringList &windowIds)
 {
     if (!item || item->width() <= 0 || item->height() <= 0)
         return;
@@ -154,7 +154,7 @@ void MainWindow::updateIconGeometry(QQuickItem *item, const QStringList &windowI
     }
 }
 
-DockMetrics MainWindow::metricsFor(int itemCount, int maxLength) const
+DockMetrics DockWindow::metricsFor(int itemCount, int maxLength) const
 {
     DockMetrics metrics = DockMetrics::forIconSize(m_settings->iconSize());
 
@@ -166,12 +166,12 @@ DockMetrics MainWindow::metricsFor(int itemCount, int maxLength) const
     return metrics;
 }
 
-QVariantMap MainWindow::metrics() const
+QVariantMap DockWindow::metrics() const
 {
     return m_metrics.toVariantMap();
 }
 
-QRect MainWindow::windowRect() const
+QRect DockWindow::windowRect() const
 {
     const QRect screenGeometry = screen()->geometry();
     const QRect availableGeometry = screen()->availableGeometry();
@@ -216,7 +216,7 @@ QRect MainWindow::windowRect() const
     return QRect(position, newSize);
 }
 
-void MainWindow::updateMetrics()
+void DockWindow::updateMetrics()
 {
     const bool isHorizontal = m_settings->direction() == DockSettings::Bottom;
     const int itemCount = m_appModel->rowCount() + 1;
@@ -235,7 +235,7 @@ void MainWindow::updateMetrics()
 // Moving a plasma-shell surface takes more than QWindow::setGeometry(): the
 // compositor places it at the position given to the shell surface, so every
 // geometry change has to update both.
-void MainWindow::applyGeometry()
+void DockWindow::applyGeometry()
 {
     updateMetrics();
 
@@ -244,7 +244,7 @@ void MainWindow::applyGeometry()
     setSurfacePosition(rect.topLeft());
 }
 
-void MainWindow::resizeWindow()
+void DockWindow::resizeWindow()
 {
     applyGeometry();
     updateViewStruts();
@@ -257,7 +257,7 @@ void MainWindow::resizeWindow()
     emit resizingFished();
 }
 
-void MainWindow::initScreens()
+void DockWindow::initScreens()
 {
     switch (m_settings->direction()) {
 // TODO
@@ -281,7 +281,7 @@ void MainWindow::initScreens()
     }
 }
 
-void MainWindow::updateViewStruts()
+void DockWindow::updateViewStruts()
 {
     const bool reserveSpace = m_settings->visibility() == DockSettings::AlwaysShow
         && !m_activity->launchPad();
@@ -311,12 +311,12 @@ void MainWindow::updateViewStruts()
     m_strutSpacer->setThickness(reserveSpace ? thickness : 0);
 }
 
-void MainWindow::clearViewStruts()
+void DockWindow::clearViewStruts()
 {
     m_strutSpacer->setThickness(0);
 }
 
-void MainWindow::createFakeWindow()
+void DockWindow::createFakeWindow()
 {
     if (!m_fakeWindow) {
         m_fakeWindow = new FakeWindow;
@@ -350,7 +350,7 @@ void MainWindow::createFakeWindow()
     }
 }
 
-void MainWindow::deleteFakeWindow()
+void DockWindow::deleteFakeWindow()
 {
     if (m_fakeWindow) {
         // removeEventFilter(this);
@@ -360,7 +360,7 @@ void MainWindow::deleteFakeWindow()
     }
 }
 
-void MainWindow::onPrimaryScreenChanged(QScreen *screen)
+void DockWindow::onPrimaryScreenChanged(QScreen *screen)
 {
     Q_UNUSED(screen)
 
@@ -370,7 +370,7 @@ void MainWindow::onPrimaryScreenChanged(QScreen *screen)
     resizeWindow();
 }
 
-void MainWindow::onPositionChanged()
+void DockWindow::onPositionChanged()
 {
     initScreens();
 
@@ -389,7 +389,7 @@ void MainWindow::onPositionChanged()
     emit directionChanged();
 }
 
-void MainWindow::onIconSizeChanged()
+void DockWindow::onIconSizeChanged()
 {
     applyGeometry();
     updateViewStruts();
@@ -397,7 +397,7 @@ void MainWindow::onIconSizeChanged()
     emit iconSizeChanged();
 }
 
-void MainWindow::onVisibilityChanged()
+void DockWindow::onVisibilityChanged()
 {
     emit visibilityChanged();
 
@@ -449,7 +449,7 @@ void MainWindow::onVisibilityChanged()
     }
 }
 
-void MainWindow::onHideTimeout()
+void DockWindow::onHideTimeout()
 {
     if (m_activity->launchPad())
         return;
@@ -462,7 +462,7 @@ void MainWindow::onHideTimeout()
     setVisible(false);
 }
 
-void MainWindow::exposeEvent(QExposeEvent *e)
+void DockWindow::exposeEvent(QExposeEvent *e)
 {
     ShellSurface::exposeEvent(e);
 
@@ -470,7 +470,7 @@ void MainWindow::exposeEvent(QExposeEvent *e)
         emit minimizedGeometrySurfaceChanged();
 }
 
-bool MainWindow::eventFilter(QObject *obj, QEvent *e)
+bool DockWindow::eventFilter(QObject *obj, QEvent *e)
 {
     switch (e->type()) {
     case QEvent::Enter:
@@ -500,7 +500,7 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *e)
     return QQuickWindow::eventFilter(obj, e);
 }
 
-void MainWindow::resizeEvent(QResizeEvent *e)
+void DockWindow::resizeEvent(QResizeEvent *e)
 {
     emit primaryGeometryChanged();
 

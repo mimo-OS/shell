@@ -1,5 +1,5 @@
-#ifndef MAINWINDOW_H
-#define MAINWINDOW_H
+#ifndef DOCKWINDOW_H
+#define DOCKWINDOW_H
 
 #include <QTimer>
 #include <QStringList>
@@ -16,7 +16,7 @@
 
 class Launcher;
 
-class MainWindow : public ShellSurface
+class DockWindow : public ShellSurface
 {
     Q_OBJECT
     Q_PROPERTY(QRect primaryGeometry READ primaryGeometry NOTIFY primaryGeometryChanged)
@@ -25,8 +25,8 @@ class MainWindow : public ShellSurface
     Q_PROPERTY(QVariantMap metrics READ metrics NOTIFY metricsChanged)
 
 public:
-    explicit MainWindow(QQmlEngine *engine);
-    ~MainWindow();
+    explicit DockWindow(QQmlEngine *engine);
+    ~DockWindow();
 
     // DBus interface
     void add(const QString &desktop);
@@ -97,4 +97,4 @@ private:
     QTimer *m_hideTimer;
 };
 
-#endif // MAINWINDOW_H
+#endif // DOCKWINDOW_H

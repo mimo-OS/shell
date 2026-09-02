@@ -45,9 +45,7 @@ public:
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
 
     Q_INVOKABLE void search(const QString &key);
-    Q_INVOKABLE void sendToDock(const QString &key);
     Q_INVOKABLE void sendToDesktop(const QString &key);
-    Q_INVOKABLE void removeFromDock(const QString &desktop);
 
     int findById(const QString &id);
 

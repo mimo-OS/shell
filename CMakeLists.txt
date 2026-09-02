@@ -146,7 +146,7 @@ set(DOCK_SRCS
     components/dock/src/applicationitem.h
     components/dock/src/applicationmodel.cpp
     components/dock/src/docksettings.cpp
-    components/dock/src/mainwindow.cpp
+    components/dock/src/dockwindow.cpp
     components/dock/src/trashmanager.cpp
     components/dock/src/utils.cpp
     components/dock/src/windowinterface.cpp
@@ -156,7 +156,7 @@ set(DOCK_SRCS
 )
 
 qt6_add_dbus_adaptor(DOCK_GENERATED components/dock/src/com.cutefish.Dock.xml
-                     components/dock/src/mainwindow.h MainWindow)
+                     components/dock/src/dockwindow.h DockWindow)
 
 # ---------------------------------------------------------------------------
 # Notifications

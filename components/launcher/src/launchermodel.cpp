@@ -4,9 +4,6 @@
 #include "applicationregistry.h"
 #include "desktopentry.h"
 
-#include <QDBusConnection>
-#include <QDBusMessage>
-#include <QDBusPendingCall>
 #include <QDataStream>
 #include <QFile>
 #include <QFileInfo>
@@ -132,17 +129,6 @@ void LauncherModel::search(const QString &key)
     emit layoutChanged();
 }
 
-void LauncherModel::sendToDock(const QString &key)
-{
-    if (findById(key) < 0)
-        return;
-
-    QDBusMessage message = QDBusMessage::createMethodCall(
-        "com.cutefish.Dock", "/Dock", "com.cutefish.Dock", "add");
-    message.setArguments({key});
-    QDBusConnection::sessionBus().asyncCall(message);
-}
-
 void LauncherModel::sendToDesktop(const QString &key)
 {
     DesktopEntry *entry = ApplicationRegistry::instance()->byId(key);
@@ -153,17 +139,6 @@ void LauncherModel::sendToDesktop(const QString &key)
 
     const QString desktop = QStandardPaths::writableLocation(QStandardPaths::DesktopLocation);
     QFile::copy(entry->path(), desktop + QLatin1Char('/') + QFileInfo(entry->path()).fileName());
-}
-
-void LauncherModel::removeFromDock(const QString &desktop)
-{
-    if (findById(desktop) < 0)
-        return;
-
-    QDBusMessage message = QDBusMessage::createMethodCall(
-        "com.cutefish.Dock", "/Dock", "com.cutefish.Dock", "remove");
-    message.setArguments({desktop});
-    QDBusConnection::sessionBus().asyncCall(message);
 }
 
 int LauncherModel::findById(const QString &id)

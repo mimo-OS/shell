@@ -13,7 +13,7 @@
 #include "brightness.h"
 #include "battery.h"
 
-#include "mainwindow.h"
+#include "dockwindow.h"
 #include "docksettings.h"
 
 #include "notificationmanager.h"
@@ -163,7 +163,7 @@ void Shell::start()
     // to the desktop, but on Wayland defer mapping it until after the desktop.
     // DesktopSurface is a full-screen ordinary xdg-toplevel; mapping it last
     // can leave it above the dock/status bar and consume every pointer click.
-    m_dock = new MainWindow(m_engine);
+    m_dock = new DockWindow(m_engine);
     bus.registerObject(QStringLiteral("/Dock"), m_dock);
 
     m_desktops = new DesktopManager(m_engine, this);
@@ -180,6 +180,7 @@ void Shell::start()
     m_launcher = new Launcher(m_engine);
     bus.registerObject(QStringLiteral("/Launcher"),
                        QStringLiteral("com.cutefish.Launcher"), m_launcher);
+    m_launcher->setDock(m_dock);
     m_dock->setLauncher(m_launcher);
 
     m_dock->show();

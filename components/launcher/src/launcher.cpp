@@ -2,10 +2,9 @@
 #include "launcheradaptor.h"
 #include "activity.h"
 #include "kwinwaylandinterface.h"
+#include "dockwindow.h"
 
 #include <QApplication>
-#include <QDBusConnection>
-#include <QDBusServiceWatcher>
 #include <QPixmapCache>
 #include <QQmlContext>
 #include <QScreen>
@@ -13,9 +12,7 @@
 
 Launcher::Launcher(QQmlEngine *engine, bool firstShow)
     : ShellSurface(engine)
-    , m_dockInterface("com.cutefish.Dock",
-                    "/Dock",
-                    "com.cutefish.Dock", QDBusConnection::sessionBus())
+    , m_dock(nullptr)
     , m_hideTimer(new QTimer)
     , m_showed(false)
     , m_leftMargin(0)
@@ -46,22 +43,6 @@ Launcher::Launcher(QQmlEngine *engine, bool firstShow)
     m_hideTimer->setSingleShot(true);
     connect(m_hideTimer, &QTimer::timeout, this, [=] { setVisible(false); });
 
-    if (m_dockInterface.isValid() && !m_dockInterface.lastError().isValid()) {
-        updateMargins();
-        connect(&m_dockInterface, SIGNAL(primaryGeometryChanged()), this, SLOT(updateMargins()));
-        connect(&m_dockInterface, SIGNAL(directionChanged()), this, SLOT(updateMargins()));
-    } else {
-        QDBusServiceWatcher *watcher = new QDBusServiceWatcher("com.cutefish.Dock",
-                                                               QDBusConnection::sessionBus(),
-                                                               QDBusServiceWatcher::WatchForUnregistration,
-                                                               this);
-        connect(watcher, &QDBusServiceWatcher::serviceUnregistered, this, [=] {
-            updateMargins();
-            connect(&m_dockInterface, SIGNAL(primaryGeometryChanged()), this, SLOT(updateMargins()));
-            connect(&m_dockInterface, SIGNAL(directionChanged()), this, SLOT(updateMargins()));
-        });
-    }
-
     connect(qApp, &QApplication::primaryScreenChanged, this, [=] { onGeometryChanged(); });
     connect(this, &QQuickWindow::activeChanged, this, &Launcher::onActiveChanged);
 
@@ -84,6 +65,14 @@ int Launcher::rightMargin() const
 int Launcher::bottomMargin() const
 {
     return m_bottomMargin;
+}
+
+void Launcher::setDock(DockWindow *dock)
+{
+    m_dock = dock;
+    connect(m_dock, &DockWindow::primaryGeometryChanged, this, &Launcher::updateMargins);
+    connect(m_dock, &DockWindow::directionChanged, this, &Launcher::updateMargins);
+    updateMargins();
 }
 
 bool Launcher::showed()
@@ -166,20 +155,24 @@ void Launcher::toggle()
 
 bool Launcher::dockAvailable()
 {
-    return m_dockInterface.isValid();
+    return m_dock != nullptr;
 }
 
 bool Launcher::isPinedDock(const QString &desktop)
 {
-    QDBusInterface iface("com.cutefish.Dock",
-                         "/Dock",
-                         "com.cutefish.Dock",
-                         QDBusConnection::sessionBus());
+    return m_dock && m_dock->pinned(desktop);
+}
 
-    if (!iface.isValid())
-        return false;
+void Launcher::sendToDock(const QString &desktop)
+{
+    if (m_dock)
+        m_dock->add(desktop);
+}
 
-    return iface.call("pinned", desktop).arguments().first().toBool();
+void Launcher::removeFromDock(const QString &desktop)
+{
+    if (m_dock)
+        m_dock->remove(desktop);
 }
 
 void Launcher::clearPixmapCache()
@@ -194,19 +187,21 @@ QRect Launcher::screenRect()
 
 void Launcher::updateMargins()
 {
-    QRect dockGeometry = m_dockInterface.property("primaryGeometry").toRect();
-    int dockDirection = m_dockInterface.property("direction").toInt();
-
     m_leftMargin = 0;
     m_rightMargin = 0;
     m_bottomMargin = 0;
 
-    if (dockDirection == 0) {
-        m_leftMargin = dockGeometry.width();
-    } else if (dockDirection == 1) {
-        m_bottomMargin = dockGeometry.height();
-    } else if (dockDirection == 2) {
-        m_rightMargin = dockGeometry.width();
+    if (m_dock) {
+        const QRect dockGeometry = m_dock->primaryGeometry();
+        const int dockDirection = m_dock->direction();
+
+        if (dockDirection == 0) {
+            m_leftMargin = dockGeometry.width();
+        } else if (dockDirection == 1) {
+            m_bottomMargin = dockGeometry.height();
+        } else if (dockDirection == 2) {
+            m_rightMargin = dockGeometry.width();
+        }
     }
 
     emit marginsChanged();

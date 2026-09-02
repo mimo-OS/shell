@@ -65,7 +65,7 @@ DockItem {
     }
 
     Connections {
-        target: mainWindow
+        target: dock
 
         function onMinimizedGeometrySurfaceChanged() {
             appItem.updateMinimizedGeometry()
@@ -76,7 +76,7 @@ DockItem {
         id: minimizedGeometryTimer
         interval: 0
         repeat: false
-        onTriggered: mainWindow.updateIconGeometry(icon, windowIds)
+        onTriggered: dock.updateIconGeometry(icon, windowIds)
     }
 
     onRightClicked: if (model.appId !== "cutefish-launcher") popupMenu(contextMenu, mouse)

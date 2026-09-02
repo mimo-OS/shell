@@ -6,7 +6,7 @@
 
 #include "shellsurface.h"
 
-#include <QDBusInterface>
+class DockWindow;
 
 class Launcher : public ShellSurface
 {
@@ -25,6 +25,8 @@ public:
     int bottomMargin() const;
 
     bool showed();
+
+    void setDock(DockWindow *dock);
 
     /**
      * D-Bus entry points, called by the generated adaptor.
@@ -45,6 +47,8 @@ public:
 
     Q_INVOKABLE bool dockAvailable();
     Q_INVOKABLE bool isPinedDock(const QString &desktop);
+    Q_INVOKABLE void sendToDock(const QString &desktop);
+    Q_INVOKABLE void removeFromDock(const QString &desktop);
 
     Q_INVOKABLE void clearPixmapCache();
 
@@ -69,7 +73,7 @@ private:
     void focusWaylandWindow(quint64 address = 0);
 
 private:
-    QDBusInterface m_dockInterface;
+    DockWindow *m_dock;
     QRect m_screenRect;
     QTimer *m_hideTimer;
     bool m_showed;
