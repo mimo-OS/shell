@@ -260,11 +260,10 @@ Item {
                     return
 
                 if (userMenu.item.visible) {
-                    userMenu.item.close()
+                    userMenu.item.dismissAllPopups()
                 } else {
-                    userMenu.item.position = Qt.point(0, 0)
-                    userMenu.item.position = mapToGlobal(0, 0)
-                    userMenu.item.open()
+                    var pos = mapToGlobal(0, height + FishUI.Units.smallSpacing)
+                    userMenu.item.showAt(pos.x, pos.y)
                 }
             }
 
@@ -623,8 +622,15 @@ Item {
 
     Loader {
         id: userMenu
-        sourceComponent: ShutdownDialog {}
+        sourceComponent: UserMenu {}
         asynchronous: true
+
+        onLoaded: {
+            item.transientParent = rootItem.Window.window
+            item.availableGeometry = Qt.binding(function () {
+                return screenHelper.availableScreenRect
+            })
+        }
     }
 
     NM.ActiveConnection {
