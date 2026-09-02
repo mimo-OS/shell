@@ -332,9 +332,21 @@ Item {
             count: appView.count
             currentIndex: appView.currentIndex
 
-            // Purely an indicator: clicks here dismiss the launcher like any
-            // other non-icon area.
-            interactive: false
+            interactive: true
+
+            // Clicking a dot pages. The binding above is dropped the first time
+            // the user does that, so the view has to push its index back.
+            onCurrentIndexChanged: {
+                if (pageIndicator.currentIndex !== appView.currentIndex)
+                    appView.currentIndex = pageIndicator.currentIndex
+            }
+
+            Connections {
+                target: appView
+                function onCurrentIndexChanged() {
+                    pageIndicator.currentIndex = appView.currentIndex
+                }
+            }
 
             spacing: FishUI.Units.largeSpacing
             Layout.alignment: Qt.AlignHCenter
