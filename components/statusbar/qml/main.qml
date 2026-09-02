@@ -109,6 +109,12 @@ Item {
     // the menus while one of them is open, and so do the arrow keys. Both
     // reuse a single popup window - closing and reopening one would hand the
     // keyboard grab back and forth and lose the menu the user is in.
+    //
+    // The switch is driven by the menu bar's own hover. The open menu sees the
+    // pointer too, but only as coordinates in whatever window the compositor
+    // handed the event to, and on Wayland a client does not know where its
+    // windows are: the dock reports its own top left as the origin, so the
+    // pointer crossing the dock used to read as a walk along the menu bar.
     property int appMenuIndex: -1
 
     function openAppMenu(index, keyboard) {
@@ -157,22 +163,6 @@ Item {
         rootItem.popupMenuAt(acticityMenu, acticityItem)
     }
 
-    // Switch to the menu of the menu bar entry under @p globalPos, if the
-    // pointer is over another one than the menu that is open.
-    function switchAppMenuAt(globalPos) {
-        if (!appMenuPopup.visible)
-            return
-
-        var pos = appMenuView.mapFromGlobal(globalPos.x, globalPos.y)
-        if (pos.x < 0 || pos.x > appMenuView.width ||
-                pos.y < 0 || pos.y > appMenuView.height)
-            return
-
-        var index = appMenuView.indexAt(pos.x + appMenuView.contentX, pos.y)
-        if (index >= 0 && index !== rootItem.appMenuIndex)
-            rootItem.openAppMenu(index)
-    }
-
     // Left and right walk to the neighbouring menu, wrapping around.
     function stepAppMenu(step) {
         var count = appMenuView.count
@@ -197,43 +187,6 @@ Item {
         onVisibleChanged: {
             if (!visible)
                 rootItem.appMenuIndex = -1
-        }
-
-        // An open menu holds the pointer grab, so the pointer may be reported
-        // to the menu rather than to the menu bar underneath it.
-        onMouseMoved: function (globalPos) {
-            rootItem.switchAppMenuAt(globalPos)
-        }
-    }
-
-    // ... and on some compositors to neither of them, in which case the
-    // cursor position is all that is left to follow.
-    Timer {
-        id: appMenuHoverTimer
-
-        interval: 80
-        repeat: true
-        running: appMenuPopup.visible
-
-        property point lastPos: Qt.point(-1, -1)
-
-        onRunningChanged: lastPos = Qt.point(-1, -1)
-
-        onTriggered: {
-            var pos = appMenuPopup.globalCursorPos()
-            var known = lastPos.x >= 0 || lastPos.y >= 0
-
-            // Only an actual movement is worth acting on. The first reading
-            // is just where the pointer already was - acting on it would pull
-            // the menu back under a pointer the user has left behind while
-            // walking the menu bar with the arrow keys.
-            if (known && pos.x === lastPos.x && pos.y === lastPos.y)
-                return
-
-            lastPos = pos
-
-            if (known)
-                rootItem.switchAppMenuAt(pos)
         }
     }
 
