@@ -137,9 +137,7 @@ Item {
 
         rootItem.appMenuIndex = index
 
-        appMenuPopup.transientParent = rootItem.Window.window
-        var pos = item.mapToGlobal(0, item.height + FishUI.Units.smallSpacing)
-        appMenuPopup.popupAt(pos.x, pos.y)
+        rootItem.popupMenuAt(appMenuPopup, item)
     }
 
     function closeAppMenu() {
@@ -147,6 +145,16 @@ Item {
 
         if (appMenuPopup.visible)
             appMenuPopup.dismissAllPopups()
+    }
+
+    function popupMenuAt(menu, item) {
+        menu.transientParent = rootItem.Window.window
+        var pos = item.mapToGlobal(0, item.height + FishUI.Units.smallSpacing)
+        menu.popupAt(pos.x, pos.y)
+    }
+
+    function openActicityMenu() {
+        rootItem.popupMenuAt(acticityMenu, acticityItem)
     }
 
     // Switch to the menu of the menu bar entry under @p globalPos, if the
@@ -298,9 +306,14 @@ Item {
             Layout.fillHeight: true
             Layout.preferredWidth: Math.min(rootItem.width / 3,
                                             acticityLayout.implicitWidth + FishUI.Units.largeSpacing)
-            onClicked: {
-                if (mouse.button === Qt.RightButton)
-                    acticityMenu.open()
+            onClicked: rootItem.openActicityMenu()
+
+            Connections {
+                target: acticityItem.mouseArea
+
+                function onDoubleClicked() {
+                    rootItem.openActicityMenu()
+                }
             }
 
             RowLayout {
@@ -365,15 +378,16 @@ Item {
                         }
                     }
 
-                    // A menu opens on press, the way it does everywhere else.
-                    // While one is open, moving onto another entry switches to
-                    // it: whether the pointer event reaches the menu bar or
-                    // the menu depends on how the compositor routes the popup
-                    // grab, so both are wired up to the same switch.
+                    // A menu opens on click or double-click. While one is
+                    // open, moving onto another entry switches to it: whether
+                    // the pointer event reaches the menu bar or the menu
+                    // depends on how the compositor routes the popup grab,
+                    // so both are wired up to the same switch.
                     MouseArea {
                         anchors.fill: parent
                         hoverEnabled: rootItem.appMenuIndex !== -1
-                        onPressed: rootItem.openAppMenu(index)
+                        onClicked: rootItem.openAppMenu(index)
+                        onDoubleClicked: rootItem.openAppMenu(index)
                         onEntered: {
                             if (rootItem.appMenuIndex !== -1 &&
                                     rootItem.appMenuIndex !== index)
