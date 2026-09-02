@@ -1,0 +1,135 @@
+name: Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  debian:
+    name: Debian
+    runs-on: ubuntu-latest
+    container: docker.io/library/debian:sid
+    steps:
+    - name: Checkout shell
+      uses: actions/checkout@v4
+      with:
+        path: shell
+    - name: Checkout libcutefish
+      uses: actions/checkout@v4
+      with:
+        repository: reionwong/libcutefish
+        ref: main
+        path: libcutefish
+    - name: Checkout fishui
+      uses: actions/checkout@v4
+      with:
+        repository: reionwong/fishui
+        ref: main
+        path: fishui
+    - name: Checkout filemanager
+      uses: actions/checkout@v4
+      with:
+        repository: reionwong/filemanager
+        ref: main
+        path: filemanager
+    - name: Update repository
+      run: apt-get update -y
+    - name: Install the basic dev packages
+      run: apt-get install -y equivs curl git devscripts lintian build-essential automake autotools-dev cmake g++ libwayland-bin libwayland-dev
+    - name: Install libcutefish build dependencies
+      working-directory: libcutefish
+      run: mk-build-deps -i -t "apt-get --yes" -r
+    - name: Install fishui build dependencies
+      working-directory: fishui
+      run: mk-build-deps -i -t "apt-get --yes" -r
+    - name: Install filemanager build dependencies
+      working-directory: filemanager
+      run: mk-build-deps -i -t "apt-get --yes" -r
+    - name: Build and install libcutefish
+      working-directory: libcutefish
+      run: |
+        cmake -S . -B /tmp/cutefish-ci-build/libcutefish -DCMAKE_INSTALL_PREFIX=/usr
+        cmake --build /tmp/cutefish-ci-build/libcutefish --parallel "$(nproc)"
+        cmake --install /tmp/cutefish-ci-build/libcutefish
+    - name: Build and install fishui
+      working-directory: fishui
+      run: |
+        cmake -S . -B /tmp/cutefish-ci-build/fishui -DCMAKE_INSTALL_PREFIX=/usr
+        cmake --build /tmp/cutefish-ci-build/fishui --parallel "$(nproc)"
+        cmake --install /tmp/cutefish-ci-build/fishui
+    - name: Build and install filemanager
+      working-directory: filemanager
+      run: |
+        cmake -S . -B /tmp/cutefish-ci-build/filemanager -DCMAKE_INSTALL_PREFIX=/usr
+        cmake --build /tmp/cutefish-ci-build/filemanager --parallel "$(nproc)"
+        cmake --install /tmp/cutefish-ci-build/filemanager
+    - name: Build shell
+      working-directory: shell
+      run: |
+        cmake -S . -B /tmp/cutefish-ci-build/shell -DCMAKE_INSTALL_PREFIX=/usr
+        cmake --build /tmp/cutefish-ci-build/shell --parallel "$(nproc)"
+
+  ubuntu:
+    name: Ubuntu
+    runs-on: ubuntu-26.04
+    steps:
+    - name: Checkout shell
+      uses: actions/checkout@v4
+      with:
+        path: shell
+    - name: Checkout libcutefish
+      uses: actions/checkout@v4
+      with:
+        repository: reionwong/libcutefish
+        ref: main
+        path: libcutefish
+    - name: Checkout fishui
+      uses: actions/checkout@v4
+      with:
+        repository: reionwong/fishui
+        ref: main
+        path: fishui
+    - name: Checkout filemanager
+      uses: actions/checkout@v4
+      with:
+        repository: reionwong/filemanager
+        ref: main
+        path: filemanager
+    - name: Update repository
+      run: sudo apt-get update -y
+    - name: Install the basic dev packages
+      run: sudo apt-get install -y equivs curl git devscripts lintian build-essential automake autotools-dev cmake g++ libwayland-bin libwayland-dev
+    - name: Install libcutefish build dependencies
+      working-directory: libcutefish
+      run: sudo mk-build-deps -i -t "apt-get --yes" -r
+    - name: Install fishui build dependencies
+      working-directory: fishui
+      run: sudo mk-build-deps -i -t "apt-get --yes" -r
+    - name: Install filemanager build dependencies
+      working-directory: filemanager
+      run: sudo mk-build-deps -i -t "apt-get --yes" -r
+    - name: Build and install libcutefish
+      working-directory: libcutefish
+      run: |
+        cmake -S . -B /tmp/cutefish-ci-build/libcutefish -DCMAKE_INSTALL_PREFIX=/usr
+        cmake --build /tmp/cutefish-ci-build/libcutefish --parallel "$(nproc)"
+        sudo cmake --install /tmp/cutefish-ci-build/libcutefish
+    - name: Build and install fishui
+      working-directory: fishui
+      run: |
+        cmake -S . -B /tmp/cutefish-ci-build/fishui -DCMAKE_INSTALL_PREFIX=/usr
+        cmake --build /tmp/cutefish-ci-build/fishui --parallel "$(nproc)"
+        sudo cmake --install /tmp/cutefish-ci-build/fishui
+    - name: Build and install filemanager
+      working-directory: filemanager
+      run: |
+        cmake -S . -B /tmp/cutefish-ci-build/filemanager -DCMAKE_INSTALL_PREFIX=/usr
+        cmake --build /tmp/cutefish-ci-build/filemanager --parallel "$(nproc)"
+        sudo cmake --install /tmp/cutefish-ci-build/filemanager
+    - name: Build shell
+      working-directory: shell
+      run: |
+        cmake -S . -B /tmp/cutefish-ci-build/shell -DCMAKE_INSTALL_PREFIX=/usr
+        cmake --build /tmp/cutefish-ci-build/shell --parallel "$(nproc)"
