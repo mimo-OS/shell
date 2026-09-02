@@ -160,6 +160,8 @@ Item {
     }
 
     function openActicityMenu() {
+        if (!acticity.title)
+            return
         rootItem.popupMenuAt(acticityMenu, acticityItem)
     }
 
@@ -256,6 +258,7 @@ Item {
         // App name
         StandardItem {
             id: acticityItem
+            visible: !!acticity.title
             Layout.fillHeight: true
             Layout.preferredWidth: Math.min(rootItem.width / 3,
                                             acticityLayout.implicitWidth + FishUI.Units.largeSpacing)
