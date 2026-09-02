@@ -58,7 +58,15 @@ QSGNode *IconItem::updatePaintNode(QSGNode *oldNode, QQuickItem::UpdatePaintNode
     if (!textureNode) {
         delete oldNode;
         textureNode = new QSGSimpleTextureNode;
-        textureNode->setTexture(window()->createTextureFromImage(m_iconPixmap.toImage(), QQuickWindow::TextureCanUseAtlas));
+        textureNode->setOwnsTexture(true);
+        m_pixmapChanged = true;
+    }
+
+    // Re-upload on every change: the node outlives the source it was built for.
+    if (m_pixmapChanged) {
+        textureNode->setTexture(window()->createTextureFromImage(m_iconPixmap.toImage(),
+                                                                 QQuickWindow::TextureCanUseAtlas));
+        m_pixmapChanged = false;
     }
 
     textureNode->setFiltering(smooth() ? QSGTexture::Linear : QSGTexture::Nearest);
@@ -108,11 +116,16 @@ void IconItem::loadPixmap()
     if (size <= 0) {
         // Clear pixmap
         m_iconPixmap = QPixmap();
+        m_pixmapChanged = true;
         update();
         return;
     }
 
     QString sourceString = m_source.toString();
+
+    // Clear first: the theme lookup below only runs on a null pixmap, so a
+    // leftover from the previous source would make it a no-op.
+    m_iconPixmap = QPixmap();
 
     if (m_source.canConvert<QIcon>()) {
         QIcon icon = m_source.value<QIcon>();
@@ -153,5 +166,6 @@ void IconItem::loadPixmap()
         m_iconPixmap.setDevicePixelRatio(qApp->devicePixelRatio());
     }
 
+    m_pixmapChanged = true;
     update();
 }

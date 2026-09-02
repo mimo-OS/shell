@@ -39,6 +39,7 @@ signals:
 private:
     QVariant m_source;
     QPixmap m_iconPixmap;
+    bool m_pixmapChanged = true;
 };
 
 #endif // ICONITEM_H
