@@ -4,11 +4,13 @@
 #include <QDBusConnection>
 #include <QDBusConnectionInterface>
 #include <QDBusServiceWatcher>
+#include <QCoreApplication>
 #include <QGuiApplication>
 #include <QMenu>
 #include <QQmlEngine>
 
 #include "../libdbusmenuqt/dbusmenuimporter.h"
+#include "core/services/activity.h"
 #include "core/wayland/kwinwaylandinterface.h"
 #include "menuimporter.h"
 #include <QDebug>
@@ -31,8 +33,18 @@ protected:
 AppMenuModel::AppMenuModel(QObject *parent)
     : QAbstractListModel(parent)
     , m_menuAvailable(false)
+    , m_menu(nullptr)
+    , m_activityMenu(nullptr)
+    , m_activityAction(nullptr)
+    , m_activity(Activity::self())
     , m_serviceWatcher(new QDBusServiceWatcher(this))
 {
+    m_activityMenu = new QMenu;
+    m_activityAction = new QAction(m_activity->title(), this);
+    m_activityAction->setMenu(m_activityMenu);
+    m_activityMenu->addAction(QCoreApplication::translate("main", "Close"),
+                              m_activity, &Activity::close);
+
     connect(this, &AppMenuModel::modelNeedsUpdate, this, [this] {
         if (!m_updatePending) {
             m_updatePending = true;
@@ -57,6 +69,8 @@ AppMenuModel::AppMenuModel(QObject *parent)
                 [this](uint) { onActiveWindowChanged(); }, Qt::QueuedConnection);
     }
 
+    connect(m_activity, &Activity::titleChanged, this,
+            &AppMenuModel::updateActivityVisibility);
     onActiveWindowChanged();
 
     m_serviceWatcher->setConnection(QDBusConnection::sessionBus());
@@ -70,7 +84,12 @@ AppMenuModel::AppMenuModel(QObject *parent)
     });
 }
 
-AppMenuModel::~AppMenuModel() = default;
+AppMenuModel::~AppMenuModel()
+{
+    if (m_activityAction)
+        m_activityAction->setMenu(nullptr);
+    delete m_activityMenu;
+}
 
 bool AppMenuModel::menuAvailable() const
 {
@@ -81,7 +100,6 @@ void AppMenuModel::setMenuAvailable(bool set)
 {
     if (m_menuAvailable != set) {
         m_menuAvailable = set;
-        setVisible(true);
         emit menuAvailableChanged();
     }
 }
@@ -102,11 +120,11 @@ void AppMenuModel::setVisible(bool visible)
 int AppMenuModel::rowCount(const QModelIndex &parent) const
 {
     Q_UNUSED(parent);
-    if (!m_menuAvailable || !m_menu) {
+    if (!m_visible) {
         return 0;
     }
 
-    return m_menu->actions().count();
+    return 1 + (m_menuAvailable && m_menu ? m_menu->actions().count() : 0);
 }
 
 void AppMenuModel::update()
@@ -134,13 +152,29 @@ void AppMenuModel::onActiveWindowChanged()
     if (!serviceName.isEmpty() && !objectPath.isEmpty()) {
         setMenuAvailable(true);
         updateApplicationMenu(serviceName, objectPath);
-        setVisible(true);
-        emit modelNeedsUpdate();
     } else {
-        setVisible(false);
+        setMenuAvailable(false);
     }
 
-    return;
+    updateActivityVisibility();
+    emit modelNeedsUpdate();
+}
+
+void AppMenuModel::updateActivityVisibility()
+{
+    const QString title = m_activity->title();
+    const bool visible = !title.isEmpty();
+    const bool titleChanged = m_activityAction->text() != title;
+    if (titleChanged)
+        m_activityAction->setText(title);
+
+    if (m_visible != visible) {
+        setVisible(visible);
+        emit modelNeedsUpdate();
+    } else if (titleChanged && visible) {
+        const QModelIndex modelIndex = index(0, 0);
+        emit dataChanged(modelIndex, modelIndex);
+    }
 }
 
 QHash<int, QByteArray> AppMenuModel::roleNames() const
@@ -153,20 +187,15 @@ QHash<int, QByteArray> AppMenuModel::roleNames() const
 
 QVariant AppMenuModel::data(const QModelIndex &index, int role) const
 {
-    const int row = index.row();
-    if (row < 0 || !m_menuAvailable || !m_menu) {
-        return QVariant();
-    }
-
-    const auto actions = m_menu->actions();
-    if (row >= actions.count()) {
+    QAction *action = actionAt(index.row());
+    if (!action) {
         return QVariant();
     }
 
     if (role == MenuRole) { // TODO this should be Qt::DisplayRole
-        return actions.at(row)->text();
+        return action->text();
     } else if (role == ActionRole) {
-        return QVariant::fromValue((void *)actions.at(row));
+        return QVariant::fromValue((void *)action);
     }
 
     return QVariant();
@@ -174,16 +203,13 @@ QVariant AppMenuModel::data(const QModelIndex &index, int role) const
 
 QObject *AppMenuModel::menuAt(int row) const
 {
-    if (!m_menuAvailable || !m_menu)
+    QAction *action = actionAt(row);
+    if (!action)
         return nullptr;
 
-    const auto actions = m_menu->actions();
-    if (row < 0 || row >= actions.count())
-        return nullptr;
+    QMenu *menu = action->menu();
 
-    QMenu *menu = actions.at(row)->menu();
-
-    // The menu belongs to the importer; QML must not collect it.
+    // Both synthetic and imported menus are owned by C++.
     if (menu)
         QQmlEngine::setObjectOwnership(menu, QQmlEngine::CppOwnership);
 
@@ -192,16 +218,45 @@ QObject *AppMenuModel::menuAt(int row) const
 
 void AppMenuModel::trigger(int row)
 {
-    if (!m_menuAvailable || !m_menu)
+    QAction *action = actionAt(row);
+    if (!action || action->menu())
         return;
+
+    action->trigger();
+}
+
+QAction *AppMenuModel::actionAt(int row) const
+{
+    if (!m_visible || row < 0)
+        return nullptr;
+
+    if (row == 0)
+        return m_activityAction;
+
+    if (!m_menuAvailable || !m_menu)
+        return nullptr;
 
     const auto actions = m_menu->actions();
-    if (row < 0 || row >= actions.count())
-        return;
+    const int actionIndex = row - 1;
+    if (actionIndex >= actions.count())
+        return nullptr;
 
-    QAction *action = actions.at(row);
-    if (!action->menu())
-        action->trigger();
+    return actions.at(actionIndex);
+}
+
+int AppMenuModel::rowForAction(QAction *action) const
+{
+    if (!action || !m_visible)
+        return -1;
+
+    if (action == m_activityAction)
+        return 0;
+
+    if (!m_menuAvailable || !m_menu)
+        return -1;
+
+    const int actionIndex = m_menu->actions().indexOf(action);
+    return actionIndex < 0 ? -1 : actionIndex + 1;
 }
 
 void AppMenuModel::updateApplicationMenu(const QString &serviceName, const QString &menuObjectPath)
@@ -217,6 +272,8 @@ void AppMenuModel::updateApplicationMenu(const QString &serviceName, const QStri
     m_serviceWatcher->setWatchedServices(QStringList({m_serviceName}));
 
     m_menuObjectPath = menuObjectPath;
+
+    m_menu = nullptr;
 
     if (m_importer) {
         m_importer->deleteLater();
@@ -236,12 +293,10 @@ void AppMenuModel::updateApplicationMenu(const QString &serviceName, const QStri
         for (QAction *a : actions) {
             // signal dataChanged when the action changes
             connect(a, &QAction::changed, this, [this, a] {
-                if (m_menuAvailable && m_menu) {
-                    const int actionIdx = m_menu->actions().indexOf(a);
-                    if (actionIdx > -1) {
-                        const QModelIndex modelIdx = index(actionIdx, 0);
-                        emit dataChanged(modelIdx, modelIdx);
-                    }
+                const int actionRow = rowForAction(a);
+                if (actionRow >= 0) {
+                    const QModelIndex modelIdx = index(actionRow, 0);
+                    emit dataChanged(modelIdx, modelIdx);
                 }
             });
 
@@ -265,7 +320,7 @@ void AppMenuModel::updateApplicationMenu(const QString &serviceName, const QStri
         const auto actions = m_menu->actions();
         auto it = std::find(actions.begin(), actions.end(), action);
         if (it != actions.end()) {
-            Q_EMIT requestActivateIndex(it - actions.begin());
+            Q_EMIT requestActivateIndex((it - actions.begin()) + 1);
         }
     });
 }

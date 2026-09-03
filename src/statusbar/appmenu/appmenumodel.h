@@ -7,9 +7,11 @@
 #include <QStringList>
 
 class QMenu;
+class QAction;
 class QModelIndex;
 class QDBusServiceWatcher;
 class CDBusMenuImporter;
+class Activity;
 
 class AppMenuModel : public QAbstractListModel
 {
@@ -57,11 +59,19 @@ Q_SIGNALS:
     void visibleChanged();
 
 private:
+    // Activity occupies row zero; exported application actions follow it.
+    QAction *actionAt(int row) const;
+    int rowForAction(QAction *action) const;
+    void updateActivityVisibility();
+
     bool m_menuAvailable;
     bool m_updatePending = false;
     bool m_visible = true;
 
     QPointer<QMenu> m_menu;
+    QPointer<QMenu> m_activityMenu;
+    QPointer<QAction> m_activityAction;
+    Activity *m_activity;
 
     QDBusServiceWatcher *m_serviceWatcher;
     QString m_serviceName;

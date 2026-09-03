@@ -143,12 +143,6 @@ Item {
         menu.popupAt(pos.x, pos.y)
     }
 
-    function openActicityMenu() {
-        if (!acticity.title)
-            return
-        rootItem.popupMenuAt(acticityMenu, acticityItem)
-    }
-
     // Left and right walk to the neighbouring menu, wrapping around.
     function stepAppMenu(step) {
         var count = appMenuView.count
@@ -173,17 +167,6 @@ Item {
         onVisibleChanged: {
             if (!visible)
                 rootItem.appMenuIndex = -1
-        }
-    }
-
-    FishUI.DesktopMenu {
-        id: acticityMenu
-
-        availableGeometry: screenHelper.availableScreenRect
-
-        MenuItem {
-            text: qsTr("Close")
-            onTriggered: acticity.close()
         }
     }
 
@@ -246,44 +229,6 @@ Item {
                             radius: parent.height / 2
                         }
                     }
-                }
-            }
-        }
-
-        // App name
-        StandardItem {
-            id: acticityItem
-            visible: !!acticity.title
-            contextMenuPressed: acticityMenu.visible
-            Layout.fillHeight: true
-            Layout.preferredWidth: Math.min(rootItem.width / 3,
-                                            acticityLayout.implicitWidth + FishUI.Units.largeSpacing)
-            onClicked: rootItem.openActicityMenu()
-
-            Connections {
-                target: acticityItem.mouseArea
-
-                function onDoubleClicked() {
-                    rootItem.openActicityMenu()
-                }
-            }
-
-            RowLayout {
-                id: acticityLayout
-                anchors.fill: parent
-                anchors.leftMargin: FishUI.Units.smallSpacing
-                anchors.rightMargin: FishUI.Units.smallSpacing
-                spacing: FishUI.Units.smallSpacing
-
-                Label {
-                    id: acticityLabel
-                    text: acticity.title
-                    Layout.fillWidth: true
-                    elide: Qt.ElideRight
-                    color: rootItem.textColor
-                    visible: text
-                    Layout.alignment: Qt.AlignVCenter
-                    font.pointSize: rootItem.fontSize
                 }
             }
         }
