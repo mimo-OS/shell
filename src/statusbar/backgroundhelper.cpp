@@ -36,10 +36,12 @@ void BackgroundHelper::setBackgound(const QString &fileName)
     m_wallpaper = fileName;
     m_type = 0;
 
-    QImage img(fileName);
-
     // Nothing to sample yet: the wallpaper is set once the theme daemon has
     // told the shell about it.
+    if (fileName.isEmpty())
+        return;
+
+    QImage img(fileName);
     if (img.isNull())
         return;
 
