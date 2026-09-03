@@ -1,0 +1,710 @@
+#include "applicationmodel.h"
+#include "core/services/applicationresolver.h"
+#include "applicationlauncher.h"
+#include "applicationregistry.h"
+#include "desktopentry.h"
+#include "launcher/launcher.h"
+
+#include <QFileInfo>
+#include <QSettings>
+
+#include <algorithm>
+#include <utility>
+
+// The dock's built-in launcher button. It is not backed by a .desktop file.
+static const char *kLauncherId = "cutefish-launcher";
+
+ApplicationModel::ApplicationModel(QObject *parent)
+    : QAbstractListModel(parent)
+    , m_kwin(KWinWaylandInterface::instance())
+{
+    connect(m_kwin, &KWinWaylandInterface::clientAdded, this, [this](quint64 wid) {
+        if (m_kwin->isAcceptableWindow(wid))
+            onWindowAdded(wid);
+    });
+    connect(m_kwin, &KWinWaylandInterface::clientRemoved, this, &ApplicationModel::onWindowRemoved);
+    connect(m_kwin, &KWinWaylandInterface::clientChanged, this, [this](quint64 wid) {
+        // A window that stops being acceptable -- unmapped, or turned into one
+        // of ours -- leaves the dock the same way a closed one does.
+        if (m_kwin->isAcceptableWindow(wid))
+            onWindowChanged(wid);
+        else
+            onWindowRemoved(wid);
+    });
+    connect(m_kwin, &KWinWaylandInterface::activeWindowChanged, this, &ApplicationModel::onActiveChanged);
+
+    ApplicationRegistry *registry = ApplicationRegistry::instance();
+    connect(registry, &ApplicationRegistry::applicationsChanged,
+            this, &ApplicationModel::onApplicationsChanged);
+    initPinnedApplications();
+    m_pinsInitialized = true;
+    if (!registry->loading())
+        onApplicationsChanged();
+
+    QTimer::singleShot(100, this, [this] {
+        loadExistingWindows();
+        m_initialWindowsLoaded = true;
+    });
+}
+
+void ApplicationModel::setLauncher(Launcher *launcher)
+{
+    m_launcher = launcher;
+}
+
+int ApplicationModel::rowCount(const QModelIndex &parent) const
+{
+    Q_UNUSED(parent)
+
+    return m_appItems.size();
+}
+
+QHash<int, QByteArray> ApplicationModel::roleNames() const
+{
+    QHash<int, QByteArray> roles;
+    roles[AppIdRole] = "appId";
+    roles[IconNameRole] = "iconName";
+    roles[VisibleNameRole] = "visibleName";
+    roles[ActiveRole] = "isActive";
+    roles[WindowCountRole] = "windowCount";
+    roles[WindowIdsRole] = "windowIds";
+    roles[IsPinnedRole] = "isPinned";
+    roles[DesktopFileRole] = "desktopFile";
+    roles[FixedItemRole] = "fixed";
+    roles[AnimationTokenRole] = "animationToken";
+    return roles;
+}
+
+QVariant ApplicationModel::data(const QModelIndex &index, int role) const
+{
+    if (!index.isValid())
+        return QVariant();
+
+    ApplicationItem *item = m_appItems.at(index.row());
+
+    switch (role) {
+    case AppIdRole:
+        return item->id;
+    case IconNameRole:
+        return item->iconName;
+    case VisibleNameRole:
+        return item->visibleName;
+    case ActiveRole:
+        return item->isActive;
+    case WindowCountRole:
+        return item->wids.count();
+    case WindowIdsRole: {
+        QStringList windowIds;
+        for (quint64 wid : item->wids)
+            windowIds.append(QString::number(wid));
+        return windowIds;
+    }
+    case IsPinnedRole:
+        return item->isPinned;
+    case DesktopFileRole:
+        return item->desktopPath;
+    case FixedItemRole:
+        return item->fixed;
+    case AnimationTokenRole:
+        return item->animationToken;
+    default:
+        return QVariant();
+    }
+
+    return QVariant();
+}
+
+void ApplicationModel::updateFromDesktopEntry(ApplicationItem *item,
+                                               DesktopEntry *entry)
+{
+    if (!item || !entry)
+        return;
+
+    item->id = entry->id();
+    if (!entry->icon().isEmpty())
+        item->iconName = entry->icon();
+    if (!entry->name().isEmpty())
+        item->visibleName = entry->name();
+    if (!entry->exec().isEmpty())
+        item->exec = entry->exec();
+    item->desktopPath = entry->path();
+}
+
+void ApplicationModel::addItem(const QString &desktopFile)
+{
+    ApplicationRegistry *registry = ApplicationRegistry::instance();
+    DesktopEntry *entry = registry->byPath(desktopFile);
+    if (!entry)
+        entry = registry->byId(desktopFile);
+    if (!entry)
+        return;
+
+    ApplicationItem *existsItem = findItemByDesktop(entry->path());
+
+    if (existsItem) {
+        existsItem->isPinned = true;
+        updateFromDesktopEntry(existsItem, entry);
+        handleDataChangedFromItem(existsItem);
+        savePinAndUnPinList();
+        return;
+    }
+
+    beginInsertRows(QModelIndex(), rowCount(), rowCount());
+    ApplicationItem *item = new ApplicationItem;
+    updateFromDesktopEntry(item, entry);
+    item->isPinned = true;
+    item->animationToken = animationTokenForNewItem();
+
+    m_appItems << item;
+    endInsertRows();
+
+    savePinAndUnPinList();
+
+    emit itemAdded();
+    emit countChanged();
+}
+
+void ApplicationModel::removeItem(const QString &desktopFile)
+{
+    DesktopEntry *entry = ApplicationRegistry::instance()->byPath(desktopFile);
+    if (!entry)
+        entry = ApplicationRegistry::instance()->byId(desktopFile);
+
+    ApplicationItem *item = entry ? findItemByDesktop(entry->path())
+                                  : findItemByDesktop(desktopFile);
+    if (!item)
+        item = findItemById(desktopFile);
+
+    if (item) {
+        ApplicationModel::unPin(item->id);
+    }
+}
+
+int ApplicationModel::animationTokenForNewItem()
+{
+    return m_initialWindowsLoaded ? ++m_nextAnimationToken : 0;
+}
+
+bool ApplicationModel::desktopContains(const QString &desktopFile)
+{
+    if (desktopFile.isEmpty())
+        return false;
+
+    DesktopEntry *entry = ApplicationRegistry::instance()->byPath(desktopFile);
+    if (!entry)
+        entry = ApplicationRegistry::instance()->byId(desktopFile);
+    if (entry)
+        return findItemByDesktop(entry->path()) != nullptr;
+
+    if (findItemById(desktopFile))
+        return true;
+    return findItemByDesktop(desktopFile) != nullptr;
+}
+
+bool ApplicationModel::isDesktopPinned(const QString &desktopFile)
+{
+    DesktopEntry *entry = ApplicationRegistry::instance()->byPath(desktopFile);
+    if (!entry)
+        entry = ApplicationRegistry::instance()->byId(desktopFile);
+    ApplicationItem *item = entry ? findItemByDesktop(entry->path())
+                                  : findItemByDesktop(desktopFile);
+    if (!item)
+        item = findItemById(desktopFile);
+
+    if (item) {
+        return item->isPinned;
+    }
+
+    return false;
+}
+
+void ApplicationModel::clicked(const QString &id)
+{
+    ApplicationItem *item = findItemById(id);
+
+    if (!item)
+        return;
+
+    // Application Item that has been pinned,
+    // We need to open it.
+    if (item->wids.isEmpty()) {
+        // open application
+        openNewInstance(item->id);
+    }
+    // Multiple windows have been opened and need to switch between them,
+    // The logic here needs to be improved.
+    else if (item->wids.count() > 1) {
+        item->currentActive++;
+
+        if (item->currentActive == item->wids.count())
+            item->currentActive = 0;
+
+        m_kwin->focusWindow(item->wids.at(item->currentActive));
+    } else if (m_kwin->activeWindow() == item->wids.first()) {
+        m_kwin->minimizeWindow(item->wids.first());
+    } else {
+        m_kwin->focusWindow(item->wids.first());
+    }
+}
+
+void ApplicationModel::raiseWindow(const QString &id)
+{
+    ApplicationItem *item = findItemById(id);
+
+    if (!item)
+        return;
+
+    m_kwin->focusWindow(item->wids.at(item->currentActive));
+}
+
+bool ApplicationModel::openNewInstance(const QString &appId)
+{
+    ApplicationItem *item = findItemById(appId);
+
+    if (!item)
+        return false;
+
+    // The launcher lives in this very process now, so open it directly rather
+    // than trying to run a binary that no longer exists.
+    if (item->id == QLatin1String(kLauncherId)) {
+        if (!m_launcher)
+            return false;
+
+        m_launcher->toggle();
+        return true;
+    }
+
+    if (DesktopEntry *entry = ApplicationRegistry::instance()->byId(item->id))
+        return entry->launch();
+
+    if (item->exec.isEmpty())
+        return ApplicationLauncher::startDetached({appId});
+
+    return ApplicationLauncher::startDetached(DesktopEntry::parseExec(item->exec));
+}
+
+void ApplicationModel::closeAllByAppId(const QString &appId)
+{
+    ApplicationItem *item = findItemById(appId);
+
+    if (!item)
+        return;
+
+    for (quint64 wid : item->wids) {
+        m_kwin->closeWindow(wid);
+    }
+}
+
+void ApplicationModel::pin(const QString &appId)
+{
+    ApplicationItem *item = findItemById(appId);
+
+    if (!item)
+        return;
+
+    item->isPinned = true;
+
+    handleDataChangedFromItem(item);
+    savePinAndUnPinList();
+}
+
+void ApplicationModel::unPin(const QString &appId)
+{
+    ApplicationItem *item = findItemById(appId);
+
+    if (!item)
+        return;
+
+    item->isPinned = false;
+    handleDataChangedFromItem(item);
+
+    // Need to be removed after unpin
+    if (item->wids.isEmpty()) {
+        int index = indexOf(item->id);
+        if (index != -1) {
+            beginRemoveRows(QModelIndex(), index, index);
+            m_appItems.removeAll(item);
+            endRemoveRows();
+
+            emit itemRemoved();
+            emit countChanged();
+        }
+    }
+
+    savePinAndUnPinList();
+}
+
+void ApplicationModel::move(int from, int to)
+{
+    if (from == to)
+        return;
+
+    m_appItems.move(from, to);
+
+    if (from < to)
+        beginMoveRows(QModelIndex(), from, from, QModelIndex(), to + 1);
+    else
+        beginMoveRows(QModelIndex(), from, from, QModelIndex(), to);
+
+    endMoveRows();
+}
+
+ApplicationItem *ApplicationModel::findItemByWId(quint64 wid)
+{
+    for (ApplicationItem *item : m_appItems) {
+        for (quint64 winId : item->wids) {
+            if (winId == wid)
+                return item;
+        }
+    }
+
+    return nullptr;
+}
+
+ApplicationItem *ApplicationModel::findItemById(const QString &id)
+{
+    for (ApplicationItem *item : m_appItems) {
+        if (item->id == id)
+            return item;
+    }
+
+    return nullptr;
+}
+
+ApplicationItem *ApplicationModel::findItemByDesktop(const QString &desktop)
+{
+    if (desktop.isEmpty())
+        return nullptr;
+
+    const QString normalizedDesktop = QFileInfo(desktop).absoluteFilePath();
+    for (ApplicationItem *item : m_appItems) {
+        if (!item->desktopPath.isEmpty()
+            && QFileInfo(item->desktopPath).absoluteFilePath() == normalizedDesktop)
+            return item;
+    }
+
+    return nullptr;
+}
+
+bool ApplicationModel::contains(const QString &id)
+{
+    for (ApplicationItem *item : std::as_const(m_appItems)) {
+        if (item->id == id)
+            return true;
+    }
+
+    return false;
+}
+
+int ApplicationModel::indexOf(const QString &id)
+{
+    for (ApplicationItem *item : m_appItems) {
+        if (item->id == id)
+            return m_appItems.indexOf(item);
+    }
+
+    return -1;
+}
+
+void ApplicationModel::initPinnedApplications()
+{
+    QSettings settings(QSettings::UserScope, "cutefishos", "dock_pinned");
+    QSettings systemSettings("/etc/cutefish-dock-list.conf", QSettings::IniFormat);
+    QSettings *set = (QFile(settings.fileName()).exists()) ? &settings
+                                                           : &systemSettings;
+    QStringList groups = set->childGroups();
+    QList<QPair<int, QString>> orderedGroups;
+    for (const QString &group : groups) {
+        set->beginGroup(group);
+        orderedGroups.append({set->value("Index").toInt(), group});
+        set->endGroup();
+    }
+    std::sort(orderedGroups.begin(), orderedGroups.end(),
+              [](const auto &left, const auto &right) { return left.first < right.first; });
+
+    // Launcher
+    ApplicationItem *item = new ApplicationItem;
+    item->id = kLauncherId;
+    item->exec = QString();
+    item->iconName = "qrc:/dock/images/launcher.svg";
+    item->visibleName = tr("Launcher");
+    item->fixed = true;
+    m_appItems.append(item);
+
+    // Pinned apps. Older configurations store an absolute path, while newer
+    // ones store the desktop id as the group name; both remain supported.
+    for (const auto &[index, group] : orderedGroups) {
+        Q_UNUSED(index)
+        set->beginGroup(group);
+        const QString path = set->value("DesktopPath").toString();
+        const QString savedIcon = set->value("Icon").toString();
+        const QString savedName = set->value("VisibleName").toString();
+        const QString savedExec = set->value("Exec").toString();
+        DesktopEntry *entry = ApplicationRegistry::instance()->byPath(path);
+        if (!entry)
+            entry = ApplicationRegistry::instance()->byId(group);
+
+        if (entry && !findItemById(entry->id())) {
+            beginInsertRows(QModelIndex(), rowCount(), rowCount());
+            ApplicationItem *item = new ApplicationItem;
+            updateFromDesktopEntry(item, entry);
+            if (item->iconName.isEmpty())
+                item->iconName = savedIcon;
+            if (item->visibleName.isEmpty())
+                item->visibleName = savedName;
+            if (item->exec.isEmpty())
+                item->exec = savedExec;
+            item->isPinned = true;
+            item->animationToken = animationTokenForNewItem();
+            m_appItems.append(item);
+            endInsertRows();
+
+            emit itemAdded();
+            emit countChanged();
+        } else if (!entry && !path.isEmpty() && QFile::exists(path)
+                   && !findItemById(group)) {
+            beginInsertRows(QModelIndex(), rowCount(), rowCount());
+            ApplicationItem *item = new ApplicationItem;
+            item->id = group;
+            item->desktopPath = path;
+            item->iconName = savedIcon;
+            item->visibleName = savedName;
+            item->exec = savedExec;
+            item->isPinned = true;
+            item->animationToken = animationTokenForNewItem();
+            m_appItems.append(item);
+            endInsertRows();
+
+            emit itemAdded();
+            emit countChanged();
+        }
+        set->endGroup();
+    }
+}
+
+void ApplicationModel::onApplicationsChanged()
+{
+    if (!m_pinsInitialized) {
+        initPinnedApplications();
+        m_pinsInitialized = true;
+    }
+
+    ApplicationRegistry *registry = ApplicationRegistry::instance();
+    for (ApplicationItem *item : std::as_const(m_appItems)) {
+        if (item->fixed)
+            continue;
+
+        DesktopEntry *entry = registry->byId(item->id);
+        if (!entry && !item->desktopPath.isEmpty())
+            entry = registry->byPath(item->desktopPath);
+        for (quint64 wid : std::as_const(item->wids)) {
+            const QString path = desktopPathFor(wid);
+            if (path.isEmpty())
+                continue;
+
+            if (DesktopEntry *windowEntry = registry->byPath(path)) {
+                entry = windowEntry;
+                break;
+            }
+        }
+        if (!entry)
+            continue;
+
+        updateFromDesktopEntry(item, entry);
+        handleDataChangedFromItem(item);
+    }
+}
+
+void ApplicationModel::savePinAndUnPinList()
+{
+    QSettings settings(QSettings::UserScope, "cutefishos", "dock_pinned");
+    settings.clear();
+
+    int index = 0;
+
+    for (ApplicationItem *item : m_appItems) {
+        if (item->isPinned) {
+            settings.beginGroup(item->id);
+            settings.setValue("Index", index);
+            settings.setValue("Icon", item->iconName);
+            settings.setValue("VisibleName", item->visibleName);
+            settings.setValue("Exec", item->exec);
+            settings.setValue("DesktopPath", item->desktopPath);
+            settings.endGroup();
+            ++index;
+        }
+    }
+
+    settings.sync();
+}
+
+void ApplicationModel::handleDataChangedFromItem(ApplicationItem *item)
+{
+    if (!item)
+        return;
+
+    QModelIndex idx = index(m_appItems.indexOf(item), 0, QModelIndex());
+
+    if (idx.isValid()) {
+        emit dataChanged(idx, idx);
+    }
+}
+
+void ApplicationModel::loadExistingWindows()
+{
+    m_kwin->refresh();
+
+    for (const KWinWaylandClient &client : m_kwin->clients()) {
+        if (m_kwin->isAcceptableWindow(client.id))
+            onWindowAdded(client.id);
+    }
+}
+
+QString ApplicationModel::desktopPathFor(quint64 wid) const
+{
+    const KWinWaylandClient client = m_kwin->client(wid);
+    const QString id = KWinWaylandInterface::appId(client);
+    return ApplicationResolver::instance()->desktopPathFromMetadata(
+        id, static_cast<quint32>(client.pid), id);
+}
+
+void ApplicationModel::onWindowAdded(quint64 wid)
+{
+    if (findItemByWId(wid))
+        return;
+
+    const KWinWaylandClient client = m_kwin->client(wid);
+    const QString id = KWinWaylandInterface::appId(client);
+
+    if (id.isEmpty())
+        return;
+
+    const bool active = m_kwin->activeWindow() == wid;
+    const QString desktopPath = desktopPathFor(wid);
+    DesktopEntry *entry = ApplicationRegistry::instance()->byPath(desktopPath);
+    ApplicationItem *desktopItem = findItemByDesktop(desktopPath);
+
+    // Use desktop find
+    if (!desktopPath.isEmpty() && desktopItem != nullptr) {
+        desktopItem->wids.append(wid);
+        // Need to update application active status.
+        desktopItem->isActive = active;
+
+        if (entry)
+            updateFromDesktopEntry(desktopItem, entry);
+        else if (desktopItem->id != id) {
+            desktopItem->id = id;
+            savePinAndUnPinList();
+        }
+
+        handleDataChangedFromItem(desktopItem);
+    }
+    // Find from id
+    else if (contains(id)) {
+        for (ApplicationItem *item : m_appItems) {
+            if (item->id == id) {
+                item->wids.append(wid);
+                // Need to update application active status.
+                item->isActive = active;
+                handleDataChangedFromItem(item);
+            }
+        }
+    }
+    // New item needs to be added.
+    else {
+        beginInsertRows(QModelIndex(), rowCount(), rowCount());
+        ApplicationItem *item = new ApplicationItem;
+        item->id = id;
+        item->iconName = id.toLower();
+        item->visibleName = client.title.isEmpty() ? id : client.title;
+        item->isActive = active;
+        item->wids.append(wid);
+        item->desktopPath = desktopPath;
+        item->animationToken = animationTokenForNewItem();
+
+        if (entry)
+            updateFromDesktopEntry(item, entry);
+
+        m_appItems << item;
+        endInsertRows();
+
+        emit itemAdded();
+        emit countChanged();
+    }
+}
+
+void ApplicationModel::onWindowChanged(quint64 wid)
+{
+    ApplicationItem *item = findItemByWId(wid);
+    if (!item) {
+        onWindowAdded(wid);
+        return;
+    }
+
+    const KWinWaylandClient client = m_kwin->client(wid);
+    if (client.id == 0)
+        return;
+
+    const QString id = KWinWaylandInterface::appId(client);
+
+    if (item->desktopPath.isEmpty()) {
+        if (!client.title.isEmpty())
+            item->visibleName = client.title;
+        if (!id.isEmpty())
+            item->iconName = id.toLower();
+    }
+    if (!id.isEmpty() && item->id.isEmpty())
+        item->id = id;
+    item->isActive = m_kwin->activeWindow() == wid;
+    handleDataChangedFromItem(item);
+}
+
+void ApplicationModel::onWindowRemoved(quint64 wid)
+{
+    ApplicationItem *item = findItemByWId(wid);
+
+    if (!item)
+        return;
+
+    // Remove from wid list.
+    item->wids.removeOne(wid);
+
+    if (item->currentActive >= item->wids.size())
+        item->currentActive = 0;
+
+    handleDataChangedFromItem(item);
+
+    if (item->wids.isEmpty()) {
+        // If it is not fixed to the dock, need to remove it.
+        if (!item->isPinned) {
+            int index = indexOf(item->id);
+
+            if (index == -1)
+                return;
+
+            beginRemoveRows(QModelIndex(), index, index);
+            m_appItems.removeAll(item);
+            endRemoveRows();
+
+            emit itemRemoved();
+            emit countChanged();
+        }
+    }
+}
+
+void ApplicationModel::onActiveChanged(quint64 wid)
+{
+    // Using this method will cause the listview scrollbar to reset.
+    // beginResetModel();
+
+    for (ApplicationItem *item : m_appItems) {
+        if (item->isActive != item->wids.contains(wid)) {
+            item->isActive = item->wids.contains(wid);
+
+            QModelIndex idx = index(indexOf(item->id), 0, QModelIndex());
+            if (idx.isValid()) {
+                emit dataChanged(idx, idx);
+            }
+        }
+    }
+}

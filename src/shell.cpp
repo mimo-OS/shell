@@ -1,33 +1,17 @@
 #include "shell.h"
-#include "desktopmanager.h"
 
-#include "statusbar.h"
-#include "controlcenterdialog.h"
-#include "systemtray/systemtraymodel.h"
-#include "appmenu/appmenumodel.h"
-#include "qmenu/qmenumodel.h"
-#include "poweractions.h"
-#include "notifications.h"
-#include "backgroundhelper.h"
-#include "appearance.h"
-#include "brightness.h"
-#include "battery.h"
+#include "core/qmltypes.h"
+#include "core/services/processprovider.h"
+#include "desktop/desktopmanager.h"
+#include "dock/dockwindow.h"
+#include "dock/qmltypes.h"
+#include "launcher/launcher.h"
+#include "launcher/qmltypes.h"
+#include "notification/notificationmanager.h"
+#include "notification/qmltypes.h"
+#include "statusbar/qmltypes.h"
+#include "statusbar/statusbar.h"
 
-#include "dockwindow.h"
-#include "docksettings.h"
-
-#include "notificationmanager.h"
-#include "notificationsmodel.h"
-#include "historymodel.h"
-#include "notificationcenterdialog.h"
-#include "notificationpopup.h"
-#include "screenhelper.h"
-
-#include "launcher.h"
-#include "launchermodel.h"
-#include "pagemodel.h"
-#include "iconitem.h"
-#include "appmanager.h"
 #include "applicationregistry.h"
 
 #include <QQmlEngine>
@@ -40,19 +24,29 @@
 #include <QFile>
 #include <QDebug>
 
+namespace {
+
 struct ServiceRegistration {
     const char *service;
     const char *path;
 };
 
 // Keep the service names stable for clients on the session bus.
-static const ServiceRegistration s_services[] = {
-    { "com.cutefish.Shell",     "/Shell"     },
-    { "com.cutefish.Statusbar", "/Statusbar" },
-    { "com.cutefish.Dock",      "/Dock"      },
-    { "com.cutefish.Launcher",  "/Launcher"  },
+constexpr ServiceRegistration s_services[] = {
+    { "com.cutefish.Shell",        "/Shell"        },
+    { "com.cutefish.Statusbar",    "/Statusbar"    },
+    { "com.cutefish.Dock",         "/Dock"         },
+    { "com.cutefish.Launcher",     "/Launcher"     },
     { "com.cutefish.Notification", "/Notification" },
 };
+
+// One catalogue per merged component, so the components' existing translations
+// are reused as they are.
+constexpr const char *s_translationCatalogues[] = {
+    "statusbar", "dock", "launcher", "notification"
+};
+
+} // namespace
 
 Shell::Shell(QObject *parent)
     : QObject(parent)
@@ -67,6 +61,11 @@ Shell::Shell(QObject *parent)
 
     registerQmlTypes();
     loadTranslations();
+
+    // Shared by every component's QML; one instance on the root context rather
+    // than one per window.
+    m_engine->rootContext()->setContextProperty(QStringLiteral("process"),
+                                                new ProcessProvider(this));
 }
 
 Shell::~Shell()
@@ -81,37 +80,11 @@ Shell::~Shell()
 void Shell::registerQmlTypes()
 {
     registerApplicationsQmlTypes();
-
-    // Shell-wide helpers. The work area is one: on Wayland only the shell
-    // knows it, because it is the shell that reserves the struts.
-    qmlRegisterType<ScreenHelper>("Cutefish.Shell", 1, 0, "ScreenHelper");
-
-    const char *statusBarUri = "Cutefish.StatusBar";
-    qmlRegisterType<SystemTrayModel>(statusBarUri, 1, 0, "SystemTrayModel");
-    qmlRegisterType<ControlCenterDialog>(statusBarUri, 1, 0, "ControlCenterDialog");
-    qmlRegisterType<Appearance>(statusBarUri, 1, 0, "Appearance");
-    qmlRegisterType<Brightness>(statusBarUri, 1, 0, "Brightness");
-    qmlRegisterType<Battery>(statusBarUri, 1, 0, "Battery");
-    qmlRegisterType<AppMenuModel>(statusBarUri, 1, 0, "AppMenuModel");
-    qmlRegisterType<QMenuModel>(statusBarUri, 1, 0, "QMenuModel");
-    qmlRegisterType<PowerActions>(statusBarUri, 1, 0, "PowerActions");
-    qmlRegisterType<Notifications>(statusBarUri, 1, 0, "Notifications");
-    qmlRegisterType<BackgroundHelper>(statusBarUri, 1, 0, "BackgroundHelper");
-
-    const char *notificationUri = "Cutefish.Notification";
-    qmlRegisterType<NotificationsModel>(notificationUri, 1, 0, "NotificationsModel");
-    qmlRegisterType<HistoryModel>(notificationUri, 1, 0, "HistoryModel");
-    qmlRegisterType<NotificationPopup>(notificationUri, 1, 0, "NotificationPopup");
-    qmlRegisterType<NotificationCenterDialog>(notificationUri, 1, 0, "NotificationCenterDialog");
-
-    qmlRegisterType<DockSettings>("Cutefish.Dock", 1, 0, "DockSettings");
-
-    const char *launcherUri = "Cutefish.Launcher";
-    qmlRegisterType<LauncherModel>(launcherUri, 1, 0, "LauncherModel");
-    qmlRegisterType<PageModel>(launcherUri, 1, 0, "PageModel");
-    qmlRegisterType<IconItem>(launcherUri, 1, 0, "IconItem");
-    qmlRegisterType<AppManager>(launcherUri, 1, 0, "AppManager");
-    qmlRegisterAnonymousType<QAbstractItemModel>(launcherUri, 0);
+    registerCoreQmlTypes();
+    registerStatusBarQmlTypes();
+    registerDockQmlTypes();
+    registerLauncherQmlTypes();
+    registerNotificationQmlTypes();
 
     // The desktop's types come from the org.cutefish.filemanager.desktop QML
     // plugin; the shell never registers them itself.
@@ -121,16 +94,9 @@ void Shell::loadTranslations()
 {
     const QString locale = QLocale::system().name();
 
-    // One catalogue per merged component, so the components' existing
-    // translations are reused as they are.
-    const QStringList components = { QStringLiteral("statusbar"),
-                                     QStringLiteral("dock"),
-                                     QStringLiteral("launcher"),
-                                     QStringLiteral("notification") };
-
-    for (const QString &component : components) {
+    for (const char *component : s_translationCatalogues) {
         const QString path = QStringLiteral("/usr/share/cutefish-shell/translations/%1_%2.qm")
-                                 .arg(component, locale);
+                                 .arg(QLatin1String(component), locale);
 
         if (!QFile::exists(path))
             continue;
@@ -187,5 +153,4 @@ void Shell::start()
     m_dock->setLauncher(m_launcher);
 
     m_dock->show();
-
 }

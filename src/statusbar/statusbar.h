@@ -1,0 +1,45 @@
+#ifndef STATUSBAR_H
+#define STATUSBAR_H
+
+#include "core/window/shellsurface.h"
+#include "core/wayland/strutspacer.h"
+#include "core/services/activity.h"
+
+class StatusBar : public ShellSurface
+{
+    Q_OBJECT
+    Q_PROPERTY(QRect screenRect READ screenRect NOTIFY screenRectChanged)
+    Q_PROPERTY(bool twentyFourTime READ twentyFourTime NOTIFY twentyFourTimeChanged)
+
+public:
+    //! Thickness of the bar, in logical pixels. The background sampler needs
+    //! the same value to average the strip of wallpaper the bar covers.
+    static constexpr int Height = 25;
+
+    explicit StatusBar(QQmlEngine *engine);
+
+    QRect screenRect();
+    bool twentyFourTime();
+
+    void setBatteryPercentage(bool enabled);
+    void setTwentyFourTime(bool t);
+
+    void updateGeometry();
+    void updateViewStruts();
+
+signals:
+    void screenRectChanged();
+    void launchPadChanged();
+    void twentyFourTimeChanged();
+
+private slots:
+    void initState();
+
+private:
+    QRect m_screenRect;
+    Activity *m_acticity;
+    StrutSpacer *m_strutSpacer;
+    bool m_twentyFourTime;
+};
+
+#endif // STATUSBAR_H
