@@ -31,6 +31,7 @@ Item {
     property string popupText: ""
 
     property bool checked: false
+    property bool contextMenuPressed: false
 
     property alias mouseArea: _mouseArea
 
@@ -42,9 +43,12 @@ Item {
     signal positionChanged
     signal released
 
-    onCheckedChanged: {
-        _bgRect.state = checked ? "shown" : "hidden"
+    function updateBackground() {
+        _bgRect.state = checked || contextMenuPressed || _mouseArea.containsMouse ? "shown" : "hidden"
     }
+
+    onCheckedChanged: control.updateBackground()
+    onContextMenuPressedChanged: control.updateBackground()
 
     MouseArea {
         id: _mouseArea
@@ -53,17 +57,11 @@ Item {
         hoverEnabled: true
 
         onEntered: {
-            if (checked)
-                return
-
-            _bgRect.state = "shown"
+            control.updateBackground()
         }
 
         onExited: {
-            if (checked)
-                return
-
-            _bgRect.state = "hidden"
+            control.updateBackground()
         }
 
         onClicked: {
@@ -131,7 +129,7 @@ Item {
         ]
 
         color: {
-            if (control.checked) {
+            if (control.checked || control.contextMenuPressed) {
                 return (rootItem.darkMode) ? Qt.rgba(255, 255, 255, 0.2) : Qt.rgba(0, 0, 0, 0.1)
             }
 

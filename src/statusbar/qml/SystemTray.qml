@@ -17,6 +17,7 @@ ListView {
     spacing: FishUI.Units.smallSpacing / 2
 
     property real itemWidth: rootItem.iconSize + FishUI.Units.largeSpacing
+    property var contextMenuItem: null
 
     Layout.fillHeight: true
     Layout.preferredWidth: (itemWidth + (count - 1) * FishUI.Units.smallSpacing) * count
@@ -39,6 +40,11 @@ ListView {
         id: trayMenu
         menuModel: trayMenuModel
         availableGeometry: screenHelper.availableScreenRect
+
+        onVisibleChanged: {
+            if (!visible)
+                trayView.contextMenuItem = null
+        }
     }
 
     function openContextMenu(item, globalPos) {
@@ -53,6 +59,7 @@ ListView {
         trayMenuModel.menu = menuObject
         trayMenu.menuModel = trayMenuModel
         trayMenu.setCurrentIndex(-1)
+        trayView.contextMenuItem = item
 
         trayMenu.transientParent = item.Window.window
         var pos = item.mapToGlobal(0, item.height + FishUI.Units.smallSpacing)
@@ -78,6 +85,7 @@ ListView {
 
         width: trayView.itemWidth
         height: ListView.view.height
+        contextMenuPressed: trayView.contextMenuItem === _trayItem && trayMenu.visible
 
         onDarkModeChanged: updateTimer.restart()
 
