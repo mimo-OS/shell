@@ -6,7 +6,7 @@ import Cutefish.System 1.0 as System
 import FishUI 1.0 as FishUI
 
 // The desktop background: an image or a plain colour, whichever
-// cutefish-settings currently publishes.
+// cutefish-services currently publishes.
 Item {
     id: control
 
@@ -23,7 +23,7 @@ Item {
     Image {
         id: image
         anchors.fill: parent
-        // Empty until cutefish-settings answers; "file://" alone is a bad URL.
+        // Empty until cutefish-services answers; "file://" alone is a bad URL.
         source: settings.path ? "file://" + settings.path : ""
         sourceSize: Qt.size(width * FishUI.Dpi.ratio,
                             height * FishUI.Dpi.ratio)
