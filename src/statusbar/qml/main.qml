@@ -40,7 +40,7 @@ Item {
 
     property bool darkMode: false
     property color textColor: rootItem.darkMode ? "#FFFFFF" : "#000000";
-    property var fontSize: rootItem.height ? rootItem.height / 3 : 1
+    property int fontSize: 10
 
     property var timeFormat: StatusBar.twentyFourTime ? "ddd MMM d HH:mm" : "ddd MMM d h:mmAP"
 
