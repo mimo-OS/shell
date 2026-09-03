@@ -56,6 +56,8 @@ Item {
     readonly property int searchFieldWidth: Math.round(Math.max(240, Math.min(root.width * 0.22,
                                                                               root.height * 0.42)))
     readonly property int searchFieldHeight: Math.round(root.searchPixelSize * 2.3)
+    readonly property int searchIconSize: Math.round(root.searchFieldHeight * 0.5)
+    readonly property int searchIconGap: FishUI.Units.smallSpacing
 
     AppManager {
         id: appManager
@@ -207,7 +209,10 @@ Item {
                 width: root.searchFieldWidth
                 height: root.searchFieldHeight
 
-                leftPadding: textField.activeFocus ? _placeImage.width + FishUI.Units.largeSpacing : FishUI.Units.largeSpacing
+                // Keeps the typed text on the same x as the placeholder label:
+                // left margin + icon + the layout's spacing.
+                leftPadding: textField.activeFocus ? FishUI.Units.largeSpacing + root.searchIconSize + root.searchIconGap
+                                                   : FishUI.Units.largeSpacing
                 rightPadding: FishUI.Units.largeSpacing
 
                 selectByMouse: true
@@ -223,25 +228,33 @@ Item {
                     height: textField.height
                     width: _placeHolderLayout.implicitWidth
                     opacity: 0.6
-                    x: textField.activeFocus ? FishUI.Units.smallSpacing : (textField.width - placeHolderItem.width) / 2
+                    x: textField.activeFocus ? FishUI.Units.largeSpacing : (textField.width - placeHolderItem.width) / 2
                     y: 0
 
                     Behavior on x {
-                        NumberAnimation {
-                            duration: 200
-                        }
+                        NumberAnimation { duration: 220; easing.type: Easing.OutCubic }
                     }
 
                     RowLayout {
                         id: _placeHolderLayout
                         anchors.fill: parent
+                        // Must match the gap in textField.leftPadding, or the
+                        // placeholder and the typed text sit at different x.
+                        spacing: root.searchIconGap
 
                         Image {
                             id: _placeImage
-                            height: Math.round(placeHolderItem.height * 0.5)
+                            height: root.searchIconSize
                             width: height
+                            Layout.preferredWidth: width
+                            Layout.preferredHeight: height
                             sourceSize: Qt.size(width, height)
                             source: "qrc:/launcher/images/system-search-symbolic.svg"
+
+                            scale: textField.activeFocus ? 1.1 : 1.0
+                            Behavior on scale {
+                                NumberAnimation { duration: 260; easing.type: Easing.OutBack }
+                            }
                         }
 
                         Label {
@@ -256,10 +269,21 @@ Item {
                 }
 
                 background: Rectangle {
-                    opacity: 0.2
-                    radius: textField.height * 0.25
+                    // Pill: radius is always half the height.
+                    radius: height / 2
                     color: "white"
-                    border.width: 0
+                    opacity: textField.activeFocus ? 0.28 : 0.18
+                    border.width: textField.activeFocus ? 1 : 0
+                    border.color: Qt.rgba(1, 1, 1, 0.35)
+                    scale: textField.activeFocus ? 1.0 : 0.985
+
+                    Behavior on opacity {
+                        NumberAnimation { duration: 200; easing.type: Easing.OutCubic }
+                    }
+
+                    Behavior on scale {
+                        NumberAnimation { duration: 260; easing.type: Easing.OutBack }
+                    }
                 }
 
                 Timer {
