@@ -67,7 +67,7 @@ Item {
             control.iconPressed = false
     }
 
-    IconItem {
+    FishUI.IconItem {
         id: icon
 
         width: control.iconSize

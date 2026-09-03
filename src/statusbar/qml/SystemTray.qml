@@ -139,7 +139,7 @@ ListView {
             visible: model.canColorOverlay
         }
 
-        FishUI.IconImage {
+        FishUI.IconItem {
             id: iconItem
             anchors.centerIn: parent
             width: rootItem.iconSize

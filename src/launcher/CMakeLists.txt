@@ -4,7 +4,6 @@ add_library(shell_launcher OBJECT
 
     appitem.cpp
     appmanager.cpp
-    iconitem.cpp
     launchermodel.cpp
     pagemodel.cpp
 

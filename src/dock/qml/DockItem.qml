@@ -105,7 +105,7 @@ Item {
         dragStarted = false
     }
 
-    FishUI.IconImage {
+    FishUI.IconItem {
         id: icon
         anchors.centerIn: parent
         width: control.iconSize
