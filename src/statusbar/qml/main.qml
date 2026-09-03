@@ -235,10 +235,21 @@ Item {
                 anchors.centerIn: parent
                 width: rootItem.iconSize
                 height: width
-                sourceSize: String(source) === "image://icontheme/default-user" ? Qt.size(width, height) : undefined
+
+                // An image provider is handed sourceSize already multiplied by
+                // the ratio; a file is not. Left at the logical size, a user's
+                // avatar is decoded at 16px and upscaled - and with no
+                // sourceSize at all a 300px photo is decimated straight to 16.
+                readonly property bool fromProvider: String(source).startsWith("image://")
+                sourceSize: fromProvider
+                            ? Qt.size(width, height)
+                            : Qt.size(Math.round(width * FishUI.Dpi.ratio),
+                                      Math.round(height * FishUI.Dpi.ratio))
+
                 source: currentUser.iconFileName ? "file:///" + currentUser.iconFileName : "image://icontheme/default-user"
                 antialiasing: true
-                smooth: false
+                smooth: true
+                mipmap: true
 
                 layer.enabled: true
                 layer.effect: OpacityMask {
