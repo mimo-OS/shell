@@ -137,8 +137,8 @@ PopupWindow {
         color: FishUI.Theme.darkMode ? "#4D4D4D" : "#F0F0F0"
         opacity: FishUI.Theme.blurEnabled ? (FishUI.Theme.darkMode ? 0.6 : 0.8) : 1
         antialiasing: true
-        border.width: 1 / Screen.devicePixelRatio
-        border.pixelAligned: Screen.devicePixelRatio > 1 ? false : true
+        border.width: 1 / FishUI.Dpi.ratio
+        border.pixelAligned: FishUI.Dpi.ratio > 1 ? false : true
         border.color: control.borderColor
 
         Behavior on color {

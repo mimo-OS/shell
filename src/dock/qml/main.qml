@@ -66,8 +66,8 @@ Item {
         radius: windowRadius
         color: FishUI.Theme.darkMode ? "#666666" : "#E6E6E6"
         opacity: FishUI.Theme.blurEnabled ? 0.5 : 1
-        border.width: 1 / FishUI.Units.devicePixelRatio
-        border.pixelAligned: FishUI.Units.devicePixelRatio > 1 ? false : true
+        border.width: 1 / FishUI.Dpi.ratio
+        border.pixelAligned: FishUI.Dpi.ratio > 1 ? false : true
         border.color: borderColor
 
         Behavior on color {
@@ -230,8 +230,8 @@ Item {
                 color: "transparent"
                 border.color: FishUI.Theme.textColor
                 radius: height * 0.3
-                border.width: 1 / FishUI.Units.devicePixelRatio
-                border.pixelAligned: FishUI.Units.devicePixelRatio > 1 ? false : true
+                border.width: 1 / FishUI.Dpi.ratio
+                border.pixelAligned: FishUI.Dpi.ratio > 1 ? false : true
                 opacity: trashItem.dropArea.containsDrag ? 0.5 : 0
 
                 Behavior on opacity {

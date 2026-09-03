@@ -25,8 +25,8 @@ Item {
         anchors.fill: parent
         // Empty until cutefish-settings answers; "file://" alone is a bad URL.
         source: settings.path ? "file://" + settings.path : ""
-        sourceSize: Qt.size(width * Screen.devicePixelRatio,
-                            height * Screen.devicePixelRatio)
+        sourceSize: Qt.size(width * FishUI.Dpi.ratio,
+                            height * FishUI.Dpi.ratio)
         fillMode: Image.PreserveAspectCrop
         clip: true
         visible: settings.backgroundVisible && settings.type === 0

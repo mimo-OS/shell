@@ -80,8 +80,8 @@ PopupWindow {
         radius: control.width * 0.05
         opacity: FishUI.Theme.blurEnabled ? 0.7 : 1
 
-        border.width: 1 / FishUI.Units.devicePixelRatio
-        border.pixelAligned: Screen.devicePixelRatio > 1 ? false : true
+        border.width: 1 / FishUI.Dpi.ratio
+        border.pixelAligned: FishUI.Dpi.ratio > 1 ? false : true
         border.color: FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.1)
                                             : Qt.rgba(0, 0, 0, 0.05)
     }
