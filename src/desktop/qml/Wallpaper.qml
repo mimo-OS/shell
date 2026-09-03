@@ -23,12 +23,12 @@ Item {
     Image {
         id: image
         anchors.fill: parent
-        source: "file://" + settings.path
+        // Empty until cutefish-settings answers; "file://" alone is a bad URL.
+        source: settings.path ? "file://" + settings.path : ""
         sourceSize: Qt.size(width * Screen.devicePixelRatio,
                             height * Screen.devicePixelRatio)
         fillMode: Image.PreserveAspectCrop
         clip: true
-        cache: false
         visible: settings.backgroundVisible && settings.type === 0
     }
 
