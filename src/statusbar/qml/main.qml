@@ -254,6 +254,7 @@ Item {
         StandardItem {
             id: acticityItem
             visible: !!acticity.title
+            contextMenuPressed: acticityMenu.visible
             Layout.fillHeight: true
             Layout.preferredWidth: Math.min(rootItem.width / 3,
                                             acticityLayout.implicitWidth + FishUI.Units.largeSpacing)
