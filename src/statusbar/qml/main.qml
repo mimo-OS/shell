@@ -72,7 +72,7 @@ Item {
     BackgroundHelper {
         id: bgHelper
 
-        onNewColor: {
+        onNewColor: function (color, darkMode) {
             background.color = color
             rootItem.darkMode = darkMode
         }
