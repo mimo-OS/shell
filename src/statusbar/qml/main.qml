@@ -73,24 +73,8 @@ Item {
         id: bgHelper
 
         onNewColor: function (color, darkMode) {
-            background.color = color
             rootItem.darkMode = darkMode
         }
-    }
-
-    Rectangle {
-        id: background
-        anchors.fill: parent
-        opacity: 0.3
-
-//        color: FishUI.Theme.darkMode ? "#4D4D4D" : "#FFFFFF"
-
-//        Behavior on color {
-//            ColorAnimation {
-//                duration: 100
-//                easing.type: Easing.Linear
-//            }
-//        }
     }
 
     FishUI.PopupTips {

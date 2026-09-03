@@ -111,9 +111,9 @@ Item {
                 PropertyChanges {
                     target: _bgRect
                     x: 0
-                    y: 1
+                    y: 4
                     width: control.width
-                    height: control.height - 2
+                    height: control.height - 8
                     visible: true
                 }
             },

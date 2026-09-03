@@ -14,7 +14,7 @@ class StatusBar : public ShellSurface
 public:
     //! Thickness of the bar, in logical pixels. The background sampler needs
     //! the same value to average the strip of wallpaper the bar covers.
-    static constexpr int Height = 25;
+    static constexpr int Height = 32;
 
     explicit StatusBar(QQmlEngine *engine);
 
