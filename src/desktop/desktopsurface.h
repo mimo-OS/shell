@@ -9,10 +9,10 @@
  * The desktop window for one screen.
  *
  * This class deliberately knows nothing about files. It owns the window -- its
- * geometry and stacking -- and hands the screen it belongs to
- * over to the DesktopView item from "org.cutefish.filemanager.desktop", which
- * is where the wallpaper, icons, layout, selection, drag and drop, menus and
- * every file operation actually live.
+ * geometry and stacking -- and its QML draws the background. The icons, layout,
+ * selection, drag and drop, menus and every file operation come from the
+ * DesktopView item of "org.cutefish.filemanager.desktop", which the QML puts on
+ * top of the background on the primary screen.
  */
 class DesktopSurface : public ShellSurface
 {

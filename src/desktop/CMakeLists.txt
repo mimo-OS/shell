@@ -1,6 +1,6 @@
-# The desktop window per screen. Everything drawn inside it -- wallpaper, icons,
-# selection, drag and drop, menus, file operations -- comes from the
-# org.cutefish.filemanager.desktop QML plugin.
+# The desktop window per screen. The shell draws the background itself; the
+# icons and every file operation come from the org.cutefish.filemanager.desktop
+# QML plugin.
 add_library(shell_desktop OBJECT
     desktopmanager.cpp
     desktopsurface.cpp

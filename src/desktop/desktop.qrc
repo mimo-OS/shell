@@ -1,5 +1,7 @@
 <RCC>
     <qresource prefix="/shell">
         <file>qml/DesktopSurface.qml</file>
+        <file>qml/DesktopIcons.qml</file>
+        <file>qml/Wallpaper.qml</file>
     </qresource>
 </RCC>
