@@ -89,14 +89,13 @@ void StatusBar::updateViewStruts()
 
     m_strutSpacer->setEdge(Qt::TopEdge);
     m_strutSpacer->setScreen(screen());
-    m_strutSpacer->setThickness(m_acticity->launchPad() ? 0 : geometry().height());
+    m_strutSpacer->setThickness(geometry().height());
 }
 
 void StatusBar::initState()
 {
     // The launcher is an ordinary full-screen window, so the status bar has
-    // to step out of its way. It also stops reserving work area while the
-    // launcher is up.
+    // to step out of its way.
     setPanelBehavior(m_acticity->launchPad() ? PanelBehavior::AllowCovering
                                              : PanelBehavior::StayAbove);
     updateViewStruts();

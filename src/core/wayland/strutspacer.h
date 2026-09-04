@@ -82,7 +82,7 @@ public:
 
     //! How much space to keep clear, measured from the edge. Zero (or less)
     //! tears the surface down, which is what the dock wants while it is in
-    //! auto-hide mode or while the launcher is up.
+    //! auto-hide mode.
     void setThickness(int thickness);
 
     void setScreen(QScreen *screen);

@@ -347,8 +347,7 @@ void DockWindow::setDockGeometry(const QRect &rect, bool requestRepaint)
 
 void DockWindow::updateViewStruts()
 {
-    const bool reserveSpace = m_settings->visibility() == DockSettings::AlwaysShow
-        && !m_activity->launchPad();
+    const bool reserveSpace = m_settings->visibility() == DockSettings::AlwaysShow;
 
     // The reserved strip runs from the screen edge to the far side of the
     // dock, so it covers the dock plus its edge gap.
@@ -452,9 +451,11 @@ void DockWindow::onVisibilityChanged()
 {
     emit visibilityChanged();
 
+    // The launcher covers the whole screen but leaves the reserved area
+    // alone: clearing it would hand the full screen to every window opened
+    // while the launcher is up.
     if (m_activity->launchPad()) {
         m_hideTimer->stop();
-        clearViewStruts();
         setVisible(true);
         return;
     }

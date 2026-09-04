@@ -8,6 +8,7 @@
 #include <QGuiApplication>
 #include <QPixmapCache>
 #include <QQmlContext>
+#include <QQuickItem>
 #include <QScreen>
 #include <QTimer>
 
@@ -98,9 +99,8 @@ void Launcher::showWindow()
     // in one process there is no WM_CLASS left to tell them apart.
     Activity::self()->setLaunchPad(true);
 
-    // setLaunchPad() above made the dock and the status bar give their
-    // reserved area back. Ensure KWin has processed that before mapping the
-    // launcher, otherwise Qt may briefly use the old work area size.
+    // Let KWin see the panels' new stacking behaviour before the launcher is
+    // mapped, so it never comes up behind them for a frame.
     KWinWaylandInterface::instance()->roundtrip();
 
     if (!m_screenRect.isEmpty())
@@ -242,6 +242,25 @@ void Launcher::resizeEvent(QResizeEvent *e)
     // The launcher's QML root has no size of its own, so it has to follow the
     // window the way QQuickView's SizeRootObjectToView used to make it.
     ShellSurface::resizeEvent(e);
+
+    // KWin advertises the work area as the toplevel's configure bounds, so the
+    // first configure after a map shrinks the launcher by the panels' struts.
+    // Claiming the screen back takes a configure round trip, and a frame
+    // committed in the meantime is the visible jump: keep the contents hidden
+    // until the window really covers the screen.
+    const bool coversScreen = m_screenRect.isEmpty() || e->size() == m_screenRect.size();
+    if (QQuickItem *root = rootItem())
+        root->setVisible(coversScreen);
+
+    if (!coversScreen) {
+        setGeometry(m_screenRect);
+
+        // Backstop: an invisible launcher is worse than a mis-sized one.
+        QTimer::singleShot(500, this, [this] {
+            if (rootItem())
+                rootItem()->setVisible(true);
+        });
+    }
 
     // The window manager forces the size.
     e->ignore();
