@@ -1,6 +1,8 @@
 <RCC>
     <qresource prefix="/statusbar">
         <file>qml/main.qml</file>
+        <file>qml/BarIcon.qml</file>
+        <file>qml/BarLabel.qml</file>
         <file>qml/StandardItem.qml</file>
         <file>qml/QMenuPopup.qml</file>
         <file>images/dark/audio-volume-high-symbolic.svg</file>

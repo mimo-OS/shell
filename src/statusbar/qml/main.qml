@@ -261,11 +261,12 @@ Item {
                     height: ListView.view.height
                     checked: rootItem.appMenuIndex === index
 
-                    Text {
+                    BarLabel {
                         id: _actionText
                         anchors.centerIn: parent
                         color: rootItem.textColor
                         font.pointSize: rootItem.fontSize
+                        dropShadow: rootItem.darkMode
                         text: {
                             var text = activeMenu
                             text = text.replace(/([^&]*)&(.)([^&]*)/g, function (match, p1, p2, p3) {
@@ -338,8 +339,9 @@ Item {
 
                 spacing: FishUI.Units.largeSpacing
 
-                Image {
+                BarIcon {
                     id: volumeIcon
+                    dropShadow: rootItem.darkMode
                     visible: controlCenter.item.defaultSink
                     source: "qrc:/statusbar/images/" + (rootItem.darkMode ? "dark/" : "light/") + controlCenter.item.volumeIconName + ".svg"
                     width: rootItem.iconSize
@@ -351,8 +353,9 @@ Item {
                     smooth: false
                 }
 
-                Image {
+                BarIcon {
                     id: wirelessIcon
+                    dropShadow: rootItem.darkMode
                     width: rootItem.iconSize
                     height: width
                     sourceSize: Qt.size(width, height)
@@ -371,8 +374,9 @@ Item {
                 RowLayout {
                     visible: battery.available
 
-                    Image {
+                    BarIcon {
                         id: batteryIcon
+                        dropShadow: rootItem.darkMode
                         height: rootItem.iconSize
                         width: height + 6
                         sourceSize: Qt.size(width, height)
@@ -382,10 +386,11 @@ Item {
                         smooth: false
                     }
 
-                    Label {
+                    BarLabel {
                         text: battery.chargePercent + "%"
                         font.pointSize: rootItem.fontSize
                         color: rootItem.textColor
+                        dropShadow: rootItem.darkMode
                         visible: battery.showPercentage
                     }
                 }
@@ -432,11 +437,12 @@ Item {
 //                    smooth: false
 //                }
 
-                Label {
+                BarLabel {
                     id: timeLabel
                     Layout.alignment: Qt.AlignCenter
                     font.pointSize: rootItem.fontSize
                     color: rootItem.textColor
+                    dropShadow: rootItem.darkMode
 
                     Timer {
                         id: timeTimer
