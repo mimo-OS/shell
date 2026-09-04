@@ -64,16 +64,16 @@ Item {
             control.updateBackground()
         }
 
-        onClicked: {
+        onClicked: function(mouse) {
             control.clicked(mouse)
         }
 
-        onPressed: {
+        onPressed: function(mouse) {
             popupTips.hide()
             control.pressed(mouse)
         }
 
-        onWheel: {
+        onWheel: function(wheel) {
             control.wheel(wheel)
             wheel.accepted = false
         }
