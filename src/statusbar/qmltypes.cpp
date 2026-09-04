@@ -1,6 +1,5 @@
 #include "statusbar/qmltypes.h"
 
-#include "statusbar/appearance.h"
 #include "statusbar/backgroundhelper.h"
 #include "statusbar/battery.h"
 #include "statusbar/brightness.h"
@@ -17,7 +16,6 @@ void registerStatusBarQmlTypes()
     const char *uri = "Cutefish.StatusBar";
 
     qmlRegisterType<SystemTrayModel>(uri, 1, 0, "SystemTrayModel");
-    qmlRegisterType<Appearance>(uri, 1, 0, "Appearance");
     qmlRegisterType<Brightness>(uri, 1, 0, "Brightness");
     qmlRegisterType<Battery>(uri, 1, 0, "Battery");
     qmlRegisterType<AppMenuModel>(uri, 1, 0, "AppMenuModel");

@@ -25,6 +25,7 @@ import Qt5Compat.GraphicalEffects
 
 import Cutefish.Accounts 1.0 as Accounts
 import Cutefish.Bluetooth 1.0 as Bluetooth
+import Cutefish.Appearance 1.0 as FrameworkAppearance
 import Cutefish.StatusBar 1.0
 import Cutefish.Shell 1.0
 import Cutefish.Audio 1.0
@@ -70,7 +71,7 @@ PopupWindow {
     LayoutMirroring.enabled: Qt.application.layoutDirection === Qt.RightToLeft
     LayoutMirroring.childrenInherit: true
 
-    Appearance {
+    FrameworkAppearance.Appearance {
         id: appearance
     }
 
