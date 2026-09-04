@@ -38,7 +38,9 @@ Item {
     LayoutMirroring.enabled: Qt.application.layoutDirection === Qt.RightToLeft
     LayoutMirroring.childrenInherit: true
 
-    property bool darkMode: false
+    // True when the bar needs light contents, i.e. what is behind it is dark.
+    property bool darkMode: bgHelper.valid ? bgHelper.useLightForeground
+                                           : sysWallpaper.darkMode
     property color textColor: rootItem.darkMode ? "#FFFFFF" : "#000000";
     property int fontSize: 10
 
@@ -52,8 +54,11 @@ Item {
         id: sysWallpaper
 
         function reload() {
-            if (sysWallpaper.type === 0)
-                bgHelper.setBackgound(sysWallpaper.path)
+            if (!sysWallpaper.backgroundVisible)
+                bgHelper.setUnavailable()
+            else if (sysWallpaper.type === 0)
+                bgHelper.setBackground(sysWallpaper.path,
+                                       sysWallpaper.darkMode && sysWallpaper.dimsWallpaper)
             else
                 bgHelper.setColor(sysWallpaper.color)
         }
@@ -63,18 +68,17 @@ Item {
         onTypeChanged: sysWallpaper.reload()
         onColorChanged: sysWallpaper.reload()
         onPathChanged: sysWallpaper.reload()
+        onBackgroundVisibleChanged: sysWallpaper.reload()
+        onDarkModeChanged: sysWallpaper.reload()
+        onDimsWallpaperChanged: sysWallpaper.reload()
     }
 
     Accounts.UserAccount {
         id: currentUser
     }
 
-    BackgroundHelper {
+    StatusBarForegroundHelper {
         id: bgHelper
-
-        onNewColor: function (color, darkMode) {
-            rootItem.darkMode = darkMode
-        }
     }
 
     FishUI.PopupTips {

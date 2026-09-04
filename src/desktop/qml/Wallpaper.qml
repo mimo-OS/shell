@@ -27,6 +27,8 @@ Item {
         source: settings.path ? "file://" + settings.path : ""
         sourceSize: Qt.size(width * FishUI.Dpi.ratio,
                             height * FishUI.Dpi.ratio)
+        // Centered by default; statusbarforegroundhelper.cpp samples the
+        // same crop, so do not change the alignment without changing it there.
         fillMode: Image.PreserveAspectCrop
         clip: true
         visible: settings.backgroundVisible && settings.type === 0
@@ -37,7 +39,7 @@ Item {
         source: image
         visible: image.visible
         color: "#000000"
-        opacity: FishUI.Theme.darkMode && settings.dimsWallpaper ? 0.4 : 0.0
+        opacity: settings.darkMode && settings.dimsWallpaper ? 0.4 : 0.0
 
         Behavior on opacity {
             NumberAnimation {

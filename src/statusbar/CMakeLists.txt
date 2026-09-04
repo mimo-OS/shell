@@ -2,7 +2,7 @@ add_library(shell_statusbar OBJECT
     qmltypes.cpp
     statusbar.cpp
 
-    backgroundhelper.cpp
+    statusbarforegroundhelper.cpp
     battery.cpp
     brightness.cpp
     notifications.cpp

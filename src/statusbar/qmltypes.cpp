@@ -1,6 +1,6 @@
 #include "statusbar/qmltypes.h"
 
-#include "statusbar/backgroundhelper.h"
+#include "statusbar/statusbarforegroundhelper.h"
 #include "statusbar/battery.h"
 #include "statusbar/brightness.h"
 #include "statusbar/notifications.h"
@@ -22,5 +22,5 @@ void registerStatusBarQmlTypes()
     qmlRegisterType<QMenuModel>(uri, 1, 0, "QMenuModel");
     qmlRegisterType<PowerActions>(uri, 1, 0, "PowerActions");
     qmlRegisterType<Notifications>(uri, 1, 0, "Notifications");
-    qmlRegisterType<BackgroundHelper>(uri, 1, 0, "BackgroundHelper");
+    qmlRegisterType<StatusBarForegroundHelper>(uri, 1, 0, "StatusBarForegroundHelper");
 }
