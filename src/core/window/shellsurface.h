@@ -33,6 +33,9 @@ class QScreen;
 class ShellSurface : public QQuickWindow
 {
     Q_OBJECT
+    // QWindow::geometry() keeps reporting (0, 0) for a plasma-shell surface on
+    // Wayland; this is the position the compositor was actually given.
+    Q_PROPERTY(QPoint surfacePosition READ surfacePosition NOTIFY surfacePositionChanged)
 
 public:
     //! What the compositor should make of this surface.
@@ -74,6 +77,7 @@ public:
     //! Where the compositor should put this surface, in global coordinates.
     //! See PlasmaSurface::setPosition().
     void setSurfacePosition(const QPoint &position, bool requestRepaint = true);
+    QPoint surfacePosition() const { return m_surfacePosition; }
 
     /**
      * Runs @p update whenever the metrics of @p screen change, and until the
@@ -96,6 +100,9 @@ public:
      * screen's metrics.
      */
     void followPrimaryScreen(const std::function<void()> &update);
+
+signals:
+    void surfacePositionChanged();
 
 protected:
     void resizeEvent(QResizeEvent *e) override;

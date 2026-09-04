@@ -80,9 +80,9 @@ DockItem {
         onTriggered: dock.updateIconGeometry(icon, windowIds)
     }
 
-    onRightClicked: function(mouse) {
+    onRightClicked: {
         if (model.appId !== "cutefish-launcher")
-            popupMenu(contextMenu, mouse)
+            popupMenu(contextMenu)
     }
 
     onClicked: function(mouse) {
@@ -118,13 +118,8 @@ DockItem {
         }
     }
 
-    ScreenHelper {
-        id: _screenHelper
-    }
-
     FishUI.DesktopMenu {
         id: contextMenu
-        availableGeometry: _screenHelper.availableScreenRect
         blurEnabled: FishUI.Theme.blurEnabled
 
         MenuItem {

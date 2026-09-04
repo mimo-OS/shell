@@ -18,6 +18,7 @@
  */
 
 import QtQuick 2.12
+import QtQuick.Window 2.12
 import QtQuick.Controls 2.12
 import Qt5Compat.GraphicalEffects
 import Cutefish.Dock 1.0
@@ -75,10 +76,27 @@ Item {
                                           root.mapToGlobal(0, 0).y - popupTips.height - FishUI.Units.smallSpacing)
     }
 
-    function popupMenu(menu, mouse) {
+    function popupMenu(menu) {
+        // The popup is sized from its content's implicit size, which is only
+        // known once the rows have been laid out.
+        menu.ensureLayout()
+        menu.transientParent = control.Window.window
+        menu.availableGeometry = root.menuAvailableGeometry()
+
         var iconPosition = icon.mapToGlobal(0, 0)
-        var clickPosition = control.mapToGlobal(mouse.x, mouse.y)
-        menu.popupAt(iconPosition.x, clickPosition.y)
+        var menuWidth = menu.popupContentItem.implicitWidth
+        var menuHeight = menu.popupContentItem.implicitHeight
+
+        // Same gap to the panel edge as the popup tips.
+        if (Settings.direction === DockSettings.Left)
+            menu.popupAt(root.mapToGlobal(root.width, 0).x + FishUI.Units.largeSpacing,
+                         iconPosition.y)
+        else if (Settings.direction === DockSettings.Right)
+            menu.popupAt(root.mapToGlobal(0, 0).x - menuWidth - FishUI.Units.largeSpacing,
+                         iconPosition.y)
+        else
+            menu.popupAt(iconPosition.x,
+                         root.mapToGlobal(0, 0).y - menuHeight - FishUI.Units.smallSpacing)
     }
 
     function refreshIcon() {

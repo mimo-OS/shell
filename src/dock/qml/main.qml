@@ -50,6 +50,21 @@ Item {
     property real iconSizeRatio: 1.0
     property int itemSize: Math.max(1, thickness - root.dotAreaSize - root.outerPadding)
 
+    ScreenHelper {
+        id: _screenHelper
+    }
+
+    // Item positions come out in surface coordinates: a plasma-shell panel is
+    // reported at (0, 0) on Wayland. A menu clamps its position against this
+    // rectangle, so hand it the work area in that same space.
+    function menuAvailableGeometry() {
+        var origin = root.mapToGlobal(0, 0)
+        var rect = _screenHelper.availableScreenRect
+        return Qt.rect(rect.x + origin.x - dock.surfacePosition.x,
+                       rect.y + origin.y - dock.surfacePosition.y,
+                       rect.width, rect.height)
+    }
+
     DropArea {
         anchors.fill: parent
         enabled: true
@@ -80,7 +95,7 @@ Item {
 
     FishUI.WindowShadow {
         view: dock
-        strength: 1
+        strength: 0.5
         radius: _background.radius
     }
 
@@ -214,7 +229,7 @@ Item {
             enableActivateDot: false
             iconName: trash.count === 0 ? "user-trash-empty" : "user-trash-full"
             onClicked: trash.openTrash()
-            onRightClicked: function(mouse) { popupMenu(trashMenu, mouse) }
+            onRightClicked: popupMenu(trashMenu)
 
             dropArea.enabled: true
 
@@ -241,13 +256,8 @@ Item {
                 }
             }
 
-            ScreenHelper {
-                id: _screenHelper
-            }
-
             FishUI.DesktopMenu {
                 id: trashMenu
-                availableGeometry: _screenHelper.availableScreenRect
                 blurEnabled: FishUI.Theme.blurEnabled
 
                 MenuItem {

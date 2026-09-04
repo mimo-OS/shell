@@ -101,6 +101,9 @@ void ShellSurface::setSurfacePosition(const QPoint &position, bool requestRepain
     // where the *previous* screen change had put it, one resolution behind.
     if (moved && requestRepaint)
         requestUpdate();
+
+    if (moved)
+        emit surfacePositionChanged();
 }
 
 void ShellSurface::watchScreen(QScreen *screen, const std::function<void()> &update)
