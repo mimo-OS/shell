@@ -14,8 +14,8 @@ find_package(KWayland REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(WAYLAND_CLIENT REQUIRED IMPORTED_TARGET wayland-client)
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../libcutefish/applications
-                 ${CMAKE_CURRENT_BINARY_DIR}/cutefishapplications-build)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../cutefish-framework/applications
+                 ${CMAKE_CURRENT_BINARY_DIR}/cutefish-framework-applications-build)
 
 # What every module compiles against: one include root, so a cross-module
 # include reads as the path it is ("core/window/shellsurface.h"), and the Qt
@@ -23,7 +23,7 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../libcutefish/applications
 add_library(shellcommon INTERFACE)
 target_include_directories(shellcommon INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_link_libraries(shellcommon INTERFACE
-    cutefishapplications
+    Cutefish::Applications
     Qt6::Core
     Qt6::Widgets
     Qt6::Quick

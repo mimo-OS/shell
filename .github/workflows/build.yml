@@ -28,7 +28,7 @@ jobs:
         with:
           repository: cutefishos/cutefish-framework
           ref: main
-          path: libcutefish
+          path: cutefish-framework
 
       - name: Checkout fishui
         uses: actions/checkout@v4
@@ -60,7 +60,7 @@ jobs:
             libwayland-dev
 
       - name: Install Cutefish Framework build dependencies
-        working-directory: libcutefish
+        working-directory: cutefish-framework
         run: mk-build-deps -i -t "apt-get --yes" -r
 
       - name: Install fishui build dependencies
@@ -72,11 +72,11 @@ jobs:
         run: mk-build-deps -i -t "apt-get --yes" -r
 
       - name: Build and install Cutefish Framework
-        working-directory: libcutefish
+        working-directory: cutefish-framework
         run: |
-          cmake -S . -B /tmp/cutefish-ci-build/libcutefish -DCMAKE_INSTALL_PREFIX=/usr
-          cmake --build /tmp/cutefish-ci-build/libcutefish --parallel "$(nproc)"
-          cmake --install /tmp/cutefish-ci-build/libcutefish
+          cmake -S . -B /tmp/cutefish-ci-build/cutefish-framework -DCMAKE_INSTALL_PREFIX=/usr
+          cmake --build /tmp/cutefish-ci-build/cutefish-framework --parallel "$(nproc)"
+          cmake --install /tmp/cutefish-ci-build/cutefish-framework
 
       - name: Build and install fishui
         working-directory: fishui

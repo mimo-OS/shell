@@ -24,7 +24,7 @@ import QtQuick.Layouts 1.12
 import Qt5Compat.GraphicalEffects
 
 import Cutefish.Launcher 1.0
-import Cutefish.System 1.0 as System
+import Cutefish.Appearance 1.0 as Appearance
 import FishUI 1.0 as FishUI
 
 Item {
@@ -120,7 +120,7 @@ Item {
         }
     }
 
-    System.Wallpaper {
+    Appearance.Wallpaper {
         id: backend
     }
 

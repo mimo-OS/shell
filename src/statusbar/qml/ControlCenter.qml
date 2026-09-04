@@ -24,7 +24,7 @@ import QtQuick.Layouts 1.12
 import Qt5Compat.GraphicalEffects
 
 import Cutefish.Accounts 1.0 as Accounts
-import Cutefish.Bluez 1.0 as Bluez
+import Cutefish.Bluetooth 1.0 as Bluetooth
 import Cutefish.StatusBar 1.0
 import Cutefish.Shell 1.0
 import Cutefish.Audio 1.0
@@ -40,7 +40,7 @@ PopupWindow {
     property point position: Qt.point(0, 0)
     property var defaultSink: paSinkModel.defaultSink
 
-    property bool bluetoothDisConnected: Bluez.Manager.bluetoothBlocked
+    property bool bluetoothDisConnected: Bluetooth.Manager.bluetoothBlocked
     property var defaultSinkValue: defaultSink ? defaultSink.volume / PulseAudio.NormalVolume * 100.0 : -1
 
     property var borderColor: FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.3)
@@ -90,10 +90,10 @@ PopupWindow {
 
     function toggleBluetooth() {
         const enable = !control.bluetoothDisConnected
-        Bluez.Manager.bluetoothBlocked = enable
+        Bluetooth.Manager.bluetoothBlocked = enable
 
-        for (var i = 0; i < Bluez.Manager.adapters.length; ++i) {
-            var adapter = Bluez.Manager.adapters[i]
+        for (var i = 0; i < Bluetooth.Manager.adapters.length; ++i) {
+            var adapter = Bluetooth.Manager.adapters[i]
             adapter.powered = enable
         }
     }
@@ -244,7 +244,7 @@ PopupWindow {
                                                            : "qrc:/statusbar/images/light/bluetooth-symbolic.svg"
                     checked: !control.bluetoothDisConnected
                     label: qsTr("Bluetooth")
-                    visible: Bluez.Manager.adapters.length
+                    visible: Bluetooth.Manager.adapters.length
                     onClicked: control.toggleBluetooth()
                     onPressAndHold: {
                         control.visible = false

@@ -24,10 +24,10 @@ import QtQuick.Window 2.12
 import Qt5Compat.GraphicalEffects
 
 import Cutefish.Accounts 1.0 as Accounts
-import Cutefish.System 1.0 as System
+import Cutefish.Appearance 1.0 as Appearance
 import Cutefish.Shell 1.0
 import Cutefish.StatusBar 1.0
-import Cutefish.NetworkManagement 1.0 as NM
+import Cutefish.Network 1.0 as NM
 import FishUI 1.0 as FishUI
 
 Item {
@@ -48,7 +48,7 @@ Item {
         timeTimer.restart()
     }
 
-    System.Wallpaper {
+    Appearance.Wallpaper {
         id: sysWallpaper
 
         function reload() {

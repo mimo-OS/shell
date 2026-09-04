@@ -2,7 +2,7 @@ import QtQuick 2.12
 import QtQuick.Window 2.12
 import Qt5Compat.GraphicalEffects
 
-import Cutefish.System 1.0 as System
+import Cutefish.Appearance 1.0 as Appearance
 import FishUI 1.0 as FishUI
 
 // The desktop background: an image or a plain colour, whichever
@@ -10,7 +10,7 @@ import FishUI 1.0 as FishUI
 Item {
     id: control
 
-    System.Wallpaper {
+    Appearance.Wallpaper {
         id: settings
     }
 

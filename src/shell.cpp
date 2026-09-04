@@ -86,7 +86,7 @@ void Shell::registerQmlTypes()
     registerLauncherQmlTypes();
     registerNotificationQmlTypes();
 
-    // The background is drawn from Cutefish.System's Wallpaper type; the
+    // The background is drawn from Cutefish.Appearance's Wallpaper type; the
     // desktop icons come from the org.cutefish.filemanager.desktop QML plugin,
     // and both register their own types.
 }

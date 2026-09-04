@@ -22,7 +22,7 @@ import QtQuick.Layouts 1.12
 import QtQuick.Controls 2.12
 import Qt5Compat.GraphicalEffects
 import FishUI 1.0 as FishUI
-import Cutefish.Mpris 1.0
+import Cutefish.Media 1.0
 
 Item {
     id: control
