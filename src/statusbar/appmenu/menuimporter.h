@@ -5,6 +5,7 @@
 #include <QDBusArgument>
 #include <QDBusContext>
 #include <QDBusObjectPath>
+#include <QList>
 #include <QObject>
 
 class QDBusObjectPath;
@@ -24,41 +25,11 @@ public:
 
     bool connectToBus();
 
-    bool serviceExist(uint id)
-    {
-        return m_menuServices.contains(id);
-    }
-    QString serviceForWindow(uint id)
-    {
-        return m_menuServices.value(id);
-    }
-
-    bool pathExist(uint id)
-    {
-        return m_menuPaths.contains(id);
-    }
-    QString pathForWindow(uint id)
-    {
-        return m_menuPaths.value(id).path();
-    }
-
-    QList<uint> ids()
-    {
-        return m_menuServices.keys();
-    }
-
     //! Wayland has no window id a client and the compositor agree on, so the
     //! menu a window owns is found through the pid of the process that
     //! registered it.
-    uint windowForPid(uint pid) const;
-    QString serviceForPid(uint pid) const
-    {
-        return m_menuServices.value(windowForPid(pid));
-    }
-    QString pathForPid(uint pid) const
-    {
-        return m_menuPaths.value(windowForPid(pid)).path();
-    }
+    QString serviceForPid(uint pid) const;
+    QString pathForPid(uint pid) const;
 
 Q_SIGNALS:
     void WindowRegistered(uint id, const QString &service, const QDBusObjectPath &);
@@ -73,10 +44,22 @@ private Q_SLOTS:
     void slotServiceUnregistered(const QString &service);
 
 private:
+    //! Qt hands the registrar a per-process window counter on Wayland, so the
+    //! same id arrives from several applications at once; only the pair with
+    //! the exporter's unique bus name identifies a menu.
+    struct Registration {
+        uint windowId = 0;
+        QString service;
+        QDBusObjectPath path;
+        uint pid = 0;
+    };
+
+    const Registration *newestFor(uint pid) const;
+    void removeAt(int index);
+
     QDBusServiceWatcher *m_serviceWatcher;
-    QHash<uint, QString> m_menuServices;
-    QHash<uint, QDBusObjectPath> m_menuPaths;
-    QHash<uint, uint> m_windowPids;
+    // Ordered oldest first; the newest registration of a process wins.
+    QList<Registration> m_registrations;
 };
 
 #endif /* MENUIMPORTER_H */

@@ -37,20 +37,48 @@ MenuImporter::~MenuImporter()
     QDBusConnection::sessionBus().unregisterService(DBUS_SERVICE);
 }
 
-uint MenuImporter::windowForPid(uint pid) const
+const MenuImporter::Registration *MenuImporter::newestFor(uint pid) const
 {
     if (pid == 0)
-        return 0;
+        return nullptr;
 
-    // Newest registration wins: an application that opened a second window
-    // registers it again with the same pid.
-    uint result = 0;
-    for (auto it = m_windowPids.cbegin(); it != m_windowPids.cend(); ++it) {
-        if (it.value() == pid && it.key() >= result)
-            result = it.key();
+    // An application that opened a second window registers it again with the
+    // same pid; the last registration is the one the user is looking at.
+    for (int i = m_registrations.count() - 1; i >= 0; --i) {
+        if (m_registrations.at(i).pid == pid)
+            return &m_registrations.at(i);
     }
 
-    return result;
+    return nullptr;
+}
+
+QString MenuImporter::serviceForPid(uint pid) const
+{
+    const Registration *registration = newestFor(pid);
+    return registration ? registration->service : QString();
+}
+
+QString MenuImporter::pathForPid(uint pid) const
+{
+    const Registration *registration = newestFor(pid);
+    return registration ? registration->path.path() : QString();
+}
+
+void MenuImporter::removeAt(int index)
+{
+    const QString service = m_registrations.at(index).service;
+    m_registrations.removeAt(index);
+
+    bool stillExported = false;
+    for (const Registration &registration : std::as_const(m_registrations)) {
+        if (registration.service == service) {
+            stillExported = true;
+            break;
+        }
+    }
+
+    if (!stillExported)
+        m_serviceWatcher->removeWatchedService(service);
 }
 
 bool MenuImporter::connectToBus()
@@ -69,16 +97,27 @@ void MenuImporter::RegisterWindow(uint id, const QDBusObjectPath &path)
     if (path.path().isEmpty()) // prevent bad dbusmenu usage
         return;
 
-    QString service = message().service();
+    const QString service = message().service();
 
-    m_menuServices.insert(id, service);
-    m_menuPaths.insert(id, path);
+    Registration registration;
+    registration.windowId = id;
+    registration.service = service;
+    registration.path = path;
 
     if (QDBusConnectionInterface *iface = QDBusConnection::sessionBus().interface()) {
         const QDBusReply<uint> pid = iface->servicePid(service);
         if (pid.isValid())
-            m_windowPids.insert(id, pid.value());
+            registration.pid = pid.value();
     }
+
+    for (int i = 0; i < m_registrations.count(); ++i) {
+        if (m_registrations.at(i).windowId == id && m_registrations.at(i).service == service) {
+            m_registrations.removeAt(i);
+            break;
+        }
+    }
+
+    m_registrations.append(registration);
 
     if (!m_serviceWatcher->watchedServices().contains(service)) {
         m_serviceWatcher->addWatchedService(service);
@@ -89,25 +128,45 @@ void MenuImporter::RegisterWindow(uint id, const QDBusObjectPath &path)
 
 void MenuImporter::UnregisterWindow(uint id)
 {
-    m_menuServices.remove(id);
-    m_menuPaths.remove(id);
-    m_windowPids.remove(id);
+    const QString service = calledFromDBus() ? message().service() : QString();
 
-    emit WindowUnregistered(id);
+    for (int i = m_registrations.count() - 1; i >= 0; --i) {
+        const Registration &registration = m_registrations.at(i);
+        if (registration.windowId != id)
+            continue;
+        if (!service.isEmpty() && registration.service != service)
+            continue;
+
+        removeAt(i);
+        emit WindowUnregistered(id);
+        return;
+    }
 }
 
 QString MenuImporter::GetMenuForWindow(uint id, QDBusObjectPath &path)
 {
-    path = m_menuPaths.value(id);
-    return m_menuServices.value(id);
+    for (int i = m_registrations.count() - 1; i >= 0; --i) {
+        const Registration &registration = m_registrations.at(i);
+        if (registration.windowId == id) {
+            path = registration.path;
+            return registration.service;
+        }
+    }
+
+    path = QDBusObjectPath();
+    return QString();
 }
 
 void MenuImporter::slotServiceUnregistered(const QString &service)
 {
-    const uint id = m_menuServices.key(service);
-    m_menuServices.remove(id);
-    m_menuPaths.remove(id);
-    m_windowPids.remove(id);
-    emit WindowUnregistered(id);
+    for (int i = m_registrations.count() - 1; i >= 0; --i) {
+        if (m_registrations.at(i).service != service)
+            continue;
+
+        const uint id = m_registrations.at(i).windowId;
+        removeAt(i);
+        emit WindowUnregistered(id);
+    }
+
     m_serviceWatcher->removeWatchedService(service);
 }
