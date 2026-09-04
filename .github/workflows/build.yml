@@ -23,10 +23,10 @@ jobs:
         with:
           path: shell
 
-      - name: Checkout libcutefish
+      - name: Checkout Cutefish Framework
         uses: actions/checkout@v4
         with:
-          repository: cutefishos/libcutefish
+          repository: cutefishos/cutefish-framework
           ref: main
           path: libcutefish
 
@@ -59,7 +59,7 @@ jobs:
             libwayland-bin \
             libwayland-dev
 
-      - name: Install libcutefish build dependencies
+      - name: Install Cutefish Framework build dependencies
         working-directory: libcutefish
         run: mk-build-deps -i -t "apt-get --yes" -r
 
@@ -71,7 +71,7 @@ jobs:
         working-directory: filemanager
         run: mk-build-deps -i -t "apt-get --yes" -r
 
-      - name: Build and install libcutefish
+      - name: Build and install Cutefish Framework
         working-directory: libcutefish
         run: |
           cmake -S . -B /tmp/cutefish-ci-build/libcutefish -DCMAKE_INSTALL_PREFIX=/usr
