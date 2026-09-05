@@ -144,9 +144,8 @@ DockItem {
 
         MenuItem {
             visible: windowCount !== 0
-            text: windowCount === 1 ? qsTr("Close window")
-                                    : qsTr("Close %1 windows").arg(windowCount)
-            onTriggered: appModel.closeAllByAppId(model.appId)
+            text: qsTr("Quit")
+            onTriggered: appModel.quit(model.appId)
         }
     }
 }

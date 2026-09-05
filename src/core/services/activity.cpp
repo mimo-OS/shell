@@ -1,7 +1,15 @@
 #include "activity.h"
 #include "applicationresolver.h"
 #include "applicationregistry.h"
+#include "applicationruntime.h"
 #include "core/wayland/kwinwaylandinterface.h"
+
+#include <QCoreApplication>
+#include <QTimer>
+
+// Let the application close its windows on its own before the runtime
+// terminates whatever is left of it.
+static const int kQuitGraceMs = 3000;
 
 static Activity *SELF = nullptr;
 
@@ -85,6 +93,39 @@ void Activity::close()
 {
     KWinWaylandInterface::instance()->closeWindow(
         KWinWaylandInterface::instance()->activeWindow());
+}
+
+void Activity::quit()
+{
+    KWinWaylandInterface *kwin = KWinWaylandInterface::instance();
+    const quint64 window = kwin->activeWindow();
+
+    if (!kwin->isAcceptableWindow(window))
+        return;
+
+    const quint32 pid = m_pid;
+
+    // Never terminate the shell itself.
+    if (pid == static_cast<quint32>(QCoreApplication::applicationPid()))
+        return;
+
+    // Quit means the application, not this one window: close every window it
+    // has so it can still prompt to save.
+    if (pid != 0) {
+        for (const KWinWaylandClient &client : kwin->clients()) {
+            if (static_cast<quint32>(client.pid) == pid && kwin->isAcceptableWindow(client.id))
+                kwin->closeWindow(client.id);
+        }
+    } else {
+        kwin->closeWindow(window);
+        return;
+    }
+
+    // Whatever is left after that is terminated, including an application that
+    // closed its windows but keeps running.
+    QTimer::singleShot(kQuitGraceMs, this, [pid] {
+        ApplicationRuntime::instance()->quitByPid(pid);
+    });
 }
 
 void Activity::minimize()

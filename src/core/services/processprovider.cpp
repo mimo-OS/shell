@@ -1,7 +1,5 @@
 #include "processprovider.h"
-#include <QDBusInterface>
-#include <QDBusPendingCall>
-#include <QProcess>
+#include "applicationlauncher.h"
 
 ProcessProvider::ProcessProvider(QObject *parent)
     : QObject(parent)
@@ -11,17 +9,5 @@ ProcessProvider::ProcessProvider(QObject *parent)
 
 bool ProcessProvider::startDetached(const QString &exec, QStringList args)
 {
-    QDBusInterface iface("com.cutefish.Session",
-                         "/Session",
-                         "com.cutefish.Session", QDBusConnection::sessionBus());
-
-    if (iface.isValid()) {
-        iface.asyncCall("launch", exec, args).waitForFinished();
-        return true;
-    } else {
-        QProcess process;
-        process.startDetached(exec, args);
-    }
-
-    return false;
+    return ApplicationLauncher::startDetached(QStringList{exec} + args);
 }

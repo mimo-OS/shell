@@ -45,6 +45,7 @@ public:
 
     Q_INVOKABLE bool openNewInstance(const QString &appId);
     Q_INVOKABLE void closeAllByAppId(const QString &appId);
+    Q_INVOKABLE void quit(const QString &appId);
     Q_INVOKABLE void pin(const QString &appId);
     Q_INVOKABLE void unPin(const QString &appId);
 

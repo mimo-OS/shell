@@ -42,8 +42,8 @@ AppMenuModel::AppMenuModel(QObject *parent)
     m_activityMenu = new QMenu;
     m_activityAction = new QAction(m_activity->title(), this);
     m_activityAction->setMenu(m_activityMenu);
-    m_activityMenu->addAction(QCoreApplication::translate("main", "Close"),
-                              m_activity, &Activity::close);
+    m_activityMenu->addAction(QCoreApplication::translate("main", "Quit"),
+                              m_activity, &Activity::quit);
 
     connect(this, &AppMenuModel::modelNeedsUpdate, this, [this] {
         if (!m_updatePending) {

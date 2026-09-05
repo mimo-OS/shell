@@ -2,17 +2,24 @@
 #include "core/services/applicationresolver.h"
 #include "applicationlauncher.h"
 #include "applicationregistry.h"
+#include "applicationruntime.h"
 #include "desktopentry.h"
 #include "launcher/launcher.h"
 
 #include <QFileInfo>
 #include <QSettings>
+#include <QCoreApplication>
+#include <QTimer>
 
 #include <algorithm>
 #include <utility>
 
 // The dock's built-in launcher button. It is not backed by a .desktop file.
 static const char *kLauncherId = "cutefish-launcher";
+
+// Let the application close its windows on its own before the runtime
+// terminates whatever is left of it.
+static const int kQuitGraceMs = 3000;
 
 ApplicationModel::ApplicationModel(QObject *parent)
     : QAbstractListModel(parent)
@@ -293,6 +300,46 @@ void ApplicationModel::closeAllByAppId(const QString &appId)
     for (quint64 wid : item->wids) {
         m_kwin->closeWindow(wid);
     }
+}
+
+void ApplicationModel::quit(const QString &appId)
+{
+    ApplicationItem *item = findItemById(appId);
+
+    if (!item)
+        return;
+
+    QList<quint32> pids;
+    for (quint64 wid : item->wids) {
+        const quint32 pid = static_cast<quint32>(m_kwin->client(wid).pid);
+
+        // Never terminate the shell itself.
+        if (pid == 0 || pid == static_cast<quint32>(QCoreApplication::applicationPid()))
+            continue;
+
+        if (!pids.contains(pid))
+            pids.append(pid);
+    }
+
+    QString runtimeId;
+    if (DesktopEntry *entry = ApplicationRegistry::instance()->byPath(item->desktopPath))
+        runtimeId = entry->id();
+
+    // Close the windows first so the application can still prompt to save.
+    closeAllByAppId(appId);
+
+    // Then terminate what is left, including an application that closed its
+    // windows but keeps running.
+    QTimer::singleShot(kQuitGraceMs, this, [pids, runtimeId] {
+        ApplicationRuntime *runtime = ApplicationRuntime::instance();
+        bool requested = false;
+
+        for (quint32 pid : pids)
+            requested |= runtime->quitByPid(pid);
+
+        if (!requested && !runtimeId.isEmpty())
+            runtime->quitApplication(runtimeId);
+    });
 }
 
 void ApplicationModel::pin(const QString &appId)

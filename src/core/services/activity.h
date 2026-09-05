@@ -29,6 +29,7 @@ public:
     QString icon() const;
 
     Q_INVOKABLE void close();
+    Q_INVOKABLE void quit();
     Q_INVOKABLE void minimize();
     Q_INVOKABLE void restore();
     Q_INVOKABLE void maximize();
