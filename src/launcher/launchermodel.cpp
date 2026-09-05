@@ -218,14 +218,23 @@ bool LauncherModel::launch(const QString &path)
 void LauncherModel::onApplicationsChanged()
 {
     ApplicationRegistry *registry = ApplicationRegistry::instance();
+    // Only entries that pass the XDG display rules; a stale saved list must not
+    // resurrect an application that is now NoDisplay/Hidden or not for Cutefish.
     const QList<DesktopEntry *> available = registry->applicationEntries();
+
+    QHash<QString, DesktopEntry *> visibleById;
+    QHash<QString, DesktopEntry *> visibleByPath;
+    for (DesktopEntry *entry : available) {
+        visibleById.insert(entry->id(), entry);
+        visibleByPath.insert(QFileInfo(entry->path()).absoluteFilePath(), entry);
+    }
 
     QList<AppItem> updated;
     QSet<QString> seen;
     for (AppItem item : std::as_const(m_appItems)) {
-        DesktopEntry *entry = registry->byId(item.id);
+        DesktopEntry *entry = visibleById.value(item.id);
         if (!entry)
-            entry = registry->byPath(item.id);
+            entry = visibleByPath.value(QFileInfo(item.id).absoluteFilePath());
         if (!entry || entry->terminal() || seen.contains(entry->id()))
             continue;
 
