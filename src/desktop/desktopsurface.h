@@ -32,12 +32,18 @@ signals:
     void targetScreenChanged();
     void primaryChanged();
 
+protected:
+    void exposeEvent(QExposeEvent *event) override;
+
 private slots:
     void updateGeometry();
 
 private:
+    void claimKeyboard();
+
     QPointer<QScreen> m_screen;
     bool m_primary;
+    bool m_keyboardClaimed;
 };
 
 #endif // DESKTOPSURFACE_H
