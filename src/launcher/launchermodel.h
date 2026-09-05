@@ -47,9 +47,9 @@ public:
     Q_INVOKABLE void search(const QString &key);
     Q_INVOKABLE void sendToDesktop(const QString &key);
 
-    int findById(const QString &id);
+    Q_INVOKABLE int findById(const QString &id);
 
-    Q_INVOKABLE void move(int from, int to, int page, int pageCount);
+    Q_INVOKABLE void move(int from, int to);
     Q_INVOKABLE void save();
 
     void delaySave();

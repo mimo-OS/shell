@@ -43,29 +43,18 @@ Item {
     property Item view: null
 
     readonly property int itemIndex: index
-    readonly property bool dragging: control.Drag.active
+    readonly property bool dragging: control.view && control.view.draggedAppId === model.appId
 
     // Tracked by hand: a window-level drag takes the mouse grab away, so the
     // MouseArea never sees the release and would stay pressed after the drop.
     property bool iconPressed: false
 
+    // Set while this delegate holds a drag that has not been acted on yet.
+    property bool reorderPending: false
+
     z: dragging ? 2 : 0
 
-    // A window-level drag: the compositor carries the icon, so it can be
-    // dropped on another shell window and not only back into this grid.
-    Drag.dragType: Drag.Automatic
-    Drag.supportedActions: Qt.MoveAction
-    Drag.proposedAction: Qt.MoveAction
-    Drag.mimeData: ({ "application/x-cutefish-desktop-id": model.appId })
-    Drag.keys: ["application/x-cutefish-desktop-id"]
-    Drag.hotSpot.x: control.iconSize / 2
-    Drag.hotSpot.y: control.iconSize / 2
-
-    Drag.onActiveChanged: {
-        launcher.setDragging(control.Drag.active)
-        if (!control.Drag.active)
-            control.iconPressed = false
-    }
+    onDraggingChanged: control.iconPressed = false
 
     FishUI.IconItem {
         id: icon
@@ -95,14 +84,36 @@ Item {
         keys: ["application/x-cutefish-desktop-id"]
         enabled: !control.searchMode
 
-        onEntered: reorderTimer.restart()
-        onExited: reorderTimer.stop()
+        onEntered: {
+            control.reorderPending = true
+            reorderTimer.restart()
+        }
 
-        // The dwell below already reordered; the drop just ends the drag.
+        onExited: {
+            control.reorderPending = false
+            reorderTimer.stop()
+        }
+
         onDropped: function (drop) {
             reorderTimer.stop()
             drop.accept(Qt.MoveAction)
+
+            // A swap re-binds this delegate to the slot the other icon came
+            // from, so reordering again here would undo the dwell's move.
+            if (control.reorderPending)
+                control.reorder(drop.source)
+            control.reorderPending = false
         }
+    }
+
+    function reorder(source) {
+        if (!control.view || source !== control.view.dragSource
+                || !control.view.draggedAppId)
+            return
+
+        // The view applies it: a cross-page move resets the page models and
+        // destroys this delegate.
+        control.view.requestMove(control.itemIndex + control.pageIndex * control.pageCount)
     }
 
     // Hovering a neighbour long enough swaps it, rather than waiting for the
@@ -117,18 +128,13 @@ Item {
                 return
 
             // Wait out the previous swap's animation.
-            if (control.view.settling) {
+            if (control.view.settling()) {
                 reorderTimer.restart()
                 return
             }
 
-            var source = dropArea.drag.source
-            if (!source || source === control || source.itemIndex === undefined)
-                return
-
-            launcherModel.move(source.itemIndex, control.itemIndex,
-                               control.pageIndex, control.pageCount)
-            control.view.startSettle()
+            control.reorderPending = false
+            control.reorder(dropArea.drag.source)
         }
     }
 
@@ -219,7 +225,7 @@ Item {
 
         onPositionChanged: function (mouse) {
             if (!iconMouseArea.dragArmed || !(mouse.buttons & Qt.LeftButton)
-                    || control.searchMode || control.Drag.active)
+                    || control.searchMode || control.dragging || !control.view)
                 return
 
             const dx = mouse.x - iconMouseArea.pressPoint.x
@@ -233,8 +239,7 @@ Item {
             iconMouseArea.dragArmed = false
 
             if (iconMouseArea.dragImage != "") {
-                control.Drag.imageSource = iconMouseArea.dragImage
-                control.Drag.active = true
+                control.view.startDrag(model.appId, iconMouseArea.dragImage)
                 return
             }
 
@@ -243,8 +248,7 @@ Item {
                 if (!control.iconPressed)
                     return
 
-                control.Drag.imageSource = result.url
-                control.Drag.active = true
+                control.view.startDrag(model.appId, result.url)
             })
         }
 

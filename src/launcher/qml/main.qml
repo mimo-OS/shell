@@ -180,6 +180,33 @@ Item {
         onClicked: launcher.hideWindow()
     }
 
+    // Carries the window-level drag. It must not be an ancestor of the icon
+    // drop areas, and it must outlive the delegate a cross-page move destroys.
+    Item {
+        id: dragProxy
+
+        property string draggedAppId: ""
+
+        Drag.dragType: Drag.Automatic
+        Drag.supportedActions: Qt.MoveAction
+        Drag.proposedAction: Qt.MoveAction
+        Drag.mimeData: ({ "application/x-cutefish-desktop-id": dragProxy.draggedAppId })
+        Drag.keys: ["application/x-cutefish-desktop-id"]
+
+        Drag.onActiveChanged: {
+            launcher.setDragging(dragProxy.Drag.active)
+            if (!dragProxy.Drag.active)
+                dragProxy.draggedAppId = ""
+        }
+
+        function startDrag(appId, image, hotSpot) {
+            dragProxy.draggedAppId = appId
+            dragProxy.Drag.hotSpot = hotSpot
+            dragProxy.Drag.imageSource = image
+            dragProxy.Drag.active = true
+        }
+    }
+
     // The whole surface accepts the drag. Without it the cursor flips to "no
     // drop" in every gap between the icons. The per-icon drop areas sit deeper
     // in the tree, so they still get the event first.
@@ -316,6 +343,7 @@ Item {
             AllAppsView {
                 id: appView
                 anchors.fill: parent
+                dragSource: dragProxy
                 searchMode: textField.text.length > 0
                 focus: true
 
@@ -381,6 +409,36 @@ Item {
                 height: width
                 radius: width / 2
                 color: index === pageIndicator.currentIndex ? "white" : Qt.darker("white", 1.8)
+            }
+        }
+    }
+
+    Repeater {
+        model: 2
+
+        DropArea {
+            id: edgeDropArea
+            readonly property bool previous: index === 0
+            readonly property bool canPage: previous ? appView.currentIndex > 0
+                                                     : appView.currentIndex < appView.count - 1
+
+            x: previous ? 0 : root.width - width
+            width: (previous ? mainLayout.x : root.width - mainLayout.x - mainLayout.width)
+                   + appView.width * (1 - appView.contentWidthRatio) / 2
+            height: root.height
+            enabled: root.showed && !appView.searchMode && appView.count > 1
+            keys: ["application/x-cutefish-desktop-id"]
+
+            Timer {
+                interval: 600
+                repeat: true
+                running: edgeDropArea.containsDrag && edgeDropArea.enabled && edgeDropArea.canPage
+                onTriggered: {
+                    if (edgeDropArea.previous)
+                        appView.scrollPreviousPage()
+                    else
+                        appView.scrollNextPage()
+                }
             }
         }
     }

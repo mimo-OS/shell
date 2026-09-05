@@ -28,9 +28,70 @@ ListView {
 
     property bool searchMode: false
 
-    // True while a swap is still animating. Without it the delegates sliding
-    // past the cursor each claim the drag and it bounces.
-    readonly property bool settling: _settleTimer.running
+    // Qt refuses a drag enter whose source item is an ancestor of the DropArea,
+    // so the drag cannot be carried by the view: it lives on a proxy item that
+    // sits beside the grid and survives the delegate being recycled.
+    property Item dragSource: null
+    readonly property string draggedAppId: dragSource ? dragSource.draggedAppId : ""
+
+    property string _pendingDragId: ""
+    property url _pendingDragImage: ""
+    property string _pendingMoveId: ""
+    property int _pendingMoveTo: -1
+
+    // An automatic drag runs a nested event loop, and a reorder inside it
+    // deletes the delegate whose handler asked for the drag. Both the drag and
+    // the move therefore have to leave the delegate's stack frame first.
+    function startDrag(appId, image) {
+        control._pendingDragId = appId
+        control._pendingDragImage = image
+        Qt.callLater(control._beginDrag)
+    }
+
+    function _beginDrag() {
+        const appId = control._pendingDragId
+        control._pendingDragId = ""
+        if (!control.dragSource || appId === "")
+            return
+
+        control.dragSource.startDrag(appId, control._pendingDragImage,
+                                     Qt.point(control.iconSize / 2, control.iconSize / 2))
+    }
+
+    function requestMove(to) {
+        // Captured now: the drag is over by the time a move asked for on drop
+        // gets to run.
+        control._pendingMoveId = control.draggedAppId
+        control._pendingMoveTo = to
+        Qt.callLater(control._applyMove)
+    }
+
+    function _applyMove() {
+        const appId = control._pendingMoveId
+        const to = control._pendingMoveTo
+        control._pendingMoveId = ""
+        control._pendingMoveTo = -1
+        if (appId === "" || to < 0)
+            return
+
+        const from = launcherModel.findById(appId)
+        if (from < 0 || from === to)
+            return
+
+        control.startSettle()
+        launcherModel.move(from, to)
+    }
+
+    // Deadlines rather than Timers: a QML Timer is a pause animation and stops
+    // being advanced while the launcher window is hidden, so one that was
+    // running at hide time reports running forever after.
+    property double settleUntil: 0
+
+    // True while a swap or a page change is still animating. Without it the
+    // delegates sliding past the cursor each claim the drag and it bounces.
+    function settling() {
+        return Date.now() < control.settleUntil
+    }
 
     property var sourceModel: launcherModel
     property int modelCount: sourceModel.count
@@ -91,58 +152,48 @@ ListView {
     currentIndex: -1
     clip: true
 
-    Timer {
-        id: _settleTimer
-        interval: 270
+    function startSettle(duration) {
+        control.settleUntil = Date.now() + (duration === undefined ? 270 : duration)
     }
 
-    function startSettle() {
-        _settleTimer.restart()
+    // An explicit currentIndex of -1 marks the index as cleared, so the view
+    // never selects page 0 on its own and currentItem stays null.
+    onCountChanged: {
+        if (control.count > 0 && control.currentIndex < 0)
+            control.currentIndex = 0
     }
 
-    NumberAnimation on contentX {
-        id: scrollAnim
+    // Paging is driven from the page's MouseArea below: a WheelHandler on the
+    // view never activates, and a horizontal Flickable ignores a vertical wheel.
+    property real wheelAccumulated: 0
 
-        duration: 300
-        easing.type: Easing.InOutQuad
+    function handleWheel(event) {
+        const delta = event.angleDelta.y !== 0 ? event.angleDelta.y : event.angleDelta.x
+        if (delta === 0)
+            return
 
-        onStopped: {
-            var index = control.indexAt(control.contentX + control.width / 2,
-                                        control.contentY + control.height / 2)
-            if (index === -1)
-                control.currentIndex = 0
-            else
-                control.currentIndex = index
-        }
-    }
-
-    // Must live on the view: wheel events propagate up the parent chain, so a
-    // MouseArea inside a page never sees the ones an icon declines.
-    WheelHandler {
-        target: null
+        event.accepted = true
+        wheelResetTimer.restart()
+        if ((control.wheelAccumulated > 0) !== (delta > 0))
+            control.wheelAccumulated = 0
 
         // A touchpad sends many small deltas. Page once per notch's worth of
         // them, or a two-finger scroll runs through the whole grid.
-        property real accumulated: 0
+        control.wheelAccumulated += delta
+        if (Math.abs(control.wheelAccumulated) < 120)
+            return
 
-        onWheel: function (event) {
-            const delta = event.angleDelta.y !== 0 ? event.angleDelta.y : event.angleDelta.x
-            if (delta === 0)
-                return
+        control.wheelAccumulated = 0
+        if (delta > 0)
+            control.scrollPreviousPage()
+        else
+            control.scrollNextPage()
+    }
 
-            if ((accumulated > 0) !== (delta > 0))
-                accumulated = 0
-
-            accumulated += delta
-            if (Math.abs(accumulated) < 120)
-                return
-
-            accumulated = 0
-            if (delta > 0)
-                control.scrollPreviousPage()
-            else
-                control.scrollNextPage()
-        }
+    Timer {
+        id: wheelResetTimer
+        interval: 250
+        onTriggered: control.wheelAccumulated = 0
     }
 
     delegate: Item {
@@ -153,10 +204,12 @@ ListView {
 
         readonly property int pageIndex: index
 
-        // Anything that is not an icon or the search field dismisses.
+        // Anything that is not an icon or the search field dismisses. Also the
+        // lowest item in the chain that still sees every wheel event.
         MouseArea {
             anchors.fill: parent
             onClicked: launcher.hideWindow()
+            onWheel: function (wheel) { control.handleWheel(wheel) }
         }
 
         GridView {
@@ -219,23 +272,19 @@ ListView {
         }
     }
 
-    function scrollNextPage() {
-        if (scrollAnim.running)
+    function goToPage(index) {
+        if (index < 0 || index >= control.count || index === control.currentIndex)
             return
 
-        if (currentIndex < count - 1) {
-            scrollAnim.to = control.currentItem.x + control.width
-            scrollAnim.restart()
-        }
+        control.currentIndex = index
+        control.startSettle(control.highlightMoveDuration)
+    }
+
+    function scrollNextPage() {
+        control.goToPage(Math.max(0, control.currentIndex) + 1)
     }
 
     function scrollPreviousPage() {
-        if (scrollAnim.running)
-            return
-
-        if (currentIndex > 0) {
-            scrollAnim.to = control.currentItem.x - control.width
-            scrollAnim.restart()
-        }
+        control.goToPage(Math.max(0, control.currentIndex) - 1)
     }
 }

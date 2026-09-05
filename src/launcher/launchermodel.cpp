@@ -154,20 +154,18 @@ int LauncherModel::findById(const QString &id)
     return -1;
 }
 
-void LauncherModel::move(int from, int to, int page, int pageCount)
+void LauncherModel::move(int from, int to)
 {
     if (from == to)
         return;
 
-    const int source = from + page * pageCount;
-    const int target = to + page * pageCount;
-    if (source < 0 || source >= m_appItems.size() || target < 0 || target >= m_appItems.size())
+    if (from < 0 || from >= m_appItems.size() || to < 0 || to >= m_appItems.size())
         return;
 
-    const int destination = source < target ? target + 1 : target;
-    if (!beginMoveRows({}, source, source, {}, destination))
+    const int destination = from < to ? to + 1 : to;
+    if (!beginMoveRows({}, from, from, {}, destination))
         return;
-    m_appItems.move(source, target);
+    m_appItems.move(from, to);
     endMoveRows();
     delaySave();
 }
