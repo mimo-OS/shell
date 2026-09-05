@@ -329,15 +329,16 @@ void ApplicationModel::quit(const QString &appId)
     closeAllByAppId(appId);
 
     // Then terminate what is left, including an application that closed its
-    // windows but keeps running.
+    // windows but keeps running. Only the pids that were on screen when quit
+    // was asked for: falling back to the application id here would also hit
+    // an instance the user started again during the grace period.
     QTimer::singleShot(kQuitGraceMs, this, [pids, runtimeId] {
         ApplicationRuntime *runtime = ApplicationRuntime::instance();
-        bool requested = false;
 
         for (quint32 pid : pids)
-            requested |= runtime->quitByPid(pid);
+            runtime->quitByPid(pid);
 
-        if (!requested && !runtimeId.isEmpty())
+        if (pids.isEmpty() && !runtimeId.isEmpty())
             runtime->quitApplication(runtimeId);
     });
 }
