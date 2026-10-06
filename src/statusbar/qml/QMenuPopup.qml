@@ -47,6 +47,39 @@ FishUI.DesktopMenu {
         }
     }
 
+    function formatShortcut(shortcut) {
+        if (!shortcut || shortcut.length === 0) return ""
+        var parts = shortcut.split('+')
+        if (parts.length <= 1) {
+            return shortcut
+        }
+        var key = parts[parts.length - 1]
+        var mods = parts.slice(0, parts.length - 1)
+
+        if (key === "Up") key = "↑"
+        else if (key === "Down") key = "↓"
+        else if (key === "Left") key = "←"
+        else if (key === "Right") key = "→"
+        else if (key === "Return" || key === "Enter") key = "↩"
+        else if (key === "Escape" || key === "Esc") key = "⎋"
+        else if (key === "Backspace") key = "⌫"
+        else if (key === "Delete" || key === "Del") key = "⌦"
+        else if (key === "Tab") key = "⇥"
+
+        var res = ""
+        var hasMeta = mods.some(function(m) { return /^(Meta|Super)$/i.test(m) })
+        var hasAlt = mods.some(function(m) { return /^Alt$/i.test(m) })
+        var hasShift = mods.some(function(m) { return /^Shift$/i.test(m) })
+        var hasCtrl = mods.some(function(m) { return /^(Ctrl|Control)$/i.test(m) })
+
+        if (hasMeta) res += "⌃"
+        if (hasAlt) res += "⌥"
+        if (hasShift) res += "⇧"
+        if (hasCtrl) res += "⌘"
+
+        return res + key
+    }
+
     Repeater {
         model: control.menuModel
 
@@ -66,6 +99,10 @@ FishUI.DesktopMenu {
                 id: _itemComponent
 
                 FishUI.MenuItem {
+                    id: _menuItem
+                    Layout.fillWidth: true
+                    implicitWidth: Math.max(180, implicitContentWidth + leftPadding + rightPadding + (_shortcutText.visible ? _shortcutText.implicitWidth + 24 : 0))
+
                     // The label reads "&" as a mnemonic marker and would
                     // underline the next character, so an ampersand that is
                     // part of the text has to be doubled.
@@ -78,6 +115,18 @@ FishUI.DesktopMenu {
                     // shown, so the arrow cannot be deduced from it.
                     hasChildMenu: model.hasSubmenu
                     childMenu: _submenuLoader.item
+
+                    Text {
+                        id: _shortcutText
+                        anchors.right: parent.right
+                        anchors.rightMargin: model.hasSubmenu ? 24 : 14
+                        anchors.verticalCenter: parent.verticalCenter
+                        text: control.formatShortcut(model.shortcut)
+                        font.pixelSize: 12
+                        font.letterSpacing: 0.5
+                        color: _menuItem.active ? "#FFFFFF" : (FishUI.Theme.darkMode ? "#A0A0A0" : "#606060")
+                        visible: text.length > 0
+                    }
 
                     Loader {
                         id: _submenuLoader

@@ -63,14 +63,19 @@ private:
     QAction *actionAt(int row) const;
     int rowForAction(QAction *action) const;
     void updateActivityVisibility();
+    void rebuildActivityMenu(const QString &title, bool isFinder);
+    void setupFinderMenu();
 
     bool m_menuAvailable;
     bool m_updatePending = false;
     bool m_visible = true;
+    bool m_isFinder = false;
 
     QPointer<QMenu> m_menu;
     QPointer<QMenu> m_activityMenu;
     QPointer<QAction> m_activityAction;
+    QPointer<QMenu> m_finderMenu;
+    QPointer<QMenu> m_genericAppMenu;
     Activity *m_activity;
 
     QDBusServiceWatcher *m_serviceWatcher;

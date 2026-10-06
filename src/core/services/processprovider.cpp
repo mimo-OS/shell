@@ -1,5 +1,6 @@
 #include "processprovider.h"
 #include "applicationlauncher.h"
+#include <QProcess>
 
 ProcessProvider::ProcessProvider(QObject *parent)
     : QObject(parent)
@@ -9,5 +10,17 @@ ProcessProvider::ProcessProvider(QObject *parent)
 
 bool ProcessProvider::startDetached(const QString &exec, QStringList args)
 {
-    return ApplicationLauncher::startDetached(QStringList{exec} + args);
+    if (ApplicationLauncher::startDetached(QStringList{exec} + args))
+        return true;
+
+    if (QProcess::startDetached(exec, args))
+        return true;
+
+    if (exec == QStringLiteral("cutefish-settings")) {
+        if (QProcess::startDetached(QStringLiteral("systemsettings"), args))
+            return true;
+        if (QProcess::startDetached(QStringLiteral("gnome-control-center"), args))
+            return true;
+    }
+    return false;
 }

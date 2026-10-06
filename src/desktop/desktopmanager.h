@@ -24,10 +24,18 @@ private slots:
     void screenAdded(QScreen *screen);
     void screenRemoved(QScreen *screen);
     void updatePrimaryScreen();
+    void checkBingWallpaper();
+    void onBingJsonDownloaded();
+    void onBingImageDownloaded();
 
 private:
     QQmlEngine *m_engine;
     QHash<QScreen *, DesktopSurface *> m_surfaces;
+    class QNetworkAccessManager *m_netManager = nullptr;
+    class QNetworkReply *m_jsonReply = nullptr;
+    class QNetworkReply *m_imgReply = nullptr;
+    QString m_pendingBingDate;
+    QString m_pendingBingTitle;
 };
 
 #endif // DESKTOPMANAGER_H

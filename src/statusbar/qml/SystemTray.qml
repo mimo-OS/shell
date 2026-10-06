@@ -19,8 +19,9 @@ ListView {
     property real itemWidth: rootItem.iconSize + FishUI.Units.largeSpacing
     property var contextMenuItem: null
 
+    visible: count > 0
     Layout.fillHeight: true
-    Layout.preferredWidth: (itemWidth + (count - 1) * FishUI.Units.smallSpacing) * count
+    Layout.preferredWidth: count > 0 ? (count * itemWidth + Math.max(0, count - 1) * spacing) : 0
 
     model: SystemTrayModel {
         id: trayModel

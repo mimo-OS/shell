@@ -18,8 +18,8 @@
  */
 
 import QtQuick 2.12
-
 import Cutefish.StatusBar 1.0
+import Cutefish.Shell 1.0
 import FishUI 1.0 as FishUI
 
 FishUI.DesktopMenu {
@@ -29,42 +29,64 @@ FishUI.DesktopMenu {
         id: actions
     }
 
-    FishUI.MenuItem {
-        text: qsTr("About")
-        onTriggered: process.startDetached("cutefish-settings", ["-m", "about"])
+    ProcessProvider {
+        id: procProvider
     }
 
     FishUI.MenuItem {
-        text: qsTr("Settings")
-        onTriggered: process.startDetached("cutefish-settings")
+        text: qsTr("About This Mac")
+        onTriggered: process.startDetached("cutefish-settings", ["-m", "about"])
     }
 
     FishUI.MenuSeparator {}
 
     FishUI.MenuItem {
-        text: qsTr("Suspend")
+        text: qsTr("System Settings...")
+        onTriggered: process.startDetached("cutefish-settings", [])
+    }
+
+    FishUI.MenuItem {
+        text: qsTr("App Store...")
+        onTriggered: {
+            process.startDetached("cutefish-settings", ["-m", "update"])
+        }
+    }
+
+    FishUI.MenuSeparator {}
+
+    FishUI.MenuItem {
+        text: qsTr("Force Quit...")
+        onTriggered: {
+            process.startDetached("qps", [])
+        }
+    }
+
+    FishUI.MenuSeparator {}
+
+    FishUI.MenuItem {
+        text: qsTr("Sleep")
         onTriggered: actions.suspend()
     }
 
     FishUI.MenuItem {
-        text: qsTr("Restart")
+        text: qsTr("Restart...")
         onTriggered: actions.reboot()
     }
 
     FishUI.MenuItem {
-        text: qsTr("Shutdown")
+        text: qsTr("Shut Down...")
         onTriggered: actions.shutdown()
     }
 
     FishUI.MenuSeparator {}
 
     FishUI.MenuItem {
-        text: qsTr("Lock screen")
+        text: qsTr("Lock Screen")
         onTriggered: actions.lockScreen()
     }
 
     FishUI.MenuItem {
-        text: qsTr("Log out")
+        text: qsTr("Log Out...")
         onTriggered: actions.logout()
     }
 }

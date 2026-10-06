@@ -1,6 +1,7 @@
 #include "kwinwaylandinterface.h"
 
 #include <QGuiApplication>
+#include <QScreen>
 #include <QTimer>
 #include <QtGui/qguiapplication_platform.h>
 
@@ -219,6 +220,7 @@ KWinWaylandClient KWinWaylandInterface::toClient(PlasmaWindow *window) const
     client.title = window->title();
     client.initialTitle = client.title;
     client.pid = window->pid();
+    client.geometry = window->geometry();
     client.hidden = window->isMinimized();
     client.skipTaskbar = window->skipTaskbar();
     client.skipSwitcher = window->skipSwitcher();
@@ -254,6 +256,7 @@ void KWinWaylandInterface::addWindow(PlasmaWindow *window)
     connect(window, &PlasmaWindow::minimizedChanged, this, [this, window] { updateWindow(window); });
     connect(window, &PlasmaWindow::maximizedChanged, this, [this, window] { updateWindow(window); });
     connect(window, &PlasmaWindow::fullscreenChanged, this, [this, window] { updateWindow(window); });
+    connect(window, &PlasmaWindow::geometryChanged, this, [this, window] { updateWindow(window); });
     connect(window, &PlasmaWindow::skipTaskbarChanged, this, [this, window] { updateWindow(window); });
     connect(window, &PlasmaWindow::applicationMenuChanged, this, [this, window] { updateWindow(window); });
     connect(window, &PlasmaWindow::unmapped, this, [this, id] { removeWindow(id); });
@@ -356,4 +359,32 @@ void KWinWaylandInterface::startMove(quint64 id)
 {
     if (PlasmaWindow *target = window(id))
         target->requestMove();
+}
+
+bool KWinWaylandInterface::hasWindowTouching(const QRect &rect) const
+{
+    if (rect.isEmpty())
+        return false;
+
+    // Direct intersection with dock window bounding rect + 4px margin
+    const QRect touchRect = rect.adjusted(-4, -4, 4, 4);
+
+    for (const auto &client : m_clients) {
+        if (!isAcceptableWindow(client.id))
+            continue;
+        if (!client.mapped || client.hidden || client.skipTaskbar)
+            continue;
+
+        // Fullscreen window on the dock's screen covers the dock
+        if (client.fullscreen)
+            return true;
+
+        if (client.geometry.isValid() && !client.geometry.isEmpty()) {
+            if (client.geometry.intersects(touchRect)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }

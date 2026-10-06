@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QDBusInterface>
+#include <QDBusConnection>
 
 class Brightness : public QObject
 {
@@ -21,11 +22,15 @@ public:
 signals:
     void valueChanged();
 
+private slots:
+    void onBrightnessChanged();
+
 private:
     QDBusConnection m_dbusConnection;
     QDBusInterface m_iface;
     int m_value;
     bool m_enabled;
+    QString m_backlightDev;
 };
 
 #endif // BRIGHTNESS_H

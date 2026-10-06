@@ -27,7 +27,7 @@ AutoHideTrigger::AutoHideTrigger(DockSettings *settings, QWindow *parent)
     m_plasmaSurface->setPanelBehavior(PlasmaSurface::PanelBehavior::WindowsGoBelow);
 
     m_delayedMouseTimer.setSingleShot(true);
-    m_delayedMouseTimer.setInterval(50);
+    m_delayedMouseTimer.setInterval(30);
     connect(&m_delayedMouseTimer, &QTimer::timeout, this,
             [this] { setContainsMouse(m_delayedContainsMouse); });
 
@@ -49,13 +49,13 @@ bool AutoHideTrigger::event(QEvent *e)
             emit dragEntered();
         }
     } else if (e->type() == QEvent::Enter) {
+        m_delayedMouseTimer.stop();
         m_delayedContainsMouse = true;
-        if (!m_delayedMouseTimer.isActive())
-            m_delayedMouseTimer.start();
+        setContainsMouse(true);
     } else if (e->type() == QEvent::Leave || e->type() == QEvent::DragLeave) {
         m_delayedContainsMouse = false;
-        if (!m_delayedMouseTimer.isActive())
-            m_delayedMouseTimer.start();
+        m_delayedMouseTimer.setInterval(50);
+        m_delayedMouseTimer.start();
     }
 
     return QQuickWindow::event(e);
@@ -72,7 +72,7 @@ void AutoHideTrigger::setContainsMouse(bool contains)
 
 void AutoHideTrigger::updateGeometry()
 {
-    const int length = 5;
+    const int length = 8;
     const QRect screenRect = screen() ? screen()->geometry()
                                       : qGuiApp->primaryScreen()->geometry();
     QRect newRect;

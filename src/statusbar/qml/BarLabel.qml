@@ -47,6 +47,8 @@ Item {
     Text {
         id: _label
         anchors.centerIn: parent
+        font.family: "SF Pro Text"
+        renderType: Text.QtRendering
         style: control.dropShadow ? Text.Raised : Text.Normal
         styleColor: Qt.rgba(0, 0, 0, 0.14)
     }

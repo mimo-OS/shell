@@ -44,6 +44,7 @@ public:
     Q_INVOKABLE void raiseWindow(const QString &id);
 
     Q_INVOKABLE bool openNewInstance(const QString &appId);
+    Q_INVOKABLE bool openAction(const QString &appId, const QString &actionCmd);
     Q_INVOKABLE void closeAllByAppId(const QString &appId);
     Q_INVOKABLE void quit(const QString &appId);
     Q_INVOKABLE void pin(const QString &appId);

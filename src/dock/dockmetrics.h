@@ -21,15 +21,16 @@
 // stays on the side that faces the screen edge.
 struct DockMetrics
 {
-    int iconSize = 54;
-    int iconGap = 16;
-    int lengthPadding = 16;
+    int iconSize = 60;
+    int iconGap = 12;
+    int lengthPadding = 14;
     int outerPadding = 16;
-    int dotGap = 8;
+    int dotGap = 6;
     int dotSize = 4;
-    int edgePadding = 4;
+    int edgePadding = 5;
 
-    static constexpr int baseIconSize = 54;
+    static constexpr int baseIconSize = 60;
+    static constexpr int dividerSlotWidth = 14;
 
     static DockMetrics forIconSize(int iconSize)
     {
@@ -40,12 +41,12 @@ struct DockMetrics
 
         DockMetrics metrics;
         metrics.iconSize = qMax(1, iconSize);
-        metrics.iconGap = scaled(16);
-        metrics.lengthPadding = scaled(16);
+        metrics.iconGap = scaled(12);
+        metrics.lengthPadding = scaled(14);
         metrics.outerPadding = scaled(16);
-        metrics.dotGap = scaled(8);
+        metrics.dotGap = scaled(6);
         metrics.dotSize = scaled(4);
-        metrics.edgePadding = scaled(4);
+        metrics.edgePadding = scaled(5);
         return metrics;
     }
 
@@ -55,11 +56,11 @@ struct DockMetrics
         return edgePadding + dotSize + dotGap + iconSize + outerPadding;
     }
 
-    // Along the dock: the icons plus the padding at both ends.
+    // Along the dock: the icons plus the padding at both ends and the divider.
     int length(int itemCount) const
     {
         return lengthPadding * 2 + itemCount * iconSize
-                + qMax(0, itemCount - 1) * iconGap;
+                + qMax(0, itemCount - 1) * iconGap + dividerSlotWidth;
     }
 
     QVariantMap toVariantMap() const

@@ -45,7 +45,7 @@ DockSettings::DockSettings(QObject *parent)
 
     m_iconSize = m_settings->value("IconSize").toInt();
     m_direction = static_cast<Direction>(m_settings->value("Direction").toInt());
-    m_visibility = static_cast<Visibility>(m_settings->value("Visibility").toInt());
+    m_visibility = static_cast<Visibility>(m_settings->value("Visibility", AlwaysShow).toInt());
     m_roundedWindowEnabled = m_settings->value("RoundedWindow").toBool();
     m_edgeMargins = m_settings->value("EdgeMargins").toInt();
 }

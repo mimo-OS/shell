@@ -117,8 +117,10 @@ void ShellSurface::watchScreen(QScreen *screen, const std::function<void()> &upd
         return;
 
     const auto watch = [this, screen, update](auto signal) {
-        m_screenConnections << connect(screen, signal, this, [update] { update(); },
-                                       Qt::QueuedConnection);
+        m_screenConnections << connect(screen, signal, this, [update] {
+            if (update)
+                update();
+        }, Qt::QueuedConnection);
     };
 
     watch(&QScreen::geometryChanged);
@@ -126,6 +128,12 @@ void ShellSurface::watchScreen(QScreen *screen, const std::function<void()> &upd
     // A scale change that comes with a matching mode change leaves the screen
     // the same size in logical pixels; only the pixel density says so.
     watch(&QScreen::physicalDotsPerInchChanged);
+
+    m_screenConnections << connect(screen, &QObject::destroyed, this, [this](QObject *) {
+        for (const QMetaObject::Connection &connection : std::as_const(m_screenConnections))
+            disconnect(connection);
+        m_screenConnections.clear();
+    });
 }
 
 void ShellSurface::followPrimaryScreen(const std::function<void()> &update)
@@ -138,13 +146,15 @@ void ShellSurface::followPrimaryScreen(const std::function<void()> &update)
                     [this](QScreen *screen) {
                         setScreen(screen);
                         watchScreen(screen, m_screenUpdate);
-                        m_screenUpdate();
+                        if (m_screenUpdate)
+                            m_screenUpdate();
                     });
     }
 
     setScreen(qGuiApp->primaryScreen());
     watchScreen(screen(), m_screenUpdate);
-    m_screenUpdate();
+    if (m_screenUpdate)
+        m_screenUpdate();
 }
 
 void ShellSurface::setSource(const QUrl &url)

@@ -23,6 +23,7 @@ public:
 
     void setBatteryPercentage(bool enabled);
     void setTwentyFourTime(bool t);
+    Q_INVOKABLE void toggleSpotlight();
 
     void updateGeometry();
     void updateViewStruts();
@@ -31,11 +32,14 @@ signals:
     void screenRectChanged();
     void launchPadChanged();
     void twentyFourTimeChanged();
+    void spotlightRequested();
 
 private slots:
     void initState();
 
 private:
+    void setupGlobalShortcuts();
+
     QRect m_screenRect;
     Activity *m_acticity;
     StrutSpacer *m_strutSpacer;

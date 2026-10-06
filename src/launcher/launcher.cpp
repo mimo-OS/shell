@@ -99,10 +99,6 @@ void Launcher::showWindow()
     // in one process there is no WM_CLASS left to tell them apart.
     Activity::self()->setLaunchPad(true);
 
-    // Let KWin see the panels' new stacking behaviour before the launcher is
-    // mapped, so it never comes up behind them for a frame.
-    KWinWaylandInterface::instance()->roundtrip();
-
     if (!m_screenRect.isEmpty())
         setGeometry(m_screenRect);
     setVisible(true);

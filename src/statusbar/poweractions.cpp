@@ -1,6 +1,7 @@
 #include "poweractions.h"
 #include <QDebug>
 #include <QDBusInterface>
+#include <QProcess>
 
 const static QString s_dbusName = "com.cutefish.Session";
 const static QString s_pathName = "/Session";
@@ -55,15 +56,7 @@ void PowerActions::reboot()
 
 void PowerActions::lockScreen()
 {
-    QDBusInterface iface(s_screenSaverService,
-                         s_screenSaverPath,
-                         s_screenSaverInterface,
-                         QDBusConnection::sessionBus());
-    if (iface.isValid()) {
-        iface.asyncCall(QStringLiteral("Lock"));
-    } else {
-        qWarning() << "Unable to request screen lock: screen saver service is unavailable";
-    }
+    QProcess::startDetached(QStringLiteral("cutefish-screenlocker"), QStringList());
 }
 
 void PowerActions::suspend()

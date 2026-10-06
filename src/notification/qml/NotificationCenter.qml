@@ -1,20 +1,7 @@
 /*
- * Copyright (C) 2021 CutefishOS Team.
+ * Copyright (C) 2021-2026 CutefishOS Team.
  *
- * Author:     Reion Wong <reion@cutefishos.com>
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * Rebuilt macOS Notification Center Clone (Pre-Liquid Glass / Big Sur - Sonoma)
  */
 
 import QtQuick 2.12
@@ -30,16 +17,9 @@ import Cutefish.Shell 1.0
 PopupWindow {
     id: control
 
-    // Same positioning contract as ControlCenter: the status bar sets
-    // `position` to the global position of the item that opened the window,
-    // and the window keeps itself on screen from there.
-    property var margin: 4
-    // Defaults to the right hand edge, so opening the centre over D-Bus rather
-    // than from the status bar item still lands it where it belongs.
+    property var margin: 6
     property point position: Qt.point(StatusBar.screenRect.x + StatusBar.screenRect.width, 0)
 
-    // The available area already excludes the status bar and the dock, so the
-    // window spans it without running underneath either.
     readonly property rect screenRect: {
         return screen.availableScreenRect
     }
@@ -49,7 +29,6 @@ PopupWindow {
 
     color: "transparent"
 
-    // Relative timestamps go stale while the window is hidden.
     onOpened: historyModel.updateTime()
 
     onWidthChanged: adjustCorrectLocation()
@@ -76,14 +55,13 @@ PopupWindow {
     Rectangle {
         id: _background
         anchors.fill: parent
-        color: FishUI.Theme.secondBackgroundColor
-        radius: control.width * 0.05
-        opacity: FishUI.Theme.blurEnabled ? 0.7 : 1
+        color: FishUI.Theme.darkMode ? Qt.rgba(0.14, 0.14, 0.16, FishUI.Theme.blurEnabled ? 0.74 : 1.0)
+                                     : Qt.rgba(0.96, 0.96, 0.98, FishUI.Theme.blurEnabled ? 0.76 : 1.0)
+        radius: 18
 
         border.width: 1 / FishUI.Dpi.ratio
-        border.pixelAligned: FishUI.Dpi.ratio > 1 ? false : true
-        border.color: FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.1)
-                                            : Qt.rgba(0, 0, 0, 0.05)
+        border.color: FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.15)
+                                            : Qt.rgba(0, 0, 0, 0.10)
     }
 
     FishUI.WindowShadow {
@@ -109,28 +87,120 @@ PopupWindow {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.topMargin: FishUI.Units.largeSpacing
-        anchors.bottomMargin: FishUI.Units.largeSpacing
-        spacing: FishUI.Units.largeSpacing
+        anchors.margins: 14
+        spacing: 12
 
-        RowLayout {
-            Layout.leftMargin: FishUI.Units.largeSpacing
-            Layout.rightMargin: FishUI.Units.largeSpacing
+        // ==========================================
+        // 1. macOS Date Header & Calendar Widget Card
+        // ==========================================
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 6
 
             Label {
-                text: qsTr("Notification Center")
+                id: dateHeaderLabel
+                text: new Date().toLocaleDateString(Qt.locale(), "dddd, MMMM d").toUpperCase()
+                font.bold: true
+                font.pointSize: 8
+                color: FishUI.Theme.disabledTextColor
+                Layout.leftMargin: 4
+            }
+
+            // Calendar Widget Card
+            Rectangle {
                 Layout.fillWidth: true
-                elide: Text.ElideRight
-                leftPadding: FishUI.Units.smallSpacing
+                Layout.preferredHeight: 68
+                radius: 14
+                color: FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(1, 1, 1, 0.75)
+                border.width: 1 / FishUI.Dpi.ratio
+                border.color: FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.10) : Qt.rgba(0, 0, 0, 0.05)
+                antialiasing: true
+
+                RowLayout {
+                    anchors.fill: parent
+                    anchors.margins: 10
+                    spacing: 12
+
+                    // Mini Calendar Icon
+                    Rectangle {
+                        width: 48
+                        height: 48
+                        radius: 10
+                        color: "#FFFFFF"
+                        clip: true
+                        antialiasing: true
+
+                        // Red top ribbon
+                        Rectangle {
+                            anchors.top: parent.top
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            height: 14
+                            color: "#FF3B30"
+
+                            Label {
+                                anchors.centerIn: parent
+                                text: new Date().toLocaleDateString(Qt.locale(), "MMM").toUpperCase()
+                                font.bold: true
+                                font.pointSize: 6.5
+                                color: "#FFFFFF"
+                            }
+                        }
+
+                        // Day number
+                        Label {
+                            anchors.centerIn: parent
+                            anchors.verticalCenterOffset: 6
+                            text: new Date().getDate()
+                            font.bold: true
+                            font.family: "SF Pro Rounded"
+                            font.pointSize: 16
+                            color: "#1D1D1F"
+                        }
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        spacing: 1
+                        Layout.alignment: Qt.AlignVCenter
+
+                        Label {
+                            text: new Date().toLocaleDateString(Qt.locale(), "dddd")
+                            font.bold: true
+                            font.pointSize: 10
+                            color: FishUI.Theme.textColor
+                        }
+
+                        Label {
+                            text: qsTr("No Upcoming Events")
+                            font.pointSize: 8
+                            color: FishUI.Theme.disabledTextColor
+                        }
+                    }
+                }
+            }
+        }
+
+        // ==========================================
+        // 2. Notifications Section Header & Clear All Button
+        // ==========================================
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.leftMargin: 4
+            Layout.rightMargin: 4
+
+            Label {
+                text: qsTr("Notifications")
+                font.bold: true
+                font.pointSize: 13
                 color: FishUI.Theme.textColor
-                font.pointSize: 15
+                Layout.fillWidth: true
 
                 MouseArea {
                     anchors.fill: parent
                     onClicked: {
                         if (_view.contentY === 0)
                             return
-
                         scrollToTopAni.from = _view.contentY
                         scrollToTopAni.to = 0
                         scrollToTopAni.restart()
@@ -138,16 +208,40 @@ PopupWindow {
                 }
             }
 
-            IconButton {
+            // macOS Style Clear All Pill Button
+            Rectangle {
                 visible: _view.count > 0
-                Layout.preferredHeight: 30
-                Layout.preferredWidth: 30
-                source: FishUI.Theme.darkMode ? "qrc:/notification/images/dark/clear.svg"
-                                              : "qrc:/notification/images/light/clear.svg"
-                onLeftButtonClicked: historyModel.clearAll()
+                Layout.preferredHeight: 22
+                Layout.preferredWidth: clearLabel.implicitWidth + 16
+                radius: 11
+                color: clearMouse.pressed ? (FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.25) : Qt.rgba(0, 0, 0, 0.15))
+                                          : (clearMouse.containsMouse ? (FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.18) : Qt.rgba(0, 0, 0, 0.08))
+                                                                      : (FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.10) : Qt.rgba(0, 0, 0, 0.05)))
+                border.width: 1 / FishUI.Dpi.ratio
+                border.color: FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.10) : Qt.rgba(0, 0, 0, 0.05)
+                antialiasing: true
+
+                Label {
+                    id: clearLabel
+                    anchors.centerIn: parent
+                    text: qsTr("Clear All")
+                    font.bold: true
+                    font.pointSize: 7.5
+                    color: FishUI.Theme.textColor
+                }
+
+                MouseArea {
+                    id: clearMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    onClicked: historyModel.clearAll()
+                }
             }
         }
 
+        // ==========================================
+        // 3. Notification Cards List
+        // ==========================================
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -156,152 +250,154 @@ PopupWindow {
                 id: _view
                 anchors.fill: parent
                 model: historyModel
-                spacing: FishUI.Units.largeSpacing
-                highlightFollowsCurrentItem: true
+                spacing: 10
                 clip: true
-
-                leftMargin: FishUI.Units.largeSpacing
-                rightMargin: FishUI.Units.largeSpacing
 
                 ScrollBar.vertical: ScrollBar {}
 
-                Label {
+                // Empty State
+                ColumnLayout {
                     anchors.centerIn: parent
-                    text: qsTr("No notifications")
-                    color: FishUI.Theme.disabledTextColor
-                    font.pointSize: 15
                     visible: _view.count === 0
+                    spacing: 8
+
+                    Image {
+                        Layout.alignment: Qt.AlignHCenter
+                        width: 36
+                        height: 36
+                        sourceSize: Qt.size(36, 36)
+                        source: "image://icontheme/preferences-desktop-notification"
+                        opacity: 0.35
+                    }
+
+                    Label {
+                        Layout.alignment: Qt.AlignHCenter
+                        text: qsTr("No Notifications")
+                        color: FishUI.Theme.disabledTextColor
+                        font.pointSize: 10.5
+                    }
                 }
 
                 removeDisplaced: Transition {
                     NumberAnimation { properties: "x, y"; duration: 250 }
                 }
 
-                delegate: Item {
-                    width: ListView.view.width - ListView.view.leftMargin - ListView.view.rightMargin
-                    height: 70
-
-                    Rectangle {
-                        anchors.fill: parent
-                        color: FishUI.Theme.darkMode ? "white"
-                                                     : "black"
-                        radius: FishUI.Theme.bigRadius
-                        opacity: FishUI.Theme.darkMode ? 0.1
-                                                       : 0.03
-                    }
+                delegate: Rectangle {
+                    id: notifCard
+                    width: ListView.view.width
+                    implicitHeight: cardContent.implicitHeight + 20
+                    radius: 14
+                    color: FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(1, 1, 1, 0.80)
+                    border.width: 1 / FishUI.Dpi.ratio
+                    border.color: FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.10) : Qt.rgba(0, 0, 0, 0.05)
+                    antialiasing: true
 
                     MouseArea {
-                        id: _itemMouseArea
+                        id: cardHoverArea
                         anchors.fill: parent
                         hoverEnabled: true
-                        z: 999
                     }
 
-                    RowLayout {
+                    ColumnLayout {
+                        id: cardContent
                         anchors.fill: parent
-                        anchors.margins: FishUI.Units.largeSpacing
-                        anchors.leftMargin: FishUI.Units.smallSpacing * 1.5
-                        anchors.rightMargin: FishUI.Units.smallSpacing * 1.5
-                        spacing: FishUI.Units.smallSpacing
+                        anchors.margins: 10
+                        spacing: 5
 
-                        Image {
-                            id: _icon
-                            width: 48
-                            height: width
-                            source: model.iconName ? "image://icontheme/%1".arg(model.iconName)
-                                                   : ""
-                            sourceSize: Qt.size(width, height)
-                            Layout.alignment: Qt.AlignVCenter
-                            antialiasing: true
-                            smooth: true
-                            visible: status === Image.Ready
-                        }
+                        // Header Row: App icon, App name, timestamp, close button
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 6
 
-                        Image {
-                            id: _defaultIcon
-                            width: 48
-                            height: width
-                            source: "image://icontheme/preferences-desktop-notification"
-                            sourceSize: Qt.size(width, height)
-                            Layout.alignment: Qt.AlignVCenter
-                            antialiasing: true
-                            smooth: true
-                            visible: !_icon.visible
-                        }
+                            Image {
+                                id: _icon
+                                width: 18
+                                height: 18
+                                source: model.iconName ? "image://icontheme/%1".arg(model.iconName) : ""
+                                sourceSize: Qt.size(18, 18)
+                                Layout.alignment: Qt.AlignVCenter
+                                antialiasing: true
+                                smooth: true
+                                visible: status === Image.Ready
+                            }
 
-                        ColumnLayout {
-                            spacing: 0
-
-                            Item {
-                                Layout.fillHeight: true
+                            Image {
+                                id: _defaultIcon
+                                width: 18
+                                height: 18
+                                source: "image://icontheme/preferences-desktop-notification"
+                                sourceSize: Qt.size(18, 18)
+                                Layout.alignment: Qt.AlignVCenter
+                                antialiasing: true
+                                smooth: true
+                                visible: !_icon.visible
                             }
 
                             Label {
-                                text: model.summary
-                                visible: text
-                                elide: Text.ElideRight
-                                Layout.fillWidth: true
-                                rightPadding: FishUI.Units.smallSpacing
+                                text: (model.appName && model.appName.length > 0) ? model.appName : qsTr("Notification")
+                                font.bold: true
+                                font.pointSize: 8.5
+                                color: FishUI.Theme.textColor
+                                Layout.alignment: Qt.AlignVCenter
                             }
 
-                            RowLayout {
-                                Label {
-                                    id: bodyLabel
-                                    text: model.body
-                                    visible: text
-                                    rightPadding: FishUI.Units.smallSpacing
-                                    maximumLineCount: 2
-                                    elide: Text.ElideRight
-                                    wrapMode: Text.Wrap
-                                    Layout.fillWidth: true
-                                    // Layout.fillHeight: true
-                                    Layout.alignment: Qt.AlignVCenter
+                            Item { Layout.fillWidth: true }
+
+                            Label {
+                                text: model.created ? model.created : ""
+                                font.pointSize: 7.5
+                                color: FishUI.Theme.disabledTextColor
+                                Layout.alignment: Qt.AlignVCenter
+                            }
+
+                            // Dismiss button
+                            Rectangle {
+                                width: 16
+                                height: 16
+                                radius: 8
+                                color: closeMouse.containsMouse ? (FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.25) : Qt.rgba(0, 0, 0, 0.15))
+                                                                : (FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.10) : Qt.rgba(0, 0, 0, 0.06))
+                                visible: cardHoverArea.containsMouse
+                                antialiasing: true
+
+                                Text {
+                                    anchors.centerIn: parent
+                                    text: "×"
+                                    font.pixelSize: 12
+                                    font.bold: true
+                                    color: FishUI.Theme.textColor
                                 }
 
-                                Label {
-                                    text: model.created
-                                    rightPadding: FishUI.Units.smallSpacing
-                                    Layout.alignment: Qt.AlignRight
+                                MouseArea {
+                                    id: closeMouse
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    onClicked: historyModel.remove(index)
                                 }
                             }
-
-                            Item {
-                                Layout.fillHeight: true
-                            }
-                        }
-                    }
-
-                    Image {
-                        anchors.top: parent.top
-                        anchors.right: parent.right
-                        anchors.topMargin: FishUI.Units.smallSpacing / 2
-                        anchors.rightMargin: FishUI.Units.smallSpacing / 2
-                        width: 24
-                        height: 24
-                        source: "qrc:/notification/images/" + (FishUI.Theme.darkMode ? "dark" : "light") + "/close.svg"
-                        sourceSize: Qt.size(width, height)
-                        visible: _itemMouseArea.containsMouse
-                        z: 9999
-
-                        Rectangle {
-                            property color hoveredColor: FishUI.Theme.darkMode ? Qt.lighter(FishUI.Theme.backgroundColor, 2)
-                                                                               : Qt.darker(FishUI.Theme.backgroundColor, 1.2)
-                            property color pressedColor: FishUI.Theme.darkMode ? Qt.lighter(FishUI.Theme.backgroundColor, 1.5)
-                                                                               : Qt.darker(FishUI.Theme.backgroundColor, 1.3)
-
-                            z: -1
-                            anchors.fill: parent
-                            color: "transparent"
-                            radius: height / 2
                         }
 
-                        MouseArea {
-                            id: _closeBtnArea
-                            anchors.fill: parent
-                            // hoverEnabled: true
-                            onClicked: {
-                                historyModel.remove(index)
-                            }
+                        // Summary & Body
+                        Label {
+                            text: model.summary
+                            visible: text.length > 0
+                            font.bold: true
+                            font.pointSize: 9
+                            color: FishUI.Theme.textColor
+                            Layout.fillWidth: true
+                            elide: Text.ElideRight
+                        }
+
+                        Label {
+                            text: model.body
+                            visible: text.length > 0
+                            font.pointSize: 8
+                            color: FishUI.Theme.textColor
+                            opacity: 0.8
+                            Layout.fillWidth: true
+                            wrapMode: Text.Wrap
+                            maximumLineCount: 3
+                            elide: Text.ElideRight
                         }
                     }
                 }

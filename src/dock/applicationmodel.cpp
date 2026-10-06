@@ -130,6 +130,8 @@ void ApplicationModel::updateFromDesktopEntry(ApplicationItem *item,
     item->id = entry->id();
     if (!entry->icon().isEmpty())
         item->iconName = entry->icon();
+    if (item->id == QLatin1String("cutefish-filemanager"))
+        item->iconName = QStringLiteral("cutefish-filemanager");
     if (!entry->name().isEmpty())
         item->visibleName = entry->name();
     if (!entry->exec().isEmpty())
@@ -156,13 +158,15 @@ void ApplicationModel::addItem(const QString &desktopFile)
         return;
     }
 
-    beginInsertRows(QModelIndex(), rowCount(), rowCount());
+    int launcherIndex = indexOf(QLatin1String(kLauncherId));
+    int insertPos = (launcherIndex != -1) ? launcherIndex : rowCount();
+    beginInsertRows(QModelIndex(), insertPos, insertPos);
     ApplicationItem *item = new ApplicationItem;
     updateFromDesktopEntry(item, entry);
     item->isPinned = true;
     item->animationToken = animationTokenForNewItem();
 
-    m_appItems << item;
+    m_appItems.insert(insertPos, item);
     endInsertRows();
 
     savePinAndUnPinList();
@@ -288,6 +292,14 @@ bool ApplicationModel::openNewInstance(const QString &appId)
         return ApplicationLauncher::startDetached({appId});
 
     return ApplicationLauncher::startDetached(DesktopEntry::parseExec(item->exec));
+}
+
+bool ApplicationModel::openAction(const QString &appId, const QString &actionCmd)
+{
+    if (actionCmd.isEmpty())
+        return openNewInstance(appId);
+
+    return ApplicationLauncher::startDetached(DesktopEntry::parseExec(actionCmd));
 }
 
 void ApplicationModel::closeAllByAppId(const QString &appId)
@@ -470,14 +482,23 @@ void ApplicationModel::initPinnedApplications()
     std::sort(orderedGroups.begin(), orderedGroups.end(),
               [](const auto &left, const auto &right) { return left.first < right.first; });
 
-    // Launcher
-    ApplicationItem *item = new ApplicationItem;
-    item->id = kLauncherId;
-    item->exec = QString();
-    item->iconName = "qrc:/dock/images/launcher.svg";
-    item->visibleName = tr("Launcher");
-    item->fixed = true;
-    m_appItems.append(item);
+    // Finder (macOS position 0)
+    ApplicationItem *finderItem = new ApplicationItem;
+    finderItem->id = "cutefish-filemanager";
+    finderItem->desktopPath = "/usr/share/applications/cutefish-filemanager.desktop";
+    finderItem->iconName = "file-manager";
+    finderItem->visibleName = tr("Finder");
+    finderItem->exec = "cutefish-filemanager";
+    finderItem->isPinned = true;
+    finderItem->fixed = true;
+    if (DesktopEntry *finderEntry = ApplicationRegistry::instance()->byId("cutefish-filemanager")) {
+        updateFromDesktopEntry(finderItem, finderEntry);
+        finderItem->visibleName = tr("Finder");
+        finderItem->fixed = true;
+    }
+    // Keep Finder's full-colour artwork instead of inheriting a generic file-manager glyph.
+    finderItem->iconName = "cutefish-filemanager";
+    m_appItems.append(finderItem);
 
     // Pinned apps. Older configurations store an absolute path, while newer
     // ones store the desktop id as the group name; both remain supported.
@@ -528,6 +549,15 @@ void ApplicationModel::initPinnedApplications()
         }
         set->endGroup();
     }
+
+    // Launcher / Launchpad (Anchored on the right side, right before the dock divider)
+    ApplicationItem *launcherItem = new ApplicationItem;
+    launcherItem->id = kLauncherId;
+    launcherItem->exec = QString();
+    launcherItem->iconName = "qrc:/dock/images/launchpad.svg";
+    launcherItem->visibleName = tr("Launchpad");
+    launcherItem->fixed = true;
+    m_appItems.append(launcherItem);
 }
 
 void ApplicationModel::onApplicationsChanged()
@@ -660,7 +690,9 @@ void ApplicationModel::onWindowAdded(quint64 wid)
     }
     // New item needs to be added.
     else {
-        beginInsertRows(QModelIndex(), rowCount(), rowCount());
+        int launcherIndex = indexOf(QLatin1String(kLauncherId));
+        int insertPos = (launcherIndex != -1) ? launcherIndex : rowCount();
+        beginInsertRows(QModelIndex(), insertPos, insertPos);
         ApplicationItem *item = new ApplicationItem;
         item->id = id;
         item->iconName = id.toLower();
@@ -673,7 +705,7 @@ void ApplicationModel::onWindowAdded(quint64 wid)
         if (entry)
             updateFromDesktopEntry(item, entry);
 
-        m_appItems << item;
+        m_appItems.insert(insertPos, item);
         endInsertRows();
 
         emit itemAdded();

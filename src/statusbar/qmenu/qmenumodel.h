@@ -33,6 +33,7 @@ public:
         CheckableRole,
         CheckedRole,
         HasSubmenuRole,
+        ShortcutRole,
     };
 
     QObject *menuObject() const;

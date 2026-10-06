@@ -1,4 +1,5 @@
 import QtQuick 2.12
+import QtQuick.Window
 import QtQuick.Effects
 
 // Bar icons sit straight on the wallpaper; same soft shadow the text gets.
@@ -8,6 +9,8 @@ Image {
     property bool dropShadow: false
 
     layer.enabled: control.dropShadow
+    layer.smooth: true
+    layer.textureSize: Qt.size(Math.ceil(width * Window.devicePixelRatio), Math.ceil(height * Window.devicePixelRatio))
     layer.effect: MultiEffect {
         shadowEnabled: true
         shadowHorizontalOffset: 0

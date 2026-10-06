@@ -1,4 +1,8 @@
-<svg version="1.1" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
- <path d="m8 1a1 1 0 0 0-0.994 1.1 4.988 4.988 0 0 0-4.006 4.9v4.5l-2 2v0.5h14v-0.5l-2-2v-3.63a4 4 0 0 1-1 0.126v3.926l1 1.078h-10l1-1.078v-4.922a4 4 0 0 1 4-4c0.044 1e-3 0.087 3e-3 0.13 6e-3a4 4 0 0 1 0.741-1.492 1 1 0 0 0-0.871-0.514zm-1.73 14a2 2 0 0 0 1.73 1 2 2 0 0 0 1.728-1z" fill="#ffffff" stroke-linecap="round" stroke-width="3"/>
- <path d="m15 4a3 3 0 0 1-6 0 3 3 0 1 1 6 0z" color="#bebebe" fill="#009dff" overflow="visible" stroke-width="1.2" style="isolation:auto;mix-blend-mode:normal"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16">
+  <!-- Bell Body -->
+  <path d="M 8.0 1.5 C 7.4 1.5 7.0 1.9 7.0 2.4 C 5.0 2.8 3.5 4.5 3.5 6.6 L 3.5 10.2 L 2.2 11.5 C 2.0 11.7 2.1 12.2 2.5 12.2 L 13.5 12.2 C 13.9 12.2 14.0 11.7 13.8 11.5 L 12.5 10.2 L 12.5 6.6 C 12.5 4.5 11.0 2.8 9.0 2.4 C 9.0 1.9 8.6 1.5 8.0 1.5 Z"
+        fill="#FFFFFF"/>
+  <!-- Clapper -->
+  <path d="M 6.4 13.0 A 1.8 1.8 0 0 0 9.6 13.0 Z" fill="#FFFFFF"/>
+  <circle cx="12.5" cy="3.5" r="2.2" fill="#FF3B30"/>
 </svg>

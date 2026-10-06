@@ -36,6 +36,7 @@ struct KWinWaylandClient
     QString appMenuServiceName;
     QString appMenuObjectPath;
     qint64 pid = 0;
+    QRect geometry;
     bool mapped = true;
     bool hidden = false;
     bool skipTaskbar = false;
@@ -54,6 +55,7 @@ struct KWinWaylandClient
             && initialTitle == other.initialTitle && pid == other.pid
             && appMenuServiceName == other.appMenuServiceName
             && appMenuObjectPath == other.appMenuObjectPath
+            && geometry == other.geometry
             && mapped == other.mapped && hidden == other.hidden
             && skipTaskbar == other.skipTaskbar
             && skipSwitcher == other.skipSwitcher
@@ -96,6 +98,7 @@ public:
     bool isAcceptableWindow(quint64 id) const;
     quint64 activeWindow() const;
     quint64 windowForPid(qint64 pid, const QString &title = {}) const;
+    bool hasWindowTouching(const QRect &rect) const;
 
     void refresh();
 

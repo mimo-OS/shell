@@ -1,5 +1,9 @@
 #include "brightness.h"
 #include <QDBusPendingCall>
+#include <QFile>
+#include <QTextStream>
+#include <QDir>
+#include <algorithm>
 
 Brightness::Brightness(QObject *parent)
     : QObject(parent)
@@ -7,19 +11,86 @@ Brightness::Brightness(QObject *parent)
     , m_iface("com.cutefish.Services",
               "/com/cutefish/Services/Brightness",
               "com.cutefish.Services.Brightness", m_dbusConnection)
-    , m_value(0)
+    , m_value(100)
     , m_enabled(false)
 {
-    if (!m_iface.isValid())
-        return;
+    // Locate backlight device directly
+    QDir blDir(QStringLiteral("/sys/class/backlight"));
+    const QStringList entries = blDir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
+    if (!entries.isEmpty()) {
+        m_backlightDev = blDir.filePath(entries.first());
+        m_enabled = true;
+    }
 
-    m_value = m_iface.property("brightness").toInt();
-    m_enabled = m_iface.property("brightnessEnabled").toBool();
+    if (m_iface.isValid()) {
+        m_value = m_iface.property("brightness").toInt();
+        m_enabled = m_enabled || m_iface.property("brightnessEnabled").toBool();
+
+        m_dbusConnection.connect(
+            QStringLiteral("com.cutefish.Services"),
+            QStringLiteral("/com/cutefish/Services/Brightness"),
+            QStringLiteral("com.cutefish.Services.Brightness"),
+            QStringLiteral("brightnessChanged"),
+            this,
+            SLOT(onBrightnessChanged()));
+    } else if (!m_backlightDev.isEmpty()) {
+        // Read directly from /sys/class/backlight
+        QFile maxF(m_backlightDev + QStringLiteral("/max_brightness"));
+        QFile curF(m_backlightDev + QStringLiteral("/brightness"));
+        int maxB = 100, curB = 100;
+        if (maxF.open(QIODevice::ReadOnly)) {
+            maxB = maxF.readAll().trimmed().toInt();
+            maxF.close();
+        }
+        if (curF.open(QIODevice::ReadOnly)) {
+            curB = curF.readAll().trimmed().toInt();
+            curF.close();
+        }
+        if (maxB > 0)
+            m_value = std::clamp(curB * 100 / maxB, 0, 100);
+    }
+}
+
+void Brightness::onBrightnessChanged()
+{
+    if (m_iface.isValid()) {
+        int newVal = m_iface.property("brightness").toInt();
+        if (m_value != newVal) {
+            m_value = newVal;
+            emit valueChanged();
+        }
+    }
 }
 
 void Brightness::setValue(int value)
 {
-    m_iface.asyncCall("setValue", value);
+    value = std::clamp(value, 0, 100);
+    if (m_value != value) {
+        m_value = value;
+        emit valueChanged();
+    }
+
+    // Direct hardware write to sysfs (0 latency, instantaneous response)
+    if (!m_backlightDev.isEmpty()) {
+        QFile curF(m_backlightDev + QStringLiteral("/brightness"));
+        if (curF.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+            QFile maxF(m_backlightDev + QStringLiteral("/max_brightness"));
+            int maxB = 100;
+            if (maxF.open(QIODevice::ReadOnly)) {
+                maxB = maxF.readAll().trimmed().toInt();
+                maxF.close();
+            }
+            int rawVal = (value * maxB) / 100;
+            QTextStream out(&curF);
+            out << rawVal << "\n";
+            curF.close();
+        }
+    }
+
+    // Also inform services daemon asynchronously if available
+    if (m_iface.isValid()) {
+        m_iface.asyncCall("setValue", value);
+    }
 }
 
 int Brightness::value() const

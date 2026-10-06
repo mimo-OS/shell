@@ -8,12 +8,18 @@
 #include <QGuiApplication>
 #include <QMenu>
 #include <QQmlEngine>
+#include <QDesktopServices>
+#include <QUrl>
+#include <QDir>
+#include <QStandardPaths>
+#include <QProcess>
+#include <QKeySequence>
+#include <QDebug>
 
 #include "../libdbusmenuqt/dbusmenuimporter.h"
 #include "core/services/activity.h"
 #include "core/wayland/kwinwaylandinterface.h"
 #include "menuimporter.h"
-#include <QDebug>
 
 class CDBusMenuImporter : public DBusMenuImporter
 {
@@ -36,14 +42,17 @@ AppMenuModel::AppMenuModel(QObject *parent)
     , m_menu(nullptr)
     , m_activityMenu(nullptr)
     , m_activityAction(nullptr)
+    , m_finderMenu(nullptr)
+    , m_genericAppMenu(nullptr)
     , m_activity(Activity::self())
     , m_serviceWatcher(new QDBusServiceWatcher(this))
 {
     m_activityMenu = new QMenu;
-    m_activityAction = new QAction(m_activity->title(), this);
+    m_activityAction = new QAction(tr("Finder"), this);
     m_activityAction->setMenu(m_activityMenu);
-    m_activityMenu->addAction(QCoreApplication::translate("main", "Quit"),
-                              m_activity, &Activity::quit);
+
+    setupFinderMenu();
+    rebuildActivityMenu(tr("Finder"), true);
 
     connect(this, &AppMenuModel::modelNeedsUpdate, this, [this] {
         if (!m_updatePending) {
@@ -89,6 +98,8 @@ AppMenuModel::~AppMenuModel()
     if (m_activityAction)
         m_activityAction->setMenu(nullptr);
     delete m_activityMenu;
+    delete m_finderMenu;
+    delete m_genericAppMenu;
 }
 
 bool AppMenuModel::menuAvailable() const
@@ -124,7 +135,19 @@ int AppMenuModel::rowCount(const QModelIndex &parent) const
         return 0;
     }
 
-    return 1 + (m_menuAvailable && m_menu ? m_menu->actions().count() : 0);
+    if (m_isFinder) {
+        return 1 + (m_finderMenu ? m_finderMenu->actions().count() : 0);
+    }
+
+    if (m_menuAvailable && m_menu && !m_menu->actions().isEmpty()) {
+        return 1 + m_menu->actions().count();
+    }
+
+    if (m_genericAppMenu) {
+        return 1 + m_genericAppMenu->actions().count();
+    }
+
+    return 1;
 }
 
 void AppMenuModel::update()
@@ -162,19 +185,29 @@ void AppMenuModel::onActiveWindowChanged()
 
 void AppMenuModel::updateActivityVisibility()
 {
-    const QString title = m_activity->title();
-    const bool visible = !title.isEmpty();
-    const bool titleChanged = m_activityAction->text() != title;
-    if (titleChanged)
-        m_activityAction->setText(title);
-
-    if (m_visible != visible) {
-        setVisible(visible);
-        emit modelNeedsUpdate();
-    } else if (titleChanged && visible) {
-        const QModelIndex modelIndex = index(0, 0);
-        emit dataChanged(modelIndex, modelIndex);
+    QString title = m_activity->title();
+    bool isFinder = false;
+    if (title.isEmpty()
+        || title.compare(tr("Finder"), Qt::CaseInsensitive) == 0
+        || title.compare(QStringLiteral("Finder"), Qt::CaseInsensitive) == 0
+        || title.compare(QStringLiteral("Desktop"), Qt::CaseInsensitive) == 0) {
+        title = tr("Finder");
+        isFinder = true;
     }
+
+    m_isFinder = isFinder;
+    const bool titleChanged = (m_activityAction->text() != title);
+    if (titleChanged) {
+        m_activityAction->setText(title);
+    }
+
+    rebuildActivityMenu(title, isFinder);
+
+    if (!m_visible) {
+        setVisible(true);
+    }
+
+    emit modelNeedsUpdate();
 }
 
 QHash<int, QByteArray> AppMenuModel::roleNames() const
@@ -233,15 +266,32 @@ QAction *AppMenuModel::actionAt(int row) const
     if (row == 0)
         return m_activityAction;
 
-    if (!m_menuAvailable || !m_menu)
-        return nullptr;
-
-    const auto actions = m_menu->actions();
     const int actionIndex = row - 1;
-    if (actionIndex >= actions.count())
-        return nullptr;
 
-    return actions.at(actionIndex);
+    if (m_isFinder) {
+        if (!m_finderMenu)
+            return nullptr;
+        const auto actions = m_finderMenu->actions();
+        if (actionIndex >= actions.count())
+            return nullptr;
+        return actions.at(actionIndex);
+    }
+
+    if (m_menuAvailable && m_menu && !m_menu->actions().isEmpty()) {
+        const auto actions = m_menu->actions();
+        if (actionIndex >= actions.count())
+            return nullptr;
+        return actions.at(actionIndex);
+    }
+
+    if (m_genericAppMenu) {
+        const auto actions = m_genericAppMenu->actions();
+        if (actionIndex >= actions.count())
+            return nullptr;
+        return actions.at(actionIndex);
+    }
+
+    return nullptr;
 }
 
 int AppMenuModel::rowForAction(QAction *action) const
@@ -252,11 +302,24 @@ int AppMenuModel::rowForAction(QAction *action) const
     if (action == m_activityAction)
         return 0;
 
-    if (!m_menuAvailable || !m_menu)
-        return -1;
+    if (m_isFinder) {
+        if (!m_finderMenu)
+            return -1;
+        const int idx = m_finderMenu->actions().indexOf(action);
+        return idx < 0 ? -1 : idx + 1;
+    }
 
-    const int actionIndex = m_menu->actions().indexOf(action);
-    return actionIndex < 0 ? -1 : actionIndex + 1;
+    if (m_menuAvailable && m_menu && !m_menu->actions().isEmpty()) {
+        const int idx = m_menu->actions().indexOf(action);
+        return idx < 0 ? -1 : idx + 1;
+    }
+
+    if (m_genericAppMenu) {
+        const int idx = m_genericAppMenu->actions().indexOf(action);
+        return idx < 0 ? -1 : idx + 1;
+    }
+
+    return -1;
 }
 
 void AppMenuModel::updateApplicationMenu(const QString &serviceName, const QString &menuObjectPath)
@@ -324,3 +387,309 @@ void AppMenuModel::updateApplicationMenu(const QString &serviceName, const QStri
         }
     });
 }
+
+void AppMenuModel::setupFinderMenu()
+{
+    m_finderMenu = new QMenu;
+
+    // 1. File Menu
+    QMenu *fileMenu = new QMenu(m_finderMenu);
+    QAction *fileAction = m_finderMenu->addAction(tr("File"));
+    fileAction->setMenu(fileMenu);
+
+    QAction *newFinderWindow = fileMenu->addAction(tr("New Finder Window"));
+    newFinderWindow->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_N));
+    connect(newFinderWindow, &QAction::triggered, this, []() {
+        QProcess::startDetached(QStringLiteral("cutefish-filemanager"), {QDir::homePath()});
+    });
+
+    QAction *newFolder = fileMenu->addAction(tr("New Folder"));
+    newFolder->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_N));
+    connect(newFolder, &QAction::triggered, this, []() {
+        QString desktop = QStandardPaths::writableLocation(QStandardPaths::DesktopLocation);
+        QDir dir(desktop);
+        if (dir.exists()) {
+            QString name = tr("New Folder");
+            int counter = 1;
+            while (dir.exists(name)) {
+                name = tr("New Folder %1").arg(++counter);
+            }
+            dir.mkdir(name);
+        }
+    });
+
+    fileMenu->addSeparator();
+
+    QAction *closeWindow = fileMenu->addAction(tr("Close Window"));
+    closeWindow->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_W));
+    connect(closeWindow, &QAction::triggered, m_activity, &Activity::close);
+
+    // 2. Edit Menu
+    QMenu *editMenu = new QMenu(m_finderMenu);
+    QAction *editAction = m_finderMenu->addAction(tr("Edit"));
+    editAction->setMenu(editMenu);
+
+    QAction *undoAction = editMenu->addAction(tr("Undo"));
+    undoAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Z));
+    undoAction->setEnabled(false);
+
+    QAction *redoAction = editMenu->addAction(tr("Redo"));
+    redoAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Z));
+    redoAction->setEnabled(false);
+
+    editMenu->addSeparator();
+
+    QAction *cutAction = editMenu->addAction(tr("Cut"));
+    cutAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_X));
+
+    QAction *copyAction = editMenu->addAction(tr("Copy"));
+    copyAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_C));
+
+    QAction *pasteAction = editMenu->addAction(tr("Paste"));
+    pasteAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_V));
+
+    QAction *selectAllAction = editMenu->addAction(tr("Select All"));
+    selectAllAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_A));
+
+    // 3. View Menu
+    QMenu *viewMenu = new QMenu(m_finderMenu);
+    QAction *viewAction = m_finderMenu->addAction(tr("View"));
+    viewAction->setMenu(viewMenu);
+
+    QAction *asIcons = viewMenu->addAction(tr("as Icons"));
+    asIcons->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_1));
+
+    QAction *asList = viewMenu->addAction(tr("as List"));
+    asList->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_2));
+
+    QAction *asColumns = viewMenu->addAction(tr("as Columns"));
+    asColumns->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_3));
+
+    viewMenu->addSeparator();
+
+    viewMenu->addAction(tr("Clean Up"));
+
+    QAction *showViewOpts = viewMenu->addAction(tr("Show View Options"));
+    showViewOpts->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_J));
+
+    // 4. Go Menu
+    QMenu *goMenu = new QMenu(m_finderMenu);
+    QAction *goAction = m_finderMenu->addAction(tr("Go"));
+    goAction->setMenu(goMenu);
+
+    QAction *backAction = goMenu->addAction(tr("Back"));
+    backAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_BracketLeft));
+
+    QAction *forwardAction = goMenu->addAction(tr("Forward"));
+    forwardAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_BracketRight));
+
+    QAction *enclosingFolder = goMenu->addAction(tr("Enclosing Folder"));
+    enclosingFolder->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Up));
+
+    goMenu->addSeparator();
+
+    QAction *goApps = goMenu->addAction(tr("Applications"));
+    goApps->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_A));
+    connect(goApps, &QAction::triggered, this, []() {
+        QDesktopServices::openUrl(QUrl::fromLocalFile(QStringLiteral("/usr/share/applications")));
+    });
+
+    QAction *goDesktop = goMenu->addAction(tr("Desktop"));
+    goDesktop->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_D));
+    connect(goDesktop, &QAction::triggered, this, []() {
+        QDesktopServices::openUrl(QUrl::fromLocalFile(QStandardPaths::writableLocation(QStandardPaths::DesktopLocation)));
+    });
+
+    QAction *goDocs = goMenu->addAction(tr("Documents"));
+    goDocs->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_O));
+    connect(goDocs, &QAction::triggered, this, []() {
+        QDesktopServices::openUrl(QUrl::fromLocalFile(QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation)));
+    });
+
+    QAction *goDownloads = goMenu->addAction(tr("Downloads"));
+    goDownloads->setShortcut(QKeySequence(Qt::CTRL | Qt::ALT | Qt::Key_L));
+    connect(goDownloads, &QAction::triggered, this, []() {
+        QDesktopServices::openUrl(QUrl::fromLocalFile(QStandardPaths::writableLocation(QStandardPaths::DownloadLocation)));
+    });
+
+    QAction *goHome = goMenu->addAction(tr("Home"));
+    goHome->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_H));
+    connect(goHome, &QAction::triggered, this, []() {
+        QDesktopServices::openUrl(QUrl::fromLocalFile(QDir::homePath()));
+    });
+
+    goMenu->addSeparator();
+
+    QAction *goTrash = goMenu->addAction(tr("Trash"));
+    connect(goTrash, &QAction::triggered, this, []() {
+        QProcess::startDetached(QStringLiteral("cutefish-filemanager"), {QStringLiteral("trash:///")});
+    });
+
+    // 5. Window Menu
+    QMenu *windowMenu = new QMenu(m_finderMenu);
+    QAction *windowAction = m_finderMenu->addAction(tr("Window"));
+    windowAction->setMenu(windowMenu);
+
+    QAction *minAction = windowMenu->addAction(tr("Minimize"));
+    minAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_M));
+    connect(minAction, &QAction::triggered, m_activity, &Activity::minimize);
+
+    QAction *zoomAction = windowMenu->addAction(tr("Zoom"));
+    connect(zoomAction, &QAction::triggered, m_activity, &Activity::maximize);
+
+    windowMenu->addSeparator();
+
+    QAction *bringAll = windowMenu->addAction(tr("Bring All to Front"));
+    connect(bringAll, &QAction::triggered, m_activity, &Activity::showAll);
+
+    // 6. Help Menu
+    QMenu *helpMenu = new QMenu(m_finderMenu);
+    QAction *helpAction = m_finderMenu->addAction(tr("Help"));
+    helpAction->setMenu(helpMenu);
+
+    QAction *helpItem = helpMenu->addAction(tr("macOS Help"));
+    connect(helpItem, &QAction::triggered, this, []() {
+        QDesktopServices::openUrl(QUrl(QStringLiteral("https://cutefishos.com")));
+    });
+
+    // Fallback menu for regular applications without DBus menus (macOS style)
+    m_genericAppMenu = new QMenu;
+
+    // 1. File Menu
+    QMenu *genericFileMenu = new QMenu(m_genericAppMenu);
+    QAction *genFileAction = m_genericAppMenu->addAction(tr("File"));
+    genFileAction->setMenu(genericFileMenu);
+
+    QAction *gCloseWin = genericFileMenu->addAction(tr("Close Window"));
+    gCloseWin->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_W));
+    connect(gCloseWin, &QAction::triggered, m_activity, &Activity::close);
+
+    // 2. Edit Menu
+    QMenu *genericEditMenu = new QMenu(m_genericAppMenu);
+    QAction *genEditAction = m_genericAppMenu->addAction(tr("Edit"));
+    genEditAction->setMenu(genericEditMenu);
+
+    QAction *gUndo = genericEditMenu->addAction(tr("Undo"));
+    gUndo->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Z));
+
+    QAction *gRedo = genericEditMenu->addAction(tr("Redo"));
+    gRedo->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Z));
+
+    genericEditMenu->addSeparator();
+
+    QAction *gCut = genericEditMenu->addAction(tr("Cut"));
+    gCut->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_X));
+
+    QAction *gCopy = genericEditMenu->addAction(tr("Copy"));
+    gCopy->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_C));
+
+    QAction *gPaste = genericEditMenu->addAction(tr("Paste"));
+    gPaste->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_V));
+
+    QAction *gSelectAll = genericEditMenu->addAction(tr("Select All"));
+    gSelectAll->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_A));
+
+    // 3. View Menu
+    QMenu *genericViewMenu = new QMenu(m_genericAppMenu);
+    QAction *genViewAction = m_genericAppMenu->addAction(tr("View"));
+    genViewAction->setMenu(genericViewMenu);
+
+    QAction *gFullScreen = genericViewMenu->addAction(tr("Enter Full Screen"));
+    gFullScreen->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_F11));
+    connect(gFullScreen, &QAction::triggered, m_activity, &Activity::maximize);
+
+    // 4. Window Menu
+    QMenu *genericWindowMenu = new QMenu(m_genericAppMenu);
+    QAction *genWinAction = m_genericAppMenu->addAction(tr("Window"));
+    genWinAction->setMenu(genericWindowMenu);
+
+    QAction *gMinAction = genericWindowMenu->addAction(tr("Minimize"));
+    gMinAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_M));
+    connect(gMinAction, &QAction::triggered, m_activity, &Activity::minimize);
+
+    QAction *gZoomAction = genericWindowMenu->addAction(tr("Zoom"));
+    connect(gZoomAction, &QAction::triggered, m_activity, &Activity::maximize);
+
+    genericWindowMenu->addSeparator();
+
+    QAction *gBringAll = genericWindowMenu->addAction(tr("Bring All to Front"));
+    connect(gBringAll, &QAction::triggered, m_activity, &Activity::showAll);
+
+    // 5. Help Menu
+    QMenu *genericHelpMenu = new QMenu(m_genericAppMenu);
+    QAction *genHelpAction = m_genericAppMenu->addAction(tr("Help"));
+    genHelpAction->setMenu(genericHelpMenu);
+
+    QAction *gHelpItem = genericHelpMenu->addAction(tr("%1 Help").arg(tr("Application")));
+    connect(gHelpItem, &QAction::triggered, this, []() {
+        QDesktopServices::openUrl(QUrl(QStringLiteral("https://cutefishos.com")));
+    });
+}
+
+void AppMenuModel::rebuildActivityMenu(const QString &title, bool isFinder)
+{
+    if (!m_activityMenu)
+        return;
+
+    m_activityMenu->clear();
+
+    if (isFinder) {
+        QAction *aboutAction = m_activityMenu->addAction(tr("About Finder"));
+        connect(aboutAction, &QAction::triggered, this, []() {
+            QProcess::startDetached(QStringLiteral("cutefish-settings"), {QStringLiteral("-m"), QStringLiteral("about")});
+        });
+
+        QAction *settingsAction = m_activityMenu->addAction(tr("Settings..."));
+        settingsAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Comma));
+        connect(settingsAction, &QAction::triggered, this, []() {
+            QProcess::startDetached(QStringLiteral("cutefish-settings"), {});
+        });
+
+        m_activityMenu->addSeparator();
+
+        QAction *emptyTrashAction = m_activityMenu->addAction(tr("Empty Trash..."));
+        connect(emptyTrashAction, &QAction::triggered, this, []() {
+            QProcess::startDetached(QStringLiteral("cutefish-filemanager"), {QStringLiteral("-e")});
+        });
+
+        m_activityMenu->addSeparator();
+
+        QAction *hideOthersAction = m_activityMenu->addAction(tr("Hide Others"));
+        hideOthersAction->setShortcut(QKeySequence(Qt::CTRL | Qt::ALT | Qt::Key_H));
+        connect(hideOthersAction, &QAction::triggered, m_activity, &Activity::hideOthers);
+
+        QAction *showAllAction = m_activityMenu->addAction(tr("Show All"));
+        connect(showAllAction, &QAction::triggered, m_activity, &Activity::showAll);
+    } else {
+        QAction *aboutAction = m_activityMenu->addAction(tr("About %1").arg(title));
+        connect(aboutAction, &QAction::triggered, this, []() {
+            QProcess::startDetached(QStringLiteral("cutefish-settings"), {QStringLiteral("-m"), QStringLiteral("about")});
+        });
+
+        QAction *settingsAction = m_activityMenu->addAction(tr("Settings..."));
+        settingsAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Comma));
+        connect(settingsAction, &QAction::triggered, this, []() {
+            QProcess::startDetached(QStringLiteral("cutefish-settings"), {});
+        });
+
+        m_activityMenu->addSeparator();
+
+        QAction *hideAction = m_activityMenu->addAction(tr("Hide %1").arg(title));
+        hideAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_H));
+        connect(hideAction, &QAction::triggered, m_activity, &Activity::minimize);
+
+        QAction *hideOthersAction = m_activityMenu->addAction(tr("Hide Others"));
+        hideOthersAction->setShortcut(QKeySequence(Qt::CTRL | Qt::ALT | Qt::Key_H));
+        connect(hideOthersAction, &QAction::triggered, m_activity, &Activity::hideOthers);
+
+        QAction *showAllAction = m_activityMenu->addAction(tr("Show All"));
+        connect(showAllAction, &QAction::triggered, m_activity, &Activity::showAll);
+
+        m_activityMenu->addSeparator();
+
+        QAction *quitAction = m_activityMenu->addAction(tr("Quit %1").arg(title));
+        quitAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Q));
+        connect(quitAction, &QAction::triggered, m_activity, &Activity::quit);
+    }
+}
+

@@ -93,6 +93,7 @@ QHash<int, QByteArray> QMenuModel::roleNames() const
         {CheckableRole, QByteArrayLiteral("isCheckable")},
         {CheckedRole, QByteArrayLiteral("isChecked")},
         {HasSubmenuRole, QByteArrayLiteral("hasSubmenu")},
+        {ShortcutRole, QByteArrayLiteral("shortcut")},
     };
 }
 
@@ -125,6 +126,8 @@ QVariant QMenuModel::data(const QModelIndex &index, int role) const
         return action->isChecked();
     case HasSubmenuRole:
         return action->menu() != nullptr;
+    case ShortcutRole:
+        return action->shortcut().toString(QKeySequence::NativeText);
     }
 
     return QVariant();

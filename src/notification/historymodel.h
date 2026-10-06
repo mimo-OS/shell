@@ -36,7 +36,8 @@ public:
         UpdatedRole,
         BodyRole,
         IconNameRole,
-        HasDefaultActionRole
+        HasDefaultActionRole,
+        AppNameRole
     };
     Q_ENUM(Roles)
 

@@ -140,6 +140,27 @@ void Activity::restore()
         KWinWaylandInterface::instance()->activeWindow());
 }
 
+void Activity::hideOthers()
+{
+    KWinWaylandInterface *kwin = KWinWaylandInterface::instance();
+    const quint64 active = kwin->activeWindow();
+    for (const KWinWaylandClient &client : kwin->clients()) {
+        if (client.id != active && kwin->isAcceptableWindow(client.id) && !client.hidden) {
+            kwin->minimizeWindow(client.id);
+        }
+    }
+}
+
+void Activity::showAll()
+{
+    KWinWaylandInterface *kwin = KWinWaylandInterface::instance();
+    for (const KWinWaylandClient &client : kwin->clients()) {
+        if (kwin->isAcceptableWindow(client.id) && client.hidden) {
+            kwin->restoreWindow(client.id);
+        }
+    }
+}
+
 void Activity::maximize()
 {
     KWinWaylandInterface::instance()->toggleMaximize(

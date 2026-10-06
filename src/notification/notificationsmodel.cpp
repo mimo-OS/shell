@@ -69,6 +69,8 @@ QVariant NotificationsModel::data(const QModelIndex &index, int role) const
         return notification.appIcon;
     case NotificationsModel::HasDefaultActionRole:
         return notification.actions.contains("default");
+    case NotificationsModel::AppNameRole:
+        return notification.appName;
     default:
         break;
     }

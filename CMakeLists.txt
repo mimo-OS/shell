@@ -11,6 +11,7 @@ include(GNUInstallDirs)
 
 find_package(Qt6 CONFIG REQUIRED Widgets DBus Concurrent Quick QuickControls2 Network LinguistTools)
 find_package(KWayland REQUIRED)
+find_package(KF6GlobalAccel REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(WAYLAND_CLIENT REQUIRED IMPORTED_TARGET wayland-client)
 
@@ -31,6 +32,7 @@ target_link_libraries(shellcommon INTERFACE
     Qt6::Concurrent
     Qt6::DBus
     Qt6::Network
+    KF6::GlobalAccel
     Plasma::KWaylandClient
     PkgConfig::WAYLAND_CLIENT
 )

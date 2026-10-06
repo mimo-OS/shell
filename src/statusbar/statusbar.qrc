@@ -5,6 +5,8 @@
         <file>qml/BarLabel.qml</file>
         <file>qml/StandardItem.qml</file>
         <file>qml/QMenuPopup.qml</file>
+        <file>images/dark/cutefish.svg</file>
+        <file>images/light/cutefish.svg</file>
         <file>images/dark/audio-volume-high-symbolic.svg</file>
         <file>images/dark/audio-volume-low-symbolic.svg</file>
         <file>images/dark/audio-volume-medium-symbolic.svg</file>
@@ -32,7 +34,14 @@
         <file>images/dark/battery-level-90-charging-symbolic.svg</file>
         <file>images/dark/battery-level-90-symbolic.svg</file>
         <file>images/dark/bluetooth-symbolic.svg</file>
+        <file>images/dark/airplane-mode.svg</file>
+        <file>images/dark/power-mode.svg</file>
         <file>images/dark/brightness.svg</file>
+        <file>images/dark/location-mode.svg</file>
+        <file>images/dark/projection-mode.svg</file>
+        <file>images/dark/eye-protection.svg</file>
+        <file>images/dark/input-share.svg</file>
+        <file>images/dark/wireless-share.svg</file>
         <file>images/dark/close_normal.svg</file>
         <file>images/dark/control.svg</file>
         <file>images/dark/dark-mode.svg</file>
@@ -50,6 +59,7 @@
         <file>images/dark/network-wireless-connected-75.svg</file>
         <file>images/dark/restore_normal.svg</file>
         <file>images/dark/settings.svg</file>
+        <file>images/dark/phone.svg</file>
         <file>images/dark/system-shutdown-symbolic.svg</file>
         <file>images/light/audio-volume-high-symbolic.svg</file>
         <file>images/light/audio-volume-low-symbolic.svg</file>
@@ -78,7 +88,14 @@
         <file>images/light/battery-level-90-charging-symbolic.svg</file>
         <file>images/light/battery-level-90-symbolic.svg</file>
         <file>images/light/bluetooth-symbolic.svg</file>
+        <file>images/light/airplane-mode.svg</file>
+        <file>images/light/power-mode.svg</file>
         <file>images/light/brightness.svg</file>
+        <file>images/light/location-mode.svg</file>
+        <file>images/light/projection-mode.svg</file>
+        <file>images/light/eye-protection.svg</file>
+        <file>images/light/input-share.svg</file>
+        <file>images/light/wireless-share.svg</file>
         <file>images/light/close_normal.svg</file>
         <file>images/light/control.svg</file>
         <file>images/light/dark-mode.svg</file>
@@ -96,6 +113,7 @@
         <file>images/light/network-wireless-connected-75.svg</file>
         <file>images/light/restore_normal.svg</file>
         <file>images/light/settings.svg</file>
+        <file>images/light/phone.svg</file>
         <file>images/light/system-shutdown-symbolic.svg</file>
         <file>images/media-playback-pause-symbolic.svg</file>
         <file>images/media-playback-start-symbolic.svg</file>
@@ -130,5 +148,13 @@
         <file>images/dark/screenshot.svg</file>
         <file>images/light/do-not-disturb.svg</file>
         <file>images/dark/do-not-disturb.svg</file>
+        <file>images/dark/system-search-symbolic.svg</file>
+        <file>images/light/system-search-symbolic.svg</file>
+        <file>qml/Spotlight.qml</file>
+        <file>images/dark/clipboard.svg</file>
+        <file>images/light/clipboard.svg</file>
+        <file>qml/ClipboardPopup.qml</file>
+        <file>qml/OverviewOverlay.qml</file>
+        <file>qml/StageManager.qml</file>
     </qresource>
 </RCC>

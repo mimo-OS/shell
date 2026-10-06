@@ -154,4 +154,5 @@ void Shell::start()
     m_dock->setLauncher(m_launcher);
 
     m_dock->show();
+    m_statusBar->show();
 }

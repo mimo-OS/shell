@@ -32,6 +32,8 @@ public:
     Q_INVOKABLE void quit();
     Q_INVOKABLE void minimize();
     Q_INVOKABLE void restore();
+    Q_INVOKABLE void hideOthers();
+    Q_INVOKABLE void showAll();
     Q_INVOKABLE void maximize();
     Q_INVOKABLE void toggleMaximize();
     Q_INVOKABLE void move();

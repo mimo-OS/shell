@@ -48,10 +48,11 @@ signals:
 
 private slots:
     void onPropertiesChanged(const QString &ifaceName, const QVariantMap &changedProps, const QStringList &invalidatedProps);
+    void initServices();
 
 private:
-    QDBusInterface m_upowerInterface;
-    QDBusInterface m_interface;
+    QDBusInterface *m_upowerInterface;
+    QDBusInterface *m_interface;
     bool m_available;
     bool m_onBattery;
     bool m_showPercentage;

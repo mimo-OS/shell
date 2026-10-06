@@ -44,7 +44,7 @@ Item {
     property color textColor: rootItem.darkMode ? "#FFFFFF" : "#000000";
     property int fontSize: 10
 
-    property var timeFormat: StatusBar.twentyFourTime ? "ddd MMM d HH:mm" : "ddd MMM d h:mmAP"
+    property var timeFormat: StatusBar.twentyFourTime ? "ddd MMM d  HH:mm" : "ddd MMM d  h:mm AP"
 
     onTimeFormatChanged: {
         timeTimer.restart()
@@ -77,6 +77,10 @@ Item {
         id: currentUser
     }
 
+    ContinuityManager {
+        id: continuity
+    }
+
     StatusBarForegroundHelper {
         id: bgHelper
     }
@@ -89,6 +93,29 @@ Item {
     // the work area the shell itself reserves.
     ScreenHelper {
         id: screenHelper
+    }
+
+    FishUI.WindowBlur {
+        view: rootItem.Window.window
+        windowRadius: 0
+        enabled: FishUI.Theme.blurEnabled
+    }
+
+    Rectangle {
+        id: barBackground
+        anchors.fill: parent
+        color: rootItem.darkMode
+               ? Qt.rgba(0.08, 0.08, 0.10, FishUI.Theme.blurEnabled ? 0.65 : 0.98)
+               : Qt.rgba(0.96, 0.96, 0.98, FishUI.Theme.blurEnabled ? 0.72 : 0.98)
+        z: -2
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            height: 1 / FishUI.Dpi.ratio
+            color: rootItem.darkMode ? Qt.rgba(255, 255, 255, 0.15) : Qt.rgba(0, 0, 0, 0.10)
+        }
     }
 
     // Application menu
@@ -181,13 +208,13 @@ Item {
         anchors.rightMargin: FishUI.Units.largeSpacing
         spacing: FishUI.Units.largeSpacing
 
-        // User menu
+        // Apple system menu
         StandardItem {
             id: userItem
 
             checked: userMenu.item ? userMenu.item.visible : false
             Layout.fillHeight: true
-            Layout.preferredWidth: rootItem.iconSize + FishUI.Units.smallSpacing * 2
+            Layout.preferredWidth: rootItem.iconSize + FishUI.Units.largeSpacing * 2
 
             onClicked: {
                 if (!userMenu.item)
@@ -201,39 +228,18 @@ Item {
                 }
             }
 
-            Image {
-                id: userIcon
+            BarIcon {
+                id: cutefishLogo
                 anchors.centerIn: parent
                 width: rootItem.iconSize
                 height: width
-
-                // An image provider is handed sourceSize already multiplied by
-                // the ratio; a file is not. Left at the logical size, a user's
-                // avatar is decoded at 16px and upscaled - and with no
-                // sourceSize at all a 300px photo is decimated straight to 16.
-                readonly property bool fromProvider: String(source).startsWith("image://")
-                sourceSize: fromProvider
-                            ? Qt.size(width, height)
-                            : Qt.size(Math.round(width * FishUI.Dpi.ratio),
-                                      Math.round(height * FishUI.Dpi.ratio))
-
-                source: currentUser.iconFileName ? "file:///" + currentUser.iconFileName : "image://icontheme/default-user"
-                antialiasing: true
-                smooth: true
+                sourceSize: Qt.size(64, 64)
+                fillMode: Image.PreserveAspectFit
                 mipmap: true
-
-                layer.enabled: true
-                layer.effect: OpacityMask {
-                    maskSource: Item {
-                        width: userIcon.width
-                        height: userIcon.height
-
-                        Rectangle {
-                            anchors.fill: parent
-                            radius: parent.height / 2
-                        }
-                    }
-                }
+                smooth: true
+                antialiasing: true
+                source: "qrc:/statusbar/images/" + (rootItem.darkMode ? "dark/" : "light/") + "cutefish.svg"
+                dropShadow: rootItem.darkMode
             }
         }
 
@@ -269,6 +275,7 @@ Item {
                         id: _actionText
                         anchors.centerIn: parent
                         color: rootItem.textColor
+                        font.bold: index === 0
                         font.pointSize: rootItem.fontSize
                         dropShadow: rootItem.darkMode
                         text: {
@@ -313,91 +320,221 @@ Item {
         // System tray(Right)
         SystemTray {}
 
+        // Phone / Continuity Indicator (macOS style)
+        StandardItem {
+            id: phoneStatusItem
+            visible: continuity.showInMenuBar && continuity.isConnected
+            Layout.fillHeight: true
+            Layout.preferredWidth: _phoneLayout.implicitWidth + FishUI.Units.smallSpacing * 2
+
+            onClicked: controler.toggleDialog()
+
+            RowLayout {
+                id: _phoneLayout
+                anchors.centerIn: parent
+                spacing: FishUI.Units.smallSpacing / 2
+
+                BarIcon {
+                    id: phoneIcon
+                    dropShadow: rootItem.darkMode
+                    width: rootItem.iconSize
+                    height: width
+                    sourceSize: Qt.size(width, height)
+                    source: "qrc:/statusbar/images/" + (rootItem.darkMode ? "dark/" : "light/") + "phone.svg"
+                    antialiasing: true
+                }
+
+                BarLabel {
+                    text: continuity.batteryCharge + "%"
+                    font.pointSize: rootItem.fontSize - 1
+                    color: rootItem.textColor
+                    dropShadow: rootItem.darkMode
+                    visible: continuity.isConnected
+                }
+            }
+        }
+
+        // Wi-Fi Indicator
+        StandardItem {
+            id: wifiStatusItem
+            visible: enabledConnections.wirelessHwEnabled &&
+                     enabledConnections.wirelessEnabled
+            Layout.fillHeight: true
+            Layout.preferredWidth: rootItem.iconSize + FishUI.Units.smallSpacing * 2
+
+            onClicked: controler.toggleDialog()
+
+            BarIcon {
+                id: wirelessIcon
+                anchors.centerIn: parent
+                dropShadow: rootItem.darkMode
+                width: rootItem.iconSize
+                height: width
+                sourceSize: Qt.size(width, height)
+                source: activeConnection.wirelessIcon ? "qrc:/statusbar/images/" + (rootItem.darkMode ? "dark/" : "light/") + activeConnection.wirelessIcon + ".svg" : "qrc:/statusbar/images/" + (rootItem.darkMode ? "dark/" : "light/") + "network-wireless-connected-100.svg"
+                antialiasing: true
+            }
+        }
+
+        // Sound Indicator
+        StandardItem {
+            id: soundStatusItem
+            visible: controlCenter.item && controlCenter.item.defaultSink
+            Layout.fillHeight: true
+            Layout.preferredWidth: rootItem.iconSize + FishUI.Units.smallSpacing * 2
+
+            onClicked: controler.toggleDialog()
+
+            BarIcon {
+                id: volumeIcon
+                anchors.centerIn: parent
+                dropShadow: rootItem.darkMode
+                width: rootItem.iconSize
+                height: width
+                sourceSize: Qt.size(width, height)
+                source: "qrc:/statusbar/images/" + (rootItem.darkMode ? "dark/" : "light/") + (controlCenter.item ? controlCenter.item.volumeIconName : "audio-volume-high-symbolic") + ".svg"
+                antialiasing: true
+            }
+        }
+
+        // Battery Indicator
+        StandardItem {
+            id: batteryStatusItem
+            visible: battery.available
+            Layout.fillHeight: true
+            Layout.preferredWidth: _batteryLayout.implicitWidth + FishUI.Units.smallSpacing * 2
+
+            onClicked: controler.toggleDialog()
+
+            RowLayout {
+                id: _batteryLayout
+                anchors.centerIn: parent
+                spacing: FishUI.Units.smallSpacing
+
+                BarIcon {
+                    id: batteryIcon
+                    dropShadow: rootItem.darkMode
+                    height: rootItem.iconSize
+                    width: height + 6
+                    sourceSize: Qt.size(width, height)
+                    source: "qrc:/statusbar/images/" + (rootItem.darkMode ? "dark/" : "light/") + battery.iconSource
+                    Layout.alignment: Qt.AlignCenter
+                    antialiasing: true
+                }
+
+                BarLabel {
+                    text: battery.chargePercent + "%"
+                    font.pointSize: rootItem.fontSize
+                    color: rootItem.textColor
+                    dropShadow: rootItem.darkMode
+                    visible: battery.showPercentage
+                }
+            }
+        }
+
+        // Dedicated macOS Control Center Button
         StandardItem {
             id: controler
-
-            checked: controlCenter.item.visible
+            checked: controlCenter.item ? controlCenter.item.visible : false
             Layout.fillHeight: true
-            Layout.preferredWidth: _controlerLayout.implicitWidth + FishUI.Units.largeSpacing
+            Layout.preferredWidth: rootItem.iconSize + FishUI.Units.smallSpacing * 2
 
             onClicked: {
                 toggleDialog()
             }
 
             function toggleDialog() {
+                if (!controlCenter.item)
+                    return
+
                 if (controlCenter.item.visible)
                     controlCenter.item.close()
                 else {
-                    // 先初始化，用户可能会通过Alt鼠标左键移动位置
                     controlCenter.item.position = Qt.point(0, 0)
                     controlCenter.item.position = mapToGlobal(0, 0)
                     controlCenter.item.open()
                 }
             }
 
-            RowLayout {
-                id: _controlerLayout
-                anchors.fill: parent
-                anchors.leftMargin: FishUI.Units.smallSpacing
-                anchors.rightMargin: FishUI.Units.smallSpacing
+            BarIcon {
+                id: controlCenterIcon
+                anchors.centerIn: parent
+                dropShadow: rootItem.darkMode
+                width: rootItem.iconSize
+                height: width
+                sourceSize: Qt.size(width, height)
+                source: "qrc:/statusbar/images/" + (rootItem.darkMode ? "dark/" : "light/") + "control.svg"
+                antialiasing: true
+            }
+        }
 
-                spacing: FishUI.Units.largeSpacing
+        // Spotlight Search Button (macOS style)
+        StandardItem {
+            id: spotlightItem
+            checked: spotlight.item ? spotlight.item.visible : false
+            Layout.fillHeight: true
+            Layout.preferredWidth: rootItem.iconSize + FishUI.Units.smallSpacing * 2
 
-                BarIcon {
-                    id: volumeIcon
-                    dropShadow: rootItem.darkMode
-                    visible: controlCenter.item.defaultSink
-                    source: "qrc:/statusbar/images/" + (rootItem.darkMode ? "dark/" : "light/") + controlCenter.item.volumeIconName + ".svg"
-                    width: rootItem.iconSize
-                    height: width
-                    sourceSize: Qt.size(width, height)
-                    asynchronous: true
-                    Layout.alignment: Qt.AlignCenter
-                    antialiasing: true
-                    smooth: false
+            onClicked: {
+                toggleDialog()
+            }
+
+            function toggleDialog() {
+                if (!spotlight.item)
+                    return
+
+                if (spotlight.item.visible)
+                    spotlight.item.close()
+                else {
+                    spotlight.item.open()
                 }
+            }
 
-                BarIcon {
-                    id: wirelessIcon
-                    dropShadow: rootItem.darkMode
-                    width: rootItem.iconSize
-                    height: width
-                    sourceSize: Qt.size(width, height)
-                    source: activeConnection.wirelessIcon ? "qrc:/statusbar/images/" + (rootItem.darkMode ? "dark/" : "light/") + activeConnection.wirelessIcon + ".svg" : ""
-                    asynchronous: true
-                    Layout.alignment: Qt.AlignCenter
-                    visible: enabledConnections.wirelessHwEnabled &&
-                             enabledConnections.wirelessEnabled &&
-                             activeConnection.wirelessName &&
-                             wirelessIcon.status === Image.Ready
-                    antialiasing: true
-                    smooth: false
+            BarIcon {
+                id: searchIcon
+                anchors.centerIn: parent
+                dropShadow: rootItem.darkMode
+                width: rootItem.iconSize
+                height: width
+                sourceSize: Qt.size(width, height)
+                source: "qrc:/statusbar/images/" + (rootItem.darkMode ? "dark/" : "light/") + "system-search-symbolic.svg"
+                antialiasing: true
+            }
+        }
+
+        // Clipboard Manager Button (macOS style)
+        StandardItem {
+            id: clipboardItem
+            checked: clipboardPopup.item ? clipboardPopup.item.visible : false
+            Layout.fillHeight: true
+            Layout.preferredWidth: rootItem.iconSize + FishUI.Units.smallSpacing * 2
+
+            onClicked: {
+                toggleDialog()
+            }
+
+            function toggleDialog() {
+                if (!clipboardPopup.item)
+                    return
+
+                if (clipboardPopup.item.visible)
+                    clipboardPopup.item.close()
+                else {
+                    clipboardPopup.item.position = Qt.point(0, 0)
+                    clipboardPopup.item.position = mapToGlobal(0, 0)
+                    clipboardPopup.item.open()
                 }
+            }
 
-                // Battery Item
-                RowLayout {
-                    visible: battery.available
-
-                    BarIcon {
-                        id: batteryIcon
-                        dropShadow: rootItem.darkMode
-                        height: rootItem.iconSize
-                        width: height + 6
-                        sourceSize: Qt.size(width, height)
-                        source: "qrc:/statusbar/images/" + (rootItem.darkMode ? "dark/" : "light/") + battery.iconSource
-                        Layout.alignment: Qt.AlignCenter
-                        antialiasing: true
-                        smooth: false
-                    }
-
-                    BarLabel {
-                        text: battery.chargePercent + "%"
-                        font.pointSize: rootItem.fontSize
-                        color: rootItem.textColor
-                        dropShadow: rootItem.darkMode
-                        visible: battery.showPercentage
-                    }
-                }
+            BarIcon {
+                id: clipboardIcon
+                anchors.centerIn: parent
+                dropShadow: rootItem.darkMode
+                width: rootItem.iconSize
+                height: width
+                sourceSize: Qt.size(width, height)
+                source: "qrc:/statusbar/images/" + (rootItem.darkMode ? "dark/" : "light/") + "clipboard.svg"
+                antialiasing: true
             }
         }
 
@@ -407,7 +544,7 @@ Item {
 
             checked: notificationCenter.item ? notificationCenter.item.visible : false
             Layout.fillHeight: true
-            Layout.preferredWidth: _dateTimeLayout.implicitWidth + FishUI.Units.smallSpacing
+            Layout.preferredWidth: _dateTimeLayout.implicitWidth + FishUI.Units.smallSpacing * 2
 
             onClicked: {
                 toggleDialog()
@@ -430,21 +567,12 @@ Item {
                 id: _dateTimeLayout
                 anchors.fill: parent
 
-//                Image {
-//                    width: rootItem.iconSize
-//                    height: width
-//                    sourceSize: Qt.size(width, height)
-//                    source: "qrc:/statusbar/images/" + (rootItem.darkMode ? "dark/" : "light/") + "notification-symbolic.svg"
-//                    asynchronous: true
-//                    Layout.alignment: Qt.AlignCenter
-//                    antialiasing: true
-//                    smooth: false
-//                }
-
                 BarLabel {
                     id: timeLabel
                     Layout.alignment: Qt.AlignCenter
                     font.pointSize: rootItem.fontSize
+                    font.weight: Font.Medium
+                    font.letterSpacing: 0.2
                     color: rootItem.textColor
                     dropShadow: rootItem.darkMode
 
@@ -478,7 +606,7 @@ Item {
             //     acticity.move()
         }
 
-        onPressed: {
+        onPressed: (mouse) => {
             startY = mouse.y
         }
 
@@ -491,18 +619,18 @@ Item {
         }
 
         onMouseYChanged: {
-            if (startY === parseInt(mouse.y)) {
+            if (startY === parseInt(mouseY)) {
                 activated = false
                 return
             }
 
             // Up
-            if (startY > parseInt(mouse.y)) {
+            if (startY > parseInt(mouseY)) {
                 activated = false
                 return
             }
 
-            if (mouse.y > rootItem.height)
+            if (mouseY > rootItem.height)
                 activated = true
             else
                 activated = false
@@ -514,6 +642,7 @@ Item {
         id: controlCenter
         sourceComponent: ControlCenter {}
         asynchronous: true
+        onLoaded: item.transientParent = rootItem.Window.window
     }
 
     // The notification centre lives in the notification component's resources,
@@ -553,6 +682,108 @@ Item {
             })
         }
     }
+
+    Loader {
+        id: spotlight
+        sourceComponent: Spotlight {}
+        asynchronous: true
+
+        onLoaded: {
+            item.transientParent = rootItem.Window.window
+        }
+    }
+
+    Connections {
+        target: StatusBar
+
+        function onSpotlightRequested() {
+            spotlightItem.toggleDialog()
+        }
+    }
+
+    Loader {
+        id: clipboardPopup
+        sourceComponent: ClipboardPopup {}
+        asynchronous: true
+
+        onLoaded: {
+            item.transientParent = rootItem.Window.window
+        }
+    }
+
+    Shortcut {
+        sequence: "Ctrl+Alt+V"
+        onActivated: clipboardItem.toggleDialog()
+    }
+
+    Shortcut {
+        sequence: "Meta+Shift+V"
+        onActivated: clipboardItem.toggleDialog()
+    }
+
+    Loader {
+        id: overviewOverlayLoader
+        sourceComponent: OverviewOverlay {}
+        asynchronous: true
+
+        onLoaded: {
+            item.transientParent = rootItem.Window.window
+            item.open()
+        }
+    }
+
+    Shortcut {
+        sequence: "F9"
+        onActivated: {
+            if (overviewOverlayLoader.item) {
+                if (overviewOverlayLoader.item.visible)
+                    overviewOverlayLoader.item.close()
+                else
+                    overviewOverlayLoader.item.open()
+            }
+        }
+    }
+
+    Shortcut {
+        sequence: "Meta+Tab"
+        onActivated: {
+            if (overviewOverlayLoader.item) {
+                if (overviewOverlayLoader.item.visible)
+                    overviewOverlayLoader.item.close()
+                else
+                    overviewOverlayLoader.item.open()
+            }
+        }
+    }
+
+    Loader {
+        id: stageManagerLoader
+        source: "qrc:/statusbar/qml/StageManager.qml"
+        asynchronous: true
+
+        onLoaded: {
+            item.enabled = false
+        }
+    }
+
+    Shortcut {
+        sequence: "F10"
+        onActivated: {
+            if (stageManagerLoader.item) {
+                stageManagerLoader.item.enabled = !stageManagerLoader.item.enabled
+            }
+        }
+    }
+
+    Shortcut {
+        sequence: "Meta+S"
+        onActivated: {
+            if (stageManagerLoader.item) {
+                stageManagerLoader.item.enabled = !stageManagerLoader.item.enabled
+            }
+        }
+    }
+
 
     NM.ActiveConnection {
         id: activeConnection

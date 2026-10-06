@@ -1,5 +1,6 @@
 #include "core/qmltypes.h"
 #include "core/services/screenhelper.h"
+#include "core/services/processprovider.h"
 #include "core/window/popupwindow.h"
 
 #include <QQmlEngine>
@@ -12,4 +13,5 @@ void registerCoreQmlTypes()
     // it is the shell that reserves the struts.
     qmlRegisterType<ScreenHelper>(uri, 1, 0, "ScreenHelper");
     qmlRegisterType<PopupWindow>(uri, 1, 0, "PopupWindow");
+    qmlRegisterType<ProcessProvider>(uri, 1, 0, "ProcessProvider");
 }

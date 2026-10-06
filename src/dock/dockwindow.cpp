@@ -24,12 +24,12 @@ DockWindow::DockWindow(QQmlEngine *engine)
     , m_showTimer(new QTimer(this))
     , m_hideTimer(new QTimer(this))
     , m_geometryAnimation(new QVariantAnimation(this))
+    , m_slideAnimation(new QVariantAnimation(this))
 {
     new DockAdaptor(this);
 
     installEventFilter(this);
 
-    setDefaultAlphaBuffer(false);
     setColor(Qt::transparent);
 
     setFlags(Qt::FramelessWindowHint);
@@ -58,12 +58,25 @@ DockWindow::DockWindow(QQmlEngine *engine)
     onVisibilityChanged();
 
     m_showTimer->setSingleShot(true);
-    m_showTimer->setInterval(200);
-    connect(m_showTimer, &QTimer::timeout, this, [=] { setVisible(true); });
+    m_showTimer->setInterval(10);
+    connect(m_showTimer, &QTimer::timeout, this, &DockWindow::slideToShow);
 
     m_hideTimer->setSingleShot(true);
-    m_hideTimer->setInterval(500);
+    m_hideTimer->setInterval(420);
     connect(m_hideTimer, &QTimer::timeout, this, &DockWindow::onHideTimeout);
+
+    connect(m_slideAnimation, &QVariantAnimation::valueChanged, this,
+            [this](const QVariant &value) {
+                setDockGeometry(value.toRect(), true);
+            });
+    connect(m_slideAnimation, &QVariantAnimation::finished, this, [this] {
+        if (m_slideState == SlidingOut) {
+            setVisible(false);
+            m_slideState = Idle;
+        } else if (m_slideState == SlidingIn) {
+            m_slideState = Idle;
+        }
+    });
 
     m_geometryAnimation->setDuration(180);
     m_geometryAnimation->setEasingCurve(QEasingCurve::OutCubic);
@@ -82,9 +95,17 @@ DockWindow::DockWindow(QQmlEngine *engine)
     connect(m_geometryAnimation, &QVariantAnimation::finished, this,
             [this] { setGeometryAnimationProgress(1.0); });
 
+    // Track window geometry and touching changes via KWin Wayland
+    KWinWaylandInterface *kwin = KWinWaylandInterface::instance();
+    connect(kwin, &KWinWaylandInterface::windowManagementReady, this, &DockWindow::checkWindowOverlap);
+    connect(kwin, &KWinWaylandInterface::clientAdded, this, &DockWindow::checkWindowOverlap);
+    connect(kwin, &KWinWaylandInterface::clientRemoved, this, &DockWindow::checkWindowOverlap);
+    connect(kwin, &KWinWaylandInterface::clientChanged, this, &DockWindow::checkWindowOverlap);
+    connect(kwin, &KWinWaylandInterface::activeWindowChanged, this, &DockWindow::checkWindowOverlap);
+
     // When the current window changes.
     connect(m_activity, &Activity::launchPadChanged, this, &DockWindow::onVisibilityChanged);
-    connect(m_activity, &Activity::existsWindowMaximizedChanged, this, &DockWindow::onVisibilityChanged);
+    connect(m_activity, &Activity::existsWindowMaximizedChanged, this, &DockWindow::checkWindowOverlap);
 
     connect(m_appModel, &ApplicationModel::countChanged, this,
             [this] { resizeWindow(m_appModel->initialWindowsLoaded()); });
@@ -209,8 +230,14 @@ QVariantMap DockWindow::metrics() const
 
 QRect DockWindow::windowRect() const
 {
-    const QRect screenGeometry = screen()->geometry();
-    const QRect availableGeometry = screen()->availableGeometry();
+    QScreen *s = screen();
+    if (!s)
+        s = qGuiApp->primaryScreen();
+    if (!s)
+        return QRect();
+
+    const QRect screenGeometry = s->geometry();
+    const QRect availableGeometry = s->availableGeometry();
 
     // Add the trash item.
     const int itemCount = m_appModel->rowCount() + 1;
@@ -245,12 +272,77 @@ QRect DockWindow::windowRect() const
     return QRect(position, newSize);
 }
 
+QRect DockWindow::hiddenWindowRect() const
+{
+    QRect rect = windowRect();
+    QScreen *s = screen();
+    if (!s)
+        s = qGuiApp->primaryScreen();
+    if (!s)
+        return rect;
+
+    const QRect screenGeometry = s->geometry();
+    switch (m_settings->direction()) {
+    case DockSettings::Left:
+        rect.moveRight(screenGeometry.left() - 8);
+        break;
+    case DockSettings::Right:
+        rect.moveLeft(screenGeometry.right() + 8);
+        break;
+    case DockSettings::Bottom:
+    default:
+        rect.moveTop(screenGeometry.bottom() + 8);
+        break;
+    }
+    return rect;
+}
+
+void DockWindow::slideToHide()
+{
+    if (m_slideState == SlidingOut || (!isVisible() && m_slideState != SlidingIn))
+        return;
+
+    m_slideState = SlidingOut;
+    m_slideAnimation->stop();
+    m_slideAnimation->setDuration(280);
+    m_slideAnimation->setEasingCurve(QEasingCurve::InQuint);
+    m_slideAnimation->setStartValue(m_currentGeometry.isValid() ? m_currentGeometry : windowRect());
+    m_slideAnimation->setEndValue(hiddenWindowRect());
+    m_slideAnimation->start();
+}
+
+void DockWindow::slideToShow()
+{
+    if (m_slideState == SlidingIn || (isVisible() && m_slideState == Idle && m_currentGeometry == windowRect()))
+        return;
+
+    m_slideAnimation->stop();
+    m_slideState = SlidingIn;
+
+    if (!isVisible()) {
+        setDockGeometry(hiddenWindowRect(), false);
+        setVisible(true);
+    }
+
+    m_slideAnimation->setDuration(340);
+    m_slideAnimation->setEasingCurve(QEasingCurve::OutQuint);
+    m_slideAnimation->setStartValue(m_currentGeometry.isValid() ? m_currentGeometry : hiddenWindowRect());
+    m_slideAnimation->setEndValue(windowRect());
+    m_slideAnimation->start();
+}
+
 void DockWindow::updateMetrics()
 {
+    QScreen *s = screen();
+    if (!s)
+        s = qGuiApp->primaryScreen();
+    if (!s)
+        return;
+
     const bool isHorizontal = m_settings->direction() == DockSettings::Bottom;
     const int itemCount = m_appModel->rowCount() + 1;
-    const int maxLength = (isHorizontal ? screen()->geometry().width()
-                                        : screen()->availableGeometry().height())
+    const int maxLength = (isHorizontal ? s->geometry().width()
+                                        : s->availableGeometry().height())
             - m_settings->edgeMargins();
 
     DockMetrics metrics = DockMetrics::forIconSize(m_settings->iconSize());
@@ -330,6 +422,7 @@ void DockWindow::resizeWindow(bool animate)
         m_autoHideTrigger->updateGeometry();
 
     emit resizingFished();
+    checkWindowOverlap();
 }
 
 void DockWindow::setDockGeometry(const QRect &rect, bool requestRepaint)
@@ -347,11 +440,17 @@ void DockWindow::setDockGeometry(const QRect &rect, bool requestRepaint)
 
 void DockWindow::updateViewStruts()
 {
+    QScreen *s = screen();
+    if (!s)
+        s = qGuiApp->primaryScreen();
+    if (!s)
+        return;
+
     const bool reserveSpace = m_settings->visibility() == DockSettings::AlwaysShow;
 
     // The reserved strip runs from the screen edge to the far side of the
     // dock, so it covers the dock plus its edge gap.
-    const QRect screenRect = screen()->geometry();
+    const QRect screenRect = s->geometry();
     const QRect dockRect = windowRect();
     int thickness = 0;
 
@@ -370,7 +469,7 @@ void DockWindow::updateViewStruts()
         break;
     }
 
-    m_strutSpacer->setScreen(screen());
+    m_strutSpacer->setScreen(s);
     m_strutSpacer->setThickness(reserveSpace ? thickness : 0);
 }
 
@@ -389,19 +488,25 @@ void DockWindow::createAutoHideTrigger()
         connect(m_autoHideTrigger, &AutoHideTrigger::containsMouseChanged, this, [=](bool contains) {
             switch (m_settings->visibility()) {
             case DockSettings::AlwaysHide:
-            case DockSettings::IntellHide:{
+            case DockSettings::IntellHide:
+            case DockSettings::AlwaysShow: {
                 if (contains) {
                     m_hideTimer->stop();
+                    m_hideBlocked = true;
 
-                    // reionwong: The mouse is moved to the trigger strip,
-                    // if the dock is not displayed,
-                    // it will start to display.
-                    if (!isVisible() && !m_showTimer->isActive()) {
-                        m_showTimer->start();
+                    if (!isVisible() || m_slideState == SlidingOut) {
+                        slideToShow();
                     }
                 } else {
-                    if (!m_hideBlocked)
+                    const QPoint cursorPos = QCursor::pos();
+                    const QRect dockArea = windowRect().adjusted(-8, -8, 8, 8);
+                    if (isVisible() && dockArea.contains(cursorPos)) {
+                        m_hideBlocked = true;
+                        m_hideTimer->stop();
+                    } else {
+                        m_hideBlocked = false;
                         m_hideTimer->start();
+                    }
                 }
 
                 break;
@@ -437,6 +542,7 @@ void DockWindow::onPositionChanged()
     }
 
     emit directionChanged();
+    checkWindowOverlap();
 }
 
 void DockWindow::onIconSizeChanged()
@@ -445,6 +551,24 @@ void DockWindow::onIconSizeChanged()
     updateViewStruts();
 
     emit iconSizeChanged();
+    checkWindowOverlap();
+}
+
+void DockWindow::checkWindowOverlap()
+{
+    bool touching = false;
+    KWinWaylandInterface *kwin = KWinWaylandInterface::instance();
+    if (kwin && kwin->available()) {
+        const QRect dockRect = windowRect();
+        touching = kwin->hasWindowTouching(dockRect);
+    } else {
+        touching = m_activity->existsWindowMaximized();
+    }
+
+    if (m_windowTouchingDock != touching) {
+        m_windowTouchingDock = touching;
+        onVisibilityChanged();
+    }
 }
 
 void DockWindow::onVisibilityChanged()
@@ -460,56 +584,46 @@ void DockWindow::onVisibilityChanged()
         return;
     }
 
-    // Always show
-    // Must remain displayed when launchpad is opened.
-    if (m_settings->visibility() == DockSettings::AlwaysShow) {
-        m_hideTimer->stop();
+    // Visibility determination:
+    // AlwaysHide: hides unless hovered.
+    // IntellHide: hides when windows touch the dock or a window is maximized.
+    // AlwaysShow: stays visible and reserves screen space.
+    const bool shouldHide = (m_settings->visibility() == DockSettings::AlwaysHide)
+                         || (m_settings->visibility() == DockSettings::IntellHide && (m_activity->existsWindowMaximized() || m_windowTouchingDock));
 
-        applyGeometry();
-        setVisible(true);
+    if (shouldHide) {
+        clearViewStruts();
+
+        if (!m_autoHideTrigger)
+            createAutoHideTrigger();
+
+        if (m_hideBlocked) {
+            slideToShow();
+        } else {
+            slideToHide();
+        }
+    } else {
+        // Not hidden: show and reserve space
+        m_hideTimer->stop();
+        slideToShow();
         updateViewStruts();
 
-        if (m_autoHideTrigger)
+        if (m_settings->visibility() == DockSettings::AlwaysShow && m_autoHideTrigger)
             deleteAutoHideTrigger();
-    }
-
-    if (m_settings->visibility() == DockSettings::IntellHide) {
-        clearViewStruts();
-        applyGeometry();
-
-        if (m_activity->existsWindowMaximized() && !m_hideBlocked) {
-            setVisible(false);
-        } else {
-            setVisible(true);
-        }
-
-        if (!m_autoHideTrigger)
-            createAutoHideTrigger();
-    }
-
-    // Always hide
-    if (m_settings->visibility() == DockSettings::AlwaysHide) {
-        clearViewStruts();
-        applyGeometry();
-        setVisible(m_hideBlocked);
-
-        // Create
-        if (!m_autoHideTrigger)
-            createAutoHideTrigger();
     }
 }
 
 void DockWindow::onHideTimeout()
 {
-    if (m_activity->launchPad())
+    if (m_activity->launchPad() || m_menuOpen)
         return;
 
-    if (m_settings->visibility() == DockSettings::IntellHide
-            && !m_activity->existsWindowMaximized()) {
-        return;
+    const bool shouldHide = (m_settings->visibility() == DockSettings::AlwaysHide)
+                         || (m_settings->visibility() == DockSettings::IntellHide && (m_activity->existsWindowMaximized() || m_windowTouchingDock));
+
+    if (shouldHide && !m_hideBlocked) {
+        slideToHide();
     }
-
-    setVisible(false);
 }
 
 void DockWindow::exposeEvent(QExposeEvent *e)
@@ -524,19 +638,34 @@ bool DockWindow::eventFilter(QObject *obj, QEvent *e)
 {
     switch (e->type()) {
     case QEvent::Enter:
-        if (m_autoHideTrigger)
-            m_hideTimer->stop();
+    case QEvent::MouseMove:
+        m_hideTimer->stop();
         m_hideBlocked = true;
+        if (!isVisible() || m_slideState == SlidingOut) {
+            slideToShow();
+        }
         break;
-    case QEvent::Leave:
-        if (m_autoHideTrigger)
+    case QEvent::Leave: {
+        if (m_menuOpen) {
+            m_hideBlocked = true;
+            m_hideTimer->stop();
+            break;
+        }
+        const QPoint cursorPos = QCursor::pos();
+        const QRect dockArea = windowRect().adjusted(-8, -8, 8, 8);
+        if (dockArea.contains(cursorPos) || (m_autoHideTrigger && m_autoHideTrigger->containsMouse())) {
+            m_hideBlocked = true;
+            m_hideTimer->stop();
+        } else {
+            m_hideBlocked = false;
             m_hideTimer->start();
-        m_hideBlocked = false;
+        }
         break;
+    }
     case QEvent::DragEnter:
     case QEvent::DragMove:
-        if (m_autoHideTrigger)
-            m_hideTimer->stop();
+        m_hideTimer->stop();
+        m_hideBlocked = true;
         break;
     case QEvent::DragLeave:
     case QEvent::Drop:
@@ -548,6 +677,24 @@ bool DockWindow::eventFilter(QObject *obj, QEvent *e)
     }
 
     return QQuickWindow::eventFilter(obj, e);
+}
+
+void DockWindow::setMenuOpen(bool open)
+{
+    if (m_menuOpen != open) {
+        m_menuOpen = open;
+        if (m_menuOpen) {
+            m_hideTimer->stop();
+            m_hideBlocked = true;
+            if (!isVisible() || m_slideState == SlidingOut) {
+                slideToShow();
+            }
+        } else {
+            m_hideBlocked = false;
+            m_hideTimer->start();
+        }
+        emit menuOpenChanged();
+    }
 }
 
 void DockWindow::resizeEvent(QResizeEvent *e)

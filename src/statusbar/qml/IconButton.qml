@@ -66,13 +66,14 @@ Item {
     Image {
         id: iconImage
         anchors.centerIn: parent
-        width: parent.height * 0.75
+        width: Math.max(2, Math.round((parent.height * 0.75) / 2) * 2)
         height: width
-        sourceSize.width: width
-        sourceSize.height: height
+        sourceSize.width: Math.ceil(width * Window.devicePixelRatio)
+        sourceSize.height: Math.ceil(height * Window.devicePixelRatio)
         source: control.source
         asynchronous: true
         antialiasing: true
-        smooth: false
+        smooth: true
+        mipmap: false
     }
 }

@@ -1,20 +1,7 @@
 /*
- * Copyright (C) 2021 CutefishOS Team.
+ * Copyright (C) 2021-2026 CutefishOS Team.
  *
- * Author:     rekols <revenmartin@gmail.com>
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * Dock AppItem - macOS / GNOME 50 App-Specific Quick Actions
  */
 
 import QtQuick 2.12
@@ -39,6 +26,12 @@ DockItem {
 
     function updateMinimizedGeometry() {
         minimizedGeometryTimer.restart()
+    }
+
+    onWindowCountChanged: {
+        if (windowCount > 0)
+            stopBounce()
+        updateMinimizedGeometry()
     }
 
     onWindowIdsChanged: updateMinimizedGeometry()
@@ -85,11 +78,38 @@ DockItem {
             popupMenu(contextMenu)
     }
 
+    onDoubleClicked: function(mouse) {
+        if (mouse.button === Qt.LeftButton) {
+            var id = model.appId.toLowerCase()
+            if (id.indexOf("firefox") !== -1) {
+                startBounce()
+                appModel.openAction(model.appId, "firefox -P")
+            } else if (id.indexOf("chrome") !== -1 || id.indexOf("chromium") !== -1 || id.indexOf("brave") !== -1) {
+                startBounce()
+                popupMenu(contextMenu)
+            } else if (model.appId === "cutefish-launcher") {
+                appModel.clicked(model.appId)
+            } else {
+                startBounce()
+                popupMenu(contextMenu)
+            }
+        } else if (mouse.button === Qt.RightButton) {
+            if (model.appId !== "cutefish-launcher")
+                popupMenu(contextMenu)
+        }
+    }
+
     onClicked: function(mouse) {
-        if (mouse.button === Qt.LeftButton)
+        if (mouse.button === Qt.LeftButton) {
+            if (windowCount === 0 && model.appId !== "cutefish-launcher")
+                startBounce()
             appModel.clicked(model.appId)
-        else if (mouse.button === Qt.MiddleButton)
-            appModel.openNewInstance(model.appId)
+        } else if (mouse.button === Qt.MiddleButton) {
+            if (model.appId !== "cutefish-launcher") {
+                startBounce()
+                appModel.openNewInstance(model.appId)
+            }
+        }
     }
 
     dropArea.onEntered: function(drag) {
@@ -122,29 +142,150 @@ DockItem {
         id: contextMenu
         blurEnabled: FishUI.Theme.blurEnabled
 
+        onVisibleChanged: {
+            if (typeof dock !== "undefined" && dock)
+                dock.menuOpen = visible
+        }
+
+        // Standard Open
         MenuItem {
             text: qsTr("Open")
             visible: windowCount === 0
-            onTriggered: appModel.openNewInstance(model.appId)
+            icon.name: "document-open"
+            onTriggered: {
+                startBounce()
+                appModel.openNewInstance(model.appId)
+            }
+        }
+
+        // App-Specific Quick Action: Firefox Profile Chooser
+        MenuItem {
+            text: qsTr("Choose Profile / Profile Manager")
+            visible: model.appId.toLowerCase().indexOf("firefox") !== -1
+            icon.name: "user-bookmarks"
+            onTriggered: {
+                startBounce()
+                appModel.openAction(model.appId, "firefox -P")
+            }
+        }
+
+        // App-Specific Quick Action: Firefox New Private Window
+        MenuItem {
+            text: qsTr("Open New Private Window")
+            visible: model.appId.toLowerCase().indexOf("firefox") !== -1
+            icon.name: "view-private"
+            onTriggered: {
+                startBounce()
+                appModel.openAction(model.appId, "firefox --private-window")
+            }
+        }
+
+        // App-Specific Quick Action: Chrome New Incognito Window
+        MenuItem {
+            text: qsTr("Open New Incognito Window")
+            visible: model.appId.toLowerCase().indexOf("chrome") !== -1 || model.appId.toLowerCase().indexOf("chromium") !== -1 || model.appId.toLowerCase().indexOf("brave") !== -1
+            icon.name: "view-private"
+            onTriggered: {
+                startBounce()
+                appModel.openAction(model.appId, model.appId + " --incognito")
+            }
+        }
+
+        // App-Specific Quick Action: VS Code / Code
+        MenuItem {
+            text: qsTr("Open New Empty Window")
+            visible: model.appId.toLowerCase().indexOf("code") !== -1 || model.appId.toLowerCase().indexOf("vscodium") !== -1
+            icon.name: "window-new"
+            onTriggered: {
+                startBounce()
+                appModel.openAction(model.appId, "code -n")
+            }
+        }
+
+        // App-Specific Quick Action: Terminal
+        MenuItem {
+            text: qsTr("Open New Terminal Window")
+            visible: model.appId.toLowerCase().indexOf("terminal") !== -1 || model.appId.toLowerCase().indexOf("kitty") !== -1
+            icon.name: "utilities-terminal"
+            onTriggered: {
+                startBounce()
+                appModel.openAction(model.appId, model.appId)
+            }
+        }
+
+        // App-Specific Quick Action: File Manager Downloads
+        MenuItem {
+            text: qsTr("Open Downloads Folder")
+            visible: model.appId.indexOf("filemanager") !== -1 || model.appId.indexOf("nautilus") !== -1
+            icon.name: "folder-download"
+            onTriggered: {
+                startBounce()
+                appModel.openAction(model.appId, "cutefish-filemanager ~/Downloads")
+            }
+        }
+
+        // App-Specific Quick Action: File Manager Home
+        MenuItem {
+            text: qsTr("Open Home Directory")
+            visible: model.appId.indexOf("filemanager") !== -1 || model.appId.indexOf("nautilus") !== -1
+            icon.name: "user-home"
+            onTriggered: {
+                startBounce()
+                appModel.openAction(model.appId, "cutefish-filemanager ~")
+            }
         }
 
         MenuItem {
-            text: model.visibleName
+            text: qsTr("New Window")
+            visible: windowCount > 0 && model.appId !== "cutefish-launcher"
+            icon.name: "window-new"
+            onTriggered: {
+                startBounce()
+                appModel.openNewInstance(model.appId)
+            }
+        }
+
+        MenuItem {
+            text: qsTr("Show %1").arg(model.visibleName)
             visible: windowCount > 0 && model.visibleName
-            onTriggered: appModel.openNewInstance(model.appId)
+            icon.name: "view-restore"
+            onTriggered: {
+                appModel.raiseWindow(model.appId)
+            }
+        }
+
+        MenuSeparator {
+            visible: windowCount > 0
+        }
+
+        MenuItem {
+            text: qsTr("Close All Windows")
+            visible: windowCount !== 0
+            icon.name: "window-close"
+            onTriggered: appModel.closeAllByAppId(model.appId)
+        }
+
+        MenuSeparator {
+            visible: model.desktopFile !== ""
         }
 
         MenuItem {
             text: model.isPinned ? qsTr("Unpin") : qsTr("Pin")
             visible: model.desktopFile !== ""
+            icon.name: model.isPinned ? "list-remove" : "list-add"
             onTriggered: {
                 model.isPinned ? appModel.unPin(model.appId) : appModel.pin(model.appId)
             }
         }
 
+        MenuSeparator {
+            visible: windowCount !== 0 && model.desktopFile !== ""
+        }
+
         MenuItem {
             visible: windowCount !== 0
             text: qsTr("Quit")
+            icon.name: "application-exit"
             onTriggered: appModel.quit(model.appId)
         }
     }

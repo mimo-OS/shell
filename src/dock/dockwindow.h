@@ -30,10 +30,14 @@ class DockWindow : public ShellSurface
                NOTIFY geometryAnimationAddingChanged)
     Q_PROPERTY(int geometryAnimationToken READ geometryAnimationToken
                NOTIFY geometryAnimationTokenChanged)
+    Q_PROPERTY(bool menuOpen READ isMenuOpen WRITE setMenuOpen NOTIFY menuOpenChanged)
 
 public:
     explicit DockWindow(QQmlEngine *engine);
     ~DockWindow();
+
+    bool isMenuOpen() const { return m_menuOpen; }
+    void setMenuOpen(bool open);
 
     // DBus interface
     void add(const QString &desktop);
@@ -68,12 +72,17 @@ signals:
     void geometryAnimationProgressChanged();
     void geometryAnimationAddingChanged();
     void geometryAnimationTokenChanged();
+    void menuOpenChanged();
 
 private:
+    bool m_menuOpen = false;
     void updateMetrics();
     //! The dock's target geometry for the metrics computed last. Callers run
     //! updateMetrics() first.
     QRect windowRect() const;
+    QRect hiddenWindowRect() const;
+    void slideToHide();
+    void slideToShow();
     void animateToGeometry(const QRect &rect);
     void stopGeometryAnimation();
     void setGeometryAnimationProgress(qreal progress);
@@ -90,6 +99,7 @@ private slots:
     void onPositionChanged();
     void onIconSizeChanged();
     void onVisibilityChanged();
+    void checkWindowOverlap();
 
     void onHideTimeout();
 
@@ -108,10 +118,19 @@ private:
     TrashManager *m_trashManager;
 
     bool m_hideBlocked;
+    bool m_windowTouchingDock = false;
+
+    enum SlideState {
+        Idle,
+        SlidingOut,
+        SlidingIn
+    };
+    SlideState m_slideState = Idle;
 
     QTimer *m_showTimer;
     QTimer *m_hideTimer;
     QVariantAnimation *m_geometryAnimation;
+    QVariantAnimation *m_slideAnimation;
     QRect m_currentGeometry;
     qreal m_geometryAnimationProgress = 1.0;
     bool m_geometryAnimationAdding = false;

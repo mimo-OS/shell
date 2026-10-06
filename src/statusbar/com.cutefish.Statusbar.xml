@@ -7,5 +7,6 @@
     <method name="setTwentyFourTime">
         <arg name="t" type="b" direction="in"/>
     </method>
+    <method name="toggleSpotlight"/>
   </interface>
 </node>

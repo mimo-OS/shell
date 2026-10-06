@@ -63,6 +63,8 @@ QVariant HistoryModel::data(const QModelIndex &index, int role) const
         return notification.appIcon;
     case HistoryModel::HasDefaultActionRole:
         return notification.actions.contains("default");
+    case HistoryModel::AppNameRole:
+        return notification.appName;
     default:
         break;
     }

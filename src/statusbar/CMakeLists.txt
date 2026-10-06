@@ -7,6 +7,8 @@ add_library(shell_statusbar OBJECT
     brightness.cpp
     notifications.cpp
     poweractions.cpp
+    continuitymanager.cpp
+    clipboardhelper.cpp
 
     systemtray/statusnotifieritemsource.cpp
     systemtray/statusnotifieritemhost.cpp
