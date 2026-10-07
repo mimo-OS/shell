@@ -34,30 +34,71 @@ NotificationPopup {
         enabled: FishUI.Theme.blurEnabled
     }
 
-    Rectangle {
-        id: _background
+    Item {
+        id: _contentWrapper
         anchors.fill: parent
-        radius: 16
-        color: FishUI.Theme.darkMode ? Qt.rgba(0.14, 0.14, 0.16, FishUI.Theme.blurEnabled ? 0.76 : 1.0)
-                                     : Qt.rgba(0.96, 0.96, 0.98, FishUI.Theme.blurEnabled ? 0.78 : 1.0)
-        border.width: 1 / FishUI.Dpi.ratio
-        border.color: FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.15) : Qt.rgba(0, 0, 0, 0.10)
-    }
 
-    MouseArea {
-        id: _mouseArea
-        anchors.fill: parent
-        hoverEnabled: true
-        onEntered: timer.stop()
-        onExited: timer.restart()
-
-        onClicked: {
-            if (model.hasDefaultAction) {
-                notificationsModel.invokeDefaultAction(model.notificationId)
-            }
-            notificationsModel.close(model.notificationId)
+        Rectangle {
+            id: _background
+            anchors.fill: parent
+            radius: 16
+            color: FishUI.Theme.darkMode ? Qt.rgba(0.14, 0.14, 0.16, FishUI.Theme.blurEnabled ? 0.76 : 1.0)
+                                         : Qt.rgba(0.96, 0.96, 0.98, FishUI.Theme.blurEnabled ? 0.78 : 1.0)
+            border.width: 1 / FishUI.Dpi.ratio
+            border.color: FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.15) : Qt.rgba(0, 0, 0, 0.10)
         }
-    }
+
+        MouseArea {
+            id: _mouseArea
+            anchors.fill: parent
+            hoverEnabled: true
+            drag.target: _contentWrapper
+            drag.axis: Drag.XAxis
+            drag.minimumX: -300
+            drag.maximumX: 300
+
+            onEntered: timer.stop()
+            onExited: timer.restart()
+
+            onReleased: {
+                if (Math.abs(_contentWrapper.x) > 80) {
+                    swipeDismissAnim.start()
+                } else {
+                    snapBackAnim.start()
+                }
+            }
+
+            onClicked: {
+                if (Math.abs(_contentWrapper.x) < 5) {
+                    if (model.hasDefaultAction) {
+                        notificationsModel.invokeDefaultAction(model.notificationId)
+                    }
+                    notificationsModel.close(model.notificationId)
+                }
+            }
+        }
+
+        NumberAnimation {
+            id: snapBackAnim
+            target: _contentWrapper
+            property: "x"
+            to: 0
+            duration: 180
+            easing.type: Easing.OutCubic
+        }
+
+        NumberAnimation {
+            id: swipeDismissAnim
+            target: _contentWrapper
+            property: "x"
+            to: _contentWrapper.x > 0 ? 400 : -400
+            duration: 200
+            easing.type: Easing.InQuad
+            onFinished: {
+                notificationsModel.close(model.notificationId)
+                _contentWrapper.x = 0
+            }
+        }
 
     ColumnLayout {
         id: _contentLayout
@@ -96,8 +137,9 @@ NotificationPopup {
 
             Label {
                 text: (model.appName && model.appName.length > 0) ? model.appName : qsTr("Notification")
-                font.bold: true
+                font.weight: Font.DemiBold
                 font.pointSize: 8.5
+                renderType: Text.NativeRendering
                 color: FishUI.Theme.textColor
                 Layout.alignment: Qt.AlignVCenter
             }
@@ -107,6 +149,7 @@ NotificationPopup {
             Label {
                 text: qsTr("now")
                 font.pointSize: 7.5
+                renderType: Text.NativeRendering
                 color: FishUI.Theme.disabledTextColor
                 Layout.alignment: Qt.AlignVCenter
             }
@@ -162,6 +205,7 @@ NotificationPopup {
             wrapMode: Text.Wrap
             Layout.fillWidth: true
         }
+    }
     }
 
     Timer {

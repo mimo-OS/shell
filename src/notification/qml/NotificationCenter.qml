@@ -55,13 +55,24 @@ PopupWindow {
     Rectangle {
         id: _background
         anchors.fill: parent
-        color: FishUI.Theme.darkMode ? Qt.rgba(0.14, 0.14, 0.16, FishUI.Theme.blurEnabled ? 0.74 : 1.0)
-                                     : Qt.rgba(0.96, 0.96, 0.98, FishUI.Theme.blurEnabled ? 0.76 : 1.0)
-        radius: 18
-
+        radius: 26
+        color: FishUI.Theme.darkMode ? Qt.rgba(0.12, 0.14, 0.20, 0.68)
+                                     : Qt.rgba(0.92, 0.94, 0.98, 0.72)
+        antialiasing: true
         border.width: 1 / FishUI.Dpi.ratio
-        border.color: FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.15)
-                                            : Qt.rgba(0, 0, 0, 0.10)
+        border.color: FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.28)
+                                            : Qt.rgba(1, 1, 1, 0.95)
+
+        // Inner Specular Glass Rim
+        Rectangle {
+            anchors.fill: parent
+            anchors.margins: 1
+            radius: 25
+            color: "transparent"
+            border.width: 1 / FishUI.Dpi.ratio
+            border.color: FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.10)
+                                                : Qt.rgba(1, 1, 1, 0.50)
+        }
     }
 
     FishUI.WindowShadow {
@@ -100,8 +111,10 @@ PopupWindow {
             Label {
                 id: dateHeaderLabel
                 text: new Date().toLocaleDateString(Qt.locale(), "dddd, MMMM d").toUpperCase()
-                font.bold: true
+                font.weight: Font.DemiBold
                 font.pointSize: 8
+                font.letterSpacing: 0.3
+                renderType: Text.NativeRendering
                 color: FishUI.Theme.disabledTextColor
                 Layout.leftMargin: 4
             }
@@ -191,8 +204,10 @@ PopupWindow {
 
             Label {
                 text: qsTr("Notifications")
-                font.bold: true
+                font.weight: Font.DemiBold
                 font.pointSize: 13
+                font.letterSpacing: 0.2
+                renderType: Text.NativeRendering
                 color: FishUI.Theme.textColor
                 Layout.fillWidth: true
 
