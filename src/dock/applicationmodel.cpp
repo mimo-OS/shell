@@ -10,6 +10,8 @@
 #include <QSettings>
 #include <QCoreApplication>
 #include <QTimer>
+#include <QDBusInterface>
+#include <QDBusConnection>
 
 #include <algorithm>
 #include <utility>
@@ -21,10 +23,35 @@ static const char *kLauncherId = "cutefish-launcher";
 // terminates whatever is left of it.
 static const int kQuitGraceMs = 3000;
 
+class PinnedFilterProxyModel : public QSortFilterProxyModel
+{
+public:
+    PinnedFilterProxyModel(bool showPinned, QObject *parent = nullptr)
+        : QSortFilterProxyModel(parent), m_showPinned(showPinned)
+    {
+        setDynamicSortFilter(true);
+    }
+
+protected:
+    bool filterAcceptsRow(int sourceRow, const QModelIndex &sourceParent) const override {
+        QModelIndex index = sourceModel()->index(sourceRow, 0, sourceParent);
+        bool isPinned = sourceModel()->data(index, ApplicationModel::IsPinnedRole).toBool();
+        return isPinned == m_showPinned;
+    }
+
+private:
+    bool m_showPinned;
+};
+
 ApplicationModel::ApplicationModel(QObject *parent)
     : QAbstractListModel(parent)
     , m_kwin(KWinWaylandInterface::instance())
 {
+    m_pinnedModel = new PinnedFilterProxyModel(true, this);
+    m_pinnedModel->setSourceModel(this);
+
+    m_unpinnedModel = new PinnedFilterProxyModel(false, this);
+    m_unpinnedModel->setSourceModel(this);
     connect(m_kwin, &KWinWaylandInterface::clientAdded, this, [this](quint64 wid) {
         if (m_kwin->isAcceptableWindow(wid))
             onWindowAdded(wid);
@@ -231,6 +258,16 @@ bool ApplicationModel::isDesktopPinned(const QString &desktopFile)
 
 void ApplicationModel::clicked(const QString &id)
 {
+    if (id == kLauncherId || id == "launchpad") {
+        if (m_launcher) {
+            m_launcher->toggle();
+        } else {
+            QDBusInterface iface("com.cutefish.Launcher", "/Launcher", "com.cutefish.Launcher", QDBusConnection::sessionBus());
+            iface.call("toggle");
+        }
+        return;
+    }
+
     ApplicationItem *item = findItemById(id);
 
     if (!item)
@@ -550,14 +587,17 @@ void ApplicationModel::initPinnedApplications()
         set->endGroup();
     }
 
-    // Launcher / Launchpad (Anchored on the right side, right before the dock divider)
+    // Launcher / Launchpad (Anchored on the right side of pinned apps, right before the dock divider)
+    beginInsertRows(QModelIndex(), m_appItems.count(), m_appItems.count());
     ApplicationItem *launcherItem = new ApplicationItem;
     launcherItem->id = kLauncherId;
     launcherItem->exec = QString();
     launcherItem->iconName = "qrc:/dock/images/launchpad.svg";
     launcherItem->visibleName = tr("Launchpad");
+    launcherItem->isPinned = true;
     launcherItem->fixed = true;
     m_appItems.append(launcherItem);
+    endInsertRows();
 }
 
 void ApplicationModel::onApplicationsChanged()

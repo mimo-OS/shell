@@ -2,12 +2,15 @@
 #define APPLICATIONMODEL_H
 
 #include <QAbstractListModel>
+#include <QSortFilterProxyModel>
 #include "applicationitem.h"
 #include "core/wayland/kwinwaylandinterface.h"
 
 class ApplicationModel : public QAbstractListModel
 {
     Q_OBJECT
+    Q_PROPERTY(QAbstractItemModel* pinnedModel READ pinnedModel CONSTANT)
+    Q_PROPERTY(QAbstractItemModel* unpinnedModel READ unpinnedModel CONSTANT)
 
 public:
     enum Roles {
@@ -24,6 +27,9 @@ public:
     };
 
     explicit ApplicationModel(QObject *parent = nullptr);
+
+    QAbstractItemModel *pinnedModel() const { return m_pinnedModel; }
+    QAbstractItemModel *unpinnedModel() const { return m_unpinnedModel; }
 
     bool initialWindowsLoaded() const { return m_initialWindowsLoaded; }
 
@@ -88,6 +94,8 @@ private:
     bool m_pinsInitialized = false;
     bool m_initialWindowsLoaded = false;
     int m_nextAnimationToken = 0;
+    QSortFilterProxyModel *m_pinnedModel = nullptr;
+    QSortFilterProxyModel *m_unpinnedModel = nullptr;
 };
 
 #endif // APPLICATIONMODEL_H

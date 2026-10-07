@@ -60,7 +60,7 @@ struct DockMetrics
     int length(int itemCount) const
     {
         return lengthPadding * 2 + itemCount * iconSize
-                + qMax(0, itemCount - 1) * iconGap + dividerSlotWidth;
+                + itemCount * iconGap + dividerSlotWidth;
     }
 
     QVariantMap toVariantMap() const

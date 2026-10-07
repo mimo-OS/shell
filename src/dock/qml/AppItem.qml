@@ -13,14 +13,14 @@ import FishUI 1.0 as FishUI
 DockItem {
     id: appItem
 
-    property var windowCount: model.windowCount
+    windowCount: (model && model.windowCount !== undefined) ? model.windowCount : 0
     property var windowIds: model.windowIds
     property var dragSource: null
 
     iconName: model.iconName ? model.iconName : "application-x-desktop"
-    isActive: model.isActive
+    isActive: model.isActive ? model.isActive : false
     popupText: model.visibleName
-    enableActivateDot: windowCount !== 0
+    enableActivateDot: windowCount > 0
     draggable: !model.fixed
     dragItemIndex: index
 

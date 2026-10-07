@@ -242,7 +242,10 @@ QRect DockWindow::windowRect() const
     // Add the trash item.
     const int itemCount = m_appModel->rowCount() + 1;
     const int margins = m_settings->edgeMargins() / 2;
-    const int length = m_metrics.length(itemCount);
+    const int maxLength = (m_settings->direction() == DockSettings::Bottom)
+        ? (screenGeometry.width() - margins * 2)
+        : (availableGeometry.height() - margins * 2);
+    const int length = qMin(m_metrics.length(itemCount), maxLength);
     const int thickness = m_metrics.thickness();
 
     QSize newSize(0, 0);
@@ -252,18 +255,20 @@ QRect DockWindow::windowRect() const
     case DockSettings::Left:
         newSize = QSize(thickness, length);
         position.setX(screenGeometry.x() + margins);
-        // Handle the top statusbar.
-        position.setY(availableGeometry.y() + (availableGeometry.height() - newSize.height()) / 2);
+        position.setY(qMax(availableGeometry.y() + margins,
+                           availableGeometry.y() + (availableGeometry.height() - newSize.height()) / 2));
         break;
     case DockSettings::Bottom:
         newSize = QSize(length, thickness);
-        position.setX(screenGeometry.x() + (screenGeometry.width() - newSize.width()) / 2);
+        position.setX(qMax(screenGeometry.x() + margins,
+                           screenGeometry.x() + (screenGeometry.width() - newSize.width()) / 2));
         position.setY(screenGeometry.y() + screenGeometry.height() - newSize.height() - margins);
         break;
     case DockSettings::Right:
         newSize = QSize(thickness, length);
         position.setX(screenGeometry.x() + screenGeometry.width() - newSize.width() - margins);
-        position.setY(availableGeometry.y() + (availableGeometry.height() - newSize.height()) / 2);
+        position.setY(qMax(availableGeometry.y() + margins,
+                           availableGeometry.y() + (availableGeometry.height() - newSize.height()) / 2));
         break;
     default:
         break;
@@ -493,10 +498,7 @@ void DockWindow::createAutoHideTrigger()
                 if (contains) {
                     m_hideTimer->stop();
                     m_hideBlocked = true;
-
-                    if (!isVisible() || m_slideState == SlidingOut) {
-                        slideToShow();
-                    }
+                    slideToShow();
                 } else {
                     const QPoint cursorPos = QCursor::pos();
                     const QRect dockArea = windowRect().adjusted(-8, -8, 8, 8);

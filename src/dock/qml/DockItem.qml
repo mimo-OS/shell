@@ -75,8 +75,8 @@ Item {
 
     Behavior on currentScale {
         NumberAnimation {
-            duration: root.isHovered ? 70 : 180
-            easing.type: root.isHovered ? Easing.OutQuad : Easing.OutCubic
+            duration: root.isHovered ? 80 : 220
+            easing.type: root.isHovered ? Easing.OutQuint : Easing.OutBack
         }
     }
 
@@ -378,7 +378,7 @@ Item {
         border.width: 1.5
         border.color: FishUI.Theme.darkMode ? "#1C1C1E" : "#FFFFFF"
         antialiasing: true
-        visible: control.windowCount > 1 && !dragStarted
+        visible: control.windowCount > 0 && !dragStarted
 
         scale: visible ? 1.0 : 0.0
         Behavior on scale { NumberAnimation { duration: 180; easing.type: Easing.OutBack } }
@@ -397,39 +397,36 @@ Item {
     // macOS Style Pearl Indicator Dot
     Item {
         id: activeDotContainer
+        z: 15
 
-        property var leftX: -(root.activeDotGap + width)
-        property var leftY: (parent.height - height) / 2
+        width: 5
+        height: 5
 
-        property var bottomX: (parent.width - width) / 2
-        property var bottomY: parent.height + root.activeDotGap
+        anchors.horizontalCenter: isBottom ? icon.horizontalCenter : undefined
+        anchors.top: isBottom ? icon.bottom : undefined
+        anchors.topMargin: isBottom ? 3 : 0
 
-        property var rightX: parent.width + root.activeDotGap
-        property var rightY: (parent.height - height) / 2
+        anchors.verticalCenter: !isBottom ? icon.verticalCenter : undefined
+        anchors.right: isLeft ? icon.left : undefined
+        anchors.rightMargin: isLeft ? 3 : 0
+        anchors.left: isRight ? icon.right : undefined
+        anchors.leftMargin: isRight ? 3 : 0
 
-        property var circleSize: root.activeDotSize
+        visible: (enableActivateDot || control.windowCount > 0) && !dragStarted
 
-        width: circleSize
-        height: circleSize
-
-        x: isLeft ? leftX : isBottom ? bottomX : rightX
-        y: isLeft ? leftY : isBottom ? bottomY : rightY
-
-        visible: enableActivateDot && !dragStarted
-
-        opacity: enableActivateDot ? 1.0 : 0.0
-        scale: enableActivateDot ? 1.0 : 0.0
+        opacity: (enableActivateDot || control.windowCount > 0) ? 1.0 : 0.0
+        scale: (enableActivateDot || control.windowCount > 0) ? 1.0 : 0.0
         Behavior on opacity { NumberAnimation { duration: 180 } }
         Behavior on scale { NumberAnimation { duration: 220; easing.type: Easing.OutBack } }
 
         // Glow halo for frontmost active app
         Rectangle {
             anchors.centerIn: parent
-            width: parent.width * 2.4
-            height: parent.height * 2.4
+            width: parent.width * 2.2
+            height: parent.height * 2.2
             radius: width / 2
-            color: FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.25)
-                                         : Qt.rgba(0, 0, 0, 0.15)
+            color: FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.30)
+                                         : Qt.rgba(0, 0, 0, 0.20)
             visible: control.isActive
             Behavior on visible { PropertyAnimation { duration: 200 } }
         }
@@ -441,11 +438,11 @@ Item {
             radius: width / 2
             color: {
                 if (control.isActive) {
-                    return FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.98)
-                                                 : Qt.rgba(0.12, 0.12, 0.15, 0.95)
+                    return FishUI.Theme.darkMode ? "#FFFFFF"
+                                                 : "#1C1C1E"
                 } else {
-                    return FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.60)
-                                                 : Qt.rgba(0.20, 0.20, 0.25, 0.50)
+                    return FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.75)
+                                                 : Qt.rgba(0, 0, 0, 0.55)
                 }
             }
 
