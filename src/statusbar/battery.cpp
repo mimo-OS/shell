@@ -4,6 +4,7 @@
 #include <QDBusServiceWatcher>
 #include <QDir>
 #include <QFile>
+#include <QProcess>
 #include <QTimer>
 
 static const QString s_sServer = "com.cutefish.Services";
@@ -58,10 +59,16 @@ Battery::Battery(QObject *parent)
     , m_available(false)
     , m_onBattery(false)
     , m_showPercentage(false)
+    , m_powerMode(0)
+    , m_autoSaverTriggered(false)
 {
     QSettings settings("cutefishos", "statusbar");
     settings.setDefaultFormat(QSettings::IniFormat);
     m_showPercentage = settings.value("BatteryPercentage", false).toBool();
+
+    QSettings pSettings("cutefishos", "power");
+    pSettings.setDefaultFormat(QSettings::IniFormat);
+    m_powerMode = pSettings.value("PowerMode", 0).toInt();
 
     QDBusConnection::systemBus().connect("org.freedesktop.UPower", "/org/freedesktop/UPower",
                                          "org.freedesktop.DBus.Properties",
@@ -156,6 +163,38 @@ void Battery::setShowPercentage(bool enabled)
     settings.setValue("BatteryPercentage", m_showPercentage);
 
     emit showPercentageChanged();
+}
+
+int Battery::powerMode() const
+{
+    return m_powerMode;
+}
+
+void Battery::setPowerMode(int mode)
+{
+    if (m_powerMode == mode)
+        return;
+
+    m_powerMode = mode;
+
+    QSettings settings("cutefishos", "power");
+    settings.setDefaultFormat(QSettings::IniFormat);
+    settings.setValue("PowerMode", m_powerMode);
+
+    QString profile = "balanced";
+    QString cpuMode = "performance";
+    if (m_powerMode == 1) {
+        profile = "performance";
+        cpuMode = "performance";
+    } else if (m_powerMode == 2) {
+        profile = "power-saver";
+        cpuMode = "powersave";
+    }
+
+    QProcess::startDetached("powerprofilesctl", QStringList() << "set" << profile);
+    QProcess::startDetached("cpupower", QStringList() << "frequency-set" << "-g" << cpuMode);
+
+    emit powerModeChanged(m_powerMode);
 }
 
 int Battery::chargeState() const
@@ -257,5 +296,13 @@ void Battery::onPropertiesChanged(const QString &ifaceName, const QVariantMap &c
         }
         emit onBatteryChanged();
         emit iconSourceChanged();
+    }
+
+    int currentPercent = chargePercent();
+    if (m_onBattery && currentPercent > 0 && currentPercent <= 20 && m_powerMode != 2 && !m_autoSaverTriggered) {
+        m_autoSaverTriggered = true;
+        setPowerMode(2); // Smart Battery: Auto-enable Power Saver mode below 20%
+    } else if (!m_onBattery || currentPercent > 25) {
+        m_autoSaverTriggered = false;
     }
 }

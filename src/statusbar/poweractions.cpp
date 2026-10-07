@@ -20,38 +20,34 @@ PowerActions::PowerActions(QObject *parent)
 void PowerActions::shutdown()
 {
     QDBusInterface iface(s_dbusName, s_pathName, s_interfaceName, QDBusConnection::sessionBus());
-    if (!iface.isValid()) {
-        qWarning() << "Unable to request shutdown: session service is unavailable";
-        return;
+    if (iface.isValid()) {
+        const QDBusMessage reply = iface.call(QStringLiteral("powerOff"));
+        if (reply.type() != QDBusMessage::ErrorMessage)
+            return;
     }
-
-    const QDBusMessage reply = iface.call(QStringLiteral("powerOff"));
-    if (reply.type() == QDBusMessage::ErrorMessage)
-        qWarning() << "Unable to request shutdown:" << reply.errorName() << reply.errorMessage();
+    QProcess::startDetached(QStringLiteral("systemctl"), {QStringLiteral("poweroff")});
 }
 
 void PowerActions::logout()
 {
     QDBusInterface iface(s_dbusName, s_pathName, s_interfaceName, QDBusConnection::sessionBus());
-    if (!iface.isValid()) {
-        qWarning() << "Unable to request logout: session service is unavailable";
-        return;
+    if (iface.isValid()) {
+        const QDBusMessage reply = iface.call(QStringLiteral("logout"));
+        if (reply.type() != QDBusMessage::ErrorMessage)
+            return;
     }
-
-    iface.call(QStringLiteral("logout"));
+    QProcess::startDetached(QStringLiteral("loginctl"), {QStringLiteral("terminate-session"), QStringLiteral("self")});
 }
 
 void PowerActions::reboot()
 {
     QDBusInterface iface(s_dbusName, s_pathName, s_interfaceName, QDBusConnection::sessionBus());
-    if (!iface.isValid()) {
-        qWarning() << "Unable to request reboot: session service is unavailable";
-        return;
+    if (iface.isValid()) {
+        const QDBusMessage reply = iface.call(QStringLiteral("reboot"));
+        if (reply.type() != QDBusMessage::ErrorMessage)
+            return;
     }
-
-    const QDBusMessage reply = iface.call(QStringLiteral("reboot"));
-    if (reply.type() == QDBusMessage::ErrorMessage)
-        qWarning() << "Unable to request reboot:" << reply.errorName() << reply.errorMessage();
+    QProcess::startDetached(QStringLiteral("systemctl"), {QStringLiteral("reboot")});
 }
 
 void PowerActions::lockScreen()

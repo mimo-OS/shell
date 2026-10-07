@@ -16,6 +16,7 @@ class Battery : public QObject
     Q_PROPERTY(bool onBattery READ onBattery NOTIFY onBatteryChanged)
     Q_PROPERTY(bool showPercentage READ showPercentage NOTIFY showPercentageChanged)
     Q_PROPERTY(QString iconSource READ iconSource NOTIFY iconSourceChanged)
+    Q_PROPERTY(int powerMode READ powerMode WRITE setPowerMode NOTIFY powerModeChanged)
 
 public:
     static Battery *self();
@@ -26,6 +27,9 @@ public:
 
     bool showPercentage() const;
     void setShowPercentage(bool enabled);
+
+    int powerMode() const;
+    Q_INVOKABLE void setPowerMode(int mode);
 
     int chargeState() const;
     int chargePercent() const;
@@ -45,6 +49,7 @@ signals:
     void lastChargedPercentChanged();
     void iconSourceChanged();
     void showPercentageChanged();
+    void powerModeChanged(int mode);
 
 private slots:
     void onPropertiesChanged(const QString &ifaceName, const QVariantMap &changedProps, const QStringList &invalidatedProps);
@@ -56,6 +61,8 @@ private:
     bool m_available;
     bool m_onBattery;
     bool m_showPercentage;
+    int m_powerMode;
+    bool m_autoSaverTriggered;
 };
 
 #endif // BATTERY_H

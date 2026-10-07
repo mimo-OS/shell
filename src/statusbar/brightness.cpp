@@ -3,6 +3,7 @@
 #include <QFile>
 #include <QTextStream>
 #include <QDir>
+#include <QProcess>
 #include <algorithm>
 
 Brightness::Brightness(QObject *parent)
@@ -70,7 +71,7 @@ void Brightness::setValue(int value)
         emit valueChanged();
     }
 
-    // Direct hardware write to sysfs (0 latency, instantaneous response)
+    // Direct hardware write to sysfs
     if (!m_backlightDev.isEmpty()) {
         QFile curF(m_backlightDev + QStringLiteral("/brightness"));
         if (curF.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
@@ -86,6 +87,10 @@ void Brightness::setValue(int value)
             curF.close();
         }
     }
+
+    // Always invoke brightnessctl & light for guaranteed backlight adjustment
+    QProcess::startDetached(QStringLiteral("brightnessctl"), QStringList() << QStringLiteral("set") << QString("%1%").arg(value));
+    QProcess::startDetached(QStringLiteral("light"), QStringList() << QStringLiteral("-S") << QString::number(value));
 
     // Also inform services daemon asynchronously if available
     if (m_iface.isValid()) {
