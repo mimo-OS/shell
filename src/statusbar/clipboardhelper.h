@@ -5,6 +5,14 @@
 #include <QStringList>
 #include <QClipboard>
 #include <QGuiApplication>
+#include <QMimeData>
+#include <QImage>
+#include <QDir>
+#include <QStandardPaths>
+#include <QProcess>
+#include <QDateTime>
+#include <QBuffer>
+#include <QUrl>
 
 class ClipboardHelper : public QObject
 {
@@ -18,13 +26,13 @@ public:
     QStringList history() const;
     int count() const;
 
-    Q_INVOKABLE void copy(const QString &text);
+    Q_INVOKABLE void copy(const QString &item);
     Q_INVOKABLE void remove(int index);
     Q_INVOKABLE void clear();
 
 signals:
     void historyChanged();
-    void itemCopied(const QString &text);
+    void itemCopied(const QString &item);
 
 private slots:
     void onClipboardChanged();
