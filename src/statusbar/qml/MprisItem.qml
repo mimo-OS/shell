@@ -40,16 +40,42 @@ Item {
 
     Component.onCompleted: { control.updateInfo() }
 
+    function extractString(val) {
+        if (val === undefined || val === null) return "";
+        if (Array.isArray(val)) return val.join(", ");
+        return String(val).trim();
+    }
+
     function updateInfo() {
         var metadata = mprisManager.metadata || {}
-        var titleAvailable = (titleTag in metadata) ? metadata[titleTag].toString() !== "" : false
-        var artistAvailable = (artistTag in metadata) ? metadata[artistTag].toString() !== "" : false
-        var artUrl = (artUrlTag in metadata) ? normalizeArtUrl(metadata[artUrlTag]) : ""
+        var title = ""
+        var artist = ""
+        var artUrl = ""
 
-        control.visible = titleAvailable || artistAvailable || artUrl !== ""
-        _songLabel.text = titleAvailable ? metadata[titleTag].toString() : ""
-        _artistLabel.text = artistAvailable ? metadata[artistTag].toString() : ""
-        artImage.source = artUrl
+        if (metadata) {
+            if (titleTag in metadata) title = extractString(metadata[titleTag])
+            if (!title && "xesam:title" in metadata) title = extractString(metadata["xesam:title"])
+            if (!title && "title" in metadata) title = extractString(metadata["title"])
+
+            if (artistTag in metadata) artist = extractString(metadata[artistTag])
+            if (!artist && "xesam:artist" in metadata) artist = extractString(metadata["xesam:artist"])
+            if (!artist && "artist" in metadata) artist = extractString(metadata["artist"])
+
+            if (artUrlTag in metadata) artUrl = normalizeArtUrl(extractString(metadata[artUrlTag]))
+            if (!artUrl && "mpris:artUrl" in metadata) artUrl = normalizeArtUrl(extractString(metadata["mpris:artUrl"]))
+            if (!artUrl && "artUrl" in metadata) artUrl = normalizeArtUrl(extractString(metadata["artUrl"]))
+        }
+
+        var hasTrack = (title !== "" || artist !== "")
+
+        control.visible = true
+        _songLabel.text = hasTrack ? title : qsTr("Music Center")
+        _artistLabel.text = hasTrack ? artist : qsTr("Not Playing")
+        if (artUrl !== "") {
+            artImage.source = artUrl
+        } else {
+            artImage.source = ""
+        }
     }
 
     function normalizeArtUrl(value) {
@@ -134,28 +160,47 @@ Item {
         }
 
         // Track & Artist Information
-        ColumnLayout {
+        Item {
             Layout.fillWidth: true
+            Layout.preferredHeight: 40
             Layout.alignment: Qt.AlignVCenter
-            spacing: 2
 
-            Label {
-                id: _songLabel
-                Layout.fillWidth: true
-                visible: _songLabel.text !== ""
-                elide: Text.ElideRight
-                font.bold: true
-                font.pointSize: FishUI.Theme.fontSize
-                color: FishUI.Theme.textColor
+            MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    if (mprisManager.canRaise) {
+                        mprisManager.raise()
+                    } else if (mprisManager.desktopEntry && mprisManager.desktopEntry.length > 0) {
+                        process.startDetached(mprisManager.desktopEntry)
+                    } else {
+                        process.startDetached("cutefish-music")
+                    }
+                }
             }
 
-            Label {
-                id: _artistLabel
-                Layout.fillWidth: true
-                visible: _artistLabel.text !== ""
-                elide: Text.ElideRight
-                font.pointSize: FishUI.Theme.smallFont.pointSize
-                color: FishUI.Theme.disabledTextColor
+            ColumnLayout {
+                anchors.fill: parent
+                spacing: 2
+
+                Label {
+                    id: _songLabel
+                    Layout.fillWidth: true
+                    visible: _songLabel.text !== ""
+                    elide: Text.ElideRight
+                    font.bold: true
+                    font.pointSize: FishUI.Theme.fontSize
+                    color: FishUI.Theme.textColor
+                }
+
+                Label {
+                    id: _artistLabel
+                    Layout.fillWidth: true
+                    visible: _artistLabel.text !== ""
+                    elide: Text.ElideRight
+                    font.pointSize: FishUI.Theme.smallFont.pointSize
+                    color: FishUI.Theme.disabledTextColor
+                }
             }
         }
 

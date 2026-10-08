@@ -33,7 +33,7 @@ import FishUI 1.0 as FishUI
 Item {
     id: rootItem
 
-    property int iconSize: 16
+    property int iconSize: 18
 
     LayoutMirroring.enabled: Qt.application.layoutDirection === Qt.RightToLeft
     LayoutMirroring.childrenInherit: true
@@ -360,7 +360,7 @@ Item {
             visible: enabledConnections.wirelessHwEnabled &&
                      enabledConnections.wirelessEnabled
             Layout.fillHeight: true
-            Layout.preferredWidth: rootItem.iconSize + FishUI.Units.smallSpacing * 2
+            Layout.preferredWidth: rootItem.iconSize + 20
 
             onClicked: controler.toggleDialog()
 
@@ -381,7 +381,7 @@ Item {
             id: soundStatusItem
             visible: controlCenter.item && controlCenter.item.defaultSink
             Layout.fillHeight: true
-            Layout.preferredWidth: rootItem.iconSize + FishUI.Units.smallSpacing * 2
+            Layout.preferredWidth: rootItem.iconSize + 20
 
             onClicked: controler.toggleDialog()
 
@@ -402,21 +402,22 @@ Item {
             id: batteryStatusItem
             visible: battery.available
             Layout.fillHeight: true
-            Layout.preferredWidth: _batteryLayout.implicitWidth + FishUI.Units.smallSpacing * 2
+            Layout.preferredWidth: _batteryLayout.implicitWidth + 12
 
             onClicked: controler.toggleDialog()
 
             RowLayout {
                 id: _batteryLayout
                 anchors.centerIn: parent
-                spacing: FishUI.Units.smallSpacing
+                spacing: 5
 
                 BarIcon {
                     id: batteryIcon
                     dropShadow: rootItem.darkMode
-                    height: rootItem.iconSize
-                    width: height + 6
-                    sourceSize: Qt.size(width, height)
+                    width: 20
+                    height: 11
+                    sourceSize: Qt.size(24, 13)
+                    fillMode: Image.PreserveAspectFit
                     source: "qrc:/statusbar/images/" + (rootItem.darkMode ? "dark/" : "light/") + battery.iconSource
                     Layout.alignment: Qt.AlignCenter
                     antialiasing: true
@@ -437,7 +438,7 @@ Item {
             id: controler
             checked: controlCenter.item ? controlCenter.item.visible : false
             Layout.fillHeight: true
-            Layout.preferredWidth: rootItem.iconSize + FishUI.Units.smallSpacing * 2
+            Layout.preferredWidth: rootItem.iconSize + 20
 
             onClicked: {
                 toggleDialog()
@@ -590,6 +591,48 @@ Item {
             }
         }
 
+    }
+
+    PowerActions {
+        id: powerActions
+    }
+
+    // Power Confirmation Dialog in Root Status Bar Window
+    FishUI.ConfirmDialog {
+        id: confirmPowerDialog
+        property string actionType: "shutdown"
+
+        title: actionType === "shutdown" ? qsTr("Shut Down")
+             : (actionType === "restart" ? qsTr("Restart")
+             : qsTr("Log Out"))
+
+        text: actionType === "shutdown" ? qsTr("Are you sure you want to shut down your computer?")
+            : (actionType === "restart" ? qsTr("Are you sure you want to restart your computer?")
+            : qsTr("Are you sure you want to log out of your session?"))
+
+        confirmText: actionType === "shutdown" ? qsTr("Shut Down")
+                   : (actionType === "restart" ? qsTr("Restart")
+                   : qsTr("Log Out"))
+
+        onAccepted: {
+            if (actionType === "shutdown") {
+                powerActions.shutdown()
+                process.startDetached("systemctl", ["poweroff"])
+            } else if (actionType === "restart") {
+                powerActions.reboot()
+                process.startDetached("systemctl", ["reboot"])
+            } else if (actionType === "logout") {
+                powerActions.logout()
+                process.startDetached("loginctl", ["terminate-session", "self"])
+            }
+        }
+    }
+
+    function showPowerDialog(type) {
+        confirmPowerDialog.actionType = type
+        confirmPowerDialog.show()
+        confirmPowerDialog.raise()
+        confirmPowerDialog.requestActivate()
     }
 
     MouseArea {
