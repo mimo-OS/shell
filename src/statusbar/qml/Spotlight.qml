@@ -109,20 +109,96 @@ PopupWindow {
         return res
     }
 
+    // Safe mathematical expression evaluator (no eval or Function calls)
+    function evalMathExpression(expr) {
+        if (!expr) return null
+        var sanitized = expr.replace(/\s+/g, "")
+        if (!/^[0-9\.\+\-\*\/\%\(\)\^]+$/.test(sanitized)) return null
+
+        var pos = 0
+        function parsePrimary() {
+            if (pos >= sanitized.length) return null
+            if (sanitized[pos] === "(") {
+                pos++
+                var val = parseExpression()
+                if (pos >= sanitized.length || sanitized[pos] !== ")") return null
+                pos++
+                return val
+            }
+            if (sanitized[pos] === "-") {
+                pos++
+                var val = parsePrimary()
+                return val !== null ? -val : null
+            }
+            if (sanitized[pos] === "+") {
+                pos++
+                return parsePrimary()
+            }
+            var start = pos
+            while (pos < sanitized.length && ((sanitized[pos] >= "0" && sanitized[pos] <= "9") || sanitized[pos] === ".")) {
+                pos++
+            }
+            if (start === pos) return null
+            var num = parseFloat(sanitized.substring(start, pos))
+            return isNaN(num) ? null : num
+        }
+
+        function parseExponent() {
+            var left = parsePrimary()
+            if (left === null) return null
+            while (pos < sanitized.length && sanitized[pos] === "^") {
+                pos++
+                var right = parseExponent()
+                if (right === null) return null
+                left = Math.pow(left, right)
+            }
+            return left
+        }
+
+        function parseMulDiv() {
+            var left = parseExponent()
+            if (left === null) return null
+            while (pos < sanitized.length && (sanitized[pos] === "*" || sanitized[pos] === "/" || sanitized[pos] === "%")) {
+                var op = sanitized[pos++]
+                var right = parseExponent()
+                if (right === null) return null
+                if (op === "*") left *= right
+                else if (op === "/") {
+                    if (right === 0) return null
+                    left /= right
+                } else if (op === "%") {
+                    if (right === 0) return null
+                    left %= right
+                }
+            }
+            return left
+        }
+
+        function parseExpression() {
+            var left = parseMulDiv()
+            if (left === null) return null
+            while (pos < sanitized.length && (sanitized[pos] === "+" || sanitized[pos] === "-")) {
+                var op = sanitized[pos++]
+                var right = parseMulDiv()
+                if (right === null) return null
+                if (op === "+") left += right
+                else if (op === "-") left -= right
+            }
+            return left
+        }
+
+        var result = parseExpression()
+        if (pos === sanitized.length && result !== null && isFinite(result)) {
+            return result
+        }
+        return null
+    }
+
     // Live Calculator Evaluator
     property var calcResult: {
         var query = searchInput.text.trim()
         if (!query || query.length < 2) return null
-        if (!/^[0-9\.\s\+\-\*\/\%\(\)\^]+$/.test(query)) return null
-        try {
-            var sanitized = query.replace(/\^/g, "**")
-            var res = Function('"use strict"; return (' + sanitized + ')')()
-            if (typeof res === "number" && !isNaN(res) && isFinite(res))
-                return res
-        } catch (e) {
-            return null
-        }
-        return null
+        return evalMathExpression(query)
     }
 
     FishUI.WindowBlur {
