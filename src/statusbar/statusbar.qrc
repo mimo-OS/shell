@@ -34,17 +34,32 @@
         <file>images/dark/battery-level-90-charging-symbolic.svg</file>
         <file>images/dark/battery-level-90-symbolic.svg</file>
         <file>images/dark/bluetooth-symbolic.svg</file>
+        <file>images/dark/bluetooth-off.svg</file>
         <file>images/dark/airplane-mode.svg</file>
+        <file>images/dark/airplane-mode-off.svg</file>
         <file>images/dark/power-mode.svg</file>
+        <file>images/dark/turbo.svg</file>
+        <file>images/dark/power-saver.svg</file>
+        <file>images/dark/balanced.svg</file>
+        <file>images/dark/hotspot.svg</file>
+        <file>images/dark/hotspot-off.svg</file>
+        <file>images/dark/keyboard-backlight.svg</file>
+        <file>images/dark/keyboard-backlight-off.svg</file>
+        <file>images/dark/keyboard-backlight-low.svg</file>
+        <file>images/dark/keyboard-backlight-high.svg</file>
         <file>images/dark/brightness.svg</file>
         <file>images/dark/location-mode.svg</file>
+        <file>images/dark/location-mode-off.svg</file>
         <file>images/dark/projection-mode.svg</file>
         <file>images/dark/eye-protection.svg</file>
+        <file>images/dark/eye-protection-off.svg</file>
         <file>images/dark/input-share.svg</file>
         <file>images/dark/wireless-share.svg</file>
+        <file>images/dark/wireless-share-off.svg</file>
         <file>images/dark/close_normal.svg</file>
         <file>images/dark/control.svg</file>
         <file>images/dark/dark-mode.svg</file>
+        <file>images/dark/light-mode.svg</file>
         <file>images/dark/media-playback-pause-symbolic.svg</file>
         <file>images/dark/media-playback-start-symbolic.svg</file>
         <file>images/dark/media-skip-backward-symbolic.svg</file>
@@ -88,17 +103,32 @@
         <file>images/light/battery-level-90-charging-symbolic.svg</file>
         <file>images/light/battery-level-90-symbolic.svg</file>
         <file>images/light/bluetooth-symbolic.svg</file>
+        <file>images/light/bluetooth-off.svg</file>
         <file>images/light/airplane-mode.svg</file>
+        <file>images/light/airplane-mode-off.svg</file>
         <file>images/light/power-mode.svg</file>
+        <file>images/light/turbo.svg</file>
+        <file>images/light/power-saver.svg</file>
+        <file>images/light/balanced.svg</file>
+        <file>images/light/hotspot.svg</file>
+        <file>images/light/hotspot-off.svg</file>
+        <file>images/light/keyboard-backlight.svg</file>
+        <file>images/light/keyboard-backlight-off.svg</file>
+        <file>images/light/keyboard-backlight-low.svg</file>
+        <file>images/light/keyboard-backlight-high.svg</file>
         <file>images/light/brightness.svg</file>
         <file>images/light/location-mode.svg</file>
+        <file>images/light/location-mode-off.svg</file>
         <file>images/light/projection-mode.svg</file>
         <file>images/light/eye-protection.svg</file>
+        <file>images/light/eye-protection-off.svg</file>
         <file>images/light/input-share.svg</file>
         <file>images/light/wireless-share.svg</file>
+        <file>images/light/wireless-share-off.svg</file>
         <file>images/light/close_normal.svg</file>
         <file>images/light/control.svg</file>
         <file>images/light/dark-mode.svg</file>
+        <file>images/light/light-mode.svg</file>
         <file>images/light/media-playback-pause-symbolic.svg</file>
         <file>images/light/media-playback-start-symbolic.svg</file>
         <file>images/light/media-skip-backward-symbolic.svg</file>
@@ -148,6 +178,8 @@
         <file>images/dark/screenshot.svg</file>
         <file>images/light/do-not-disturb.svg</file>
         <file>images/dark/do-not-disturb.svg</file>
+        <file>images/light/do-not-disturb-off.svg</file>
+        <file>images/dark/do-not-disturb-off.svg</file>
         <file>images/dark/system-search-symbolic.svg</file>
         <file>images/light/system-search-symbolic.svg</file>
         <file>qml/Spotlight.qml</file>
@@ -156,5 +188,31 @@
         <file>qml/ClipboardPopup.qml</file>
         <file>qml/OverviewOverlay.qml</file>
         <file>qml/StageManager.qml</file>
+        <file>qml/OsdWindow.qml</file>
+        <file>images/dark/wifi.svg</file>
+        <file>images/dark/wifi_disabled.svg</file>
+        <file>images/dark/brightness_max.svg</file>
+        <file>images/dark/brightness_min.svg</file>
+        <file>images/dark/location.svg</file>
+        <file>images/dark/location_enabled.svg</file>
+        <file>images/dark/night_mode.svg</file>
+        <file>images/dark/music.svg</file>
+        <file>images/dark/pause.svg</file>
+        <file>images/system-search-symbolic.svg</file>
+        <file>images/dark/network-wireless-symbolic.svg</file>
+        <file>images/dark/airdrop.svg</file>
+        <file>images/dark/network-wireless-disabled-symbolic.svg</file>
+        <file>images/light/network-wireless-symbolic.svg</file>
+        <file>images/light/airdrop.svg</file>
+        <file>images/light/network-wireless-disabled-symbolic.svg</file>
+        <file>images/light/wifi.svg</file>
+        <file>images/light/wifi_disabled.svg</file>
+        <file>images/light/brightness_max.svg</file>
+        <file>images/light/brightness_min.svg</file>
+        <file>images/light/location.svg</file>
+        <file>images/light/location_enabled.svg</file>
+        <file>images/light/night_mode.svg</file>
+        <file>images/light/music.svg</file>
+        <file>images/light/pause.svg</file>
     </qresource>
 </RCC>
