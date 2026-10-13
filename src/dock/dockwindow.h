@@ -118,6 +118,8 @@ private:
     TrashManager *m_trashManager;
 
     bool m_hideBlocked;
+    bool m_mouseOverDock = false;
+    bool m_mouseOverTrigger = false;
     bool m_windowTouchingDock = false;
 
     enum SlideState {
