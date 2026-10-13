@@ -16,6 +16,8 @@ namespace Client
 class Compositor;
 class ConnectionThread;
 class PlasmaShell;
+class PlasmaVirtualDesktopManagement;
+class PlasmaVirtualDesktop;
 class PlasmaWindow;
 class PlasmaWindowManagement;
 class Registry;
@@ -35,6 +37,8 @@ struct KWinWaylandClient
     QString workspaceName;
     QString appMenuServiceName;
     QString appMenuObjectPath;
+    QStringList plasmaVirtualDesktops;
+    bool onAllDesktops = true;
     qint64 pid = 0;
     QRect geometry;
     bool mapped = true;
@@ -55,6 +59,8 @@ struct KWinWaylandClient
             && initialTitle == other.initialTitle && pid == other.pid
             && appMenuServiceName == other.appMenuServiceName
             && appMenuObjectPath == other.appMenuObjectPath
+            && plasmaVirtualDesktops == other.plasmaVirtualDesktops
+            && onAllDesktops == other.onAllDesktops
             && geometry == other.geometry
             && mapped == other.mapped && hidden == other.hidden
             && skipTaskbar == other.skipTaskbar
@@ -99,6 +105,8 @@ public:
     quint64 activeWindow() const;
     quint64 windowForPid(qint64 pid, const QString &title = {}) const;
     bool hasWindowTouching(const QRect &rect) const;
+    bool hasFullscreenWindow(const QRect &screenRect = QRect()) const;
+    bool isOnCurrentDesktop(const KWinWaylandClient &client) const;
 
     void refresh();
 
@@ -130,6 +138,7 @@ private:
     void setupPlasmaShell(quint32 name, quint32 version);
     void setupInterface(const QByteArray &interface, quint32 name, quint32 version);
     void setupWindowManagement(quint32 name, quint32 version);
+    void setupVirtualDesktopManagement(quint32 name, quint32 version);
     void addWindow(KWayland::Client::PlasmaWindow *window);
     void updateWindow(KWayland::Client::PlasmaWindow *window);
     void removeWindow(quint64 id);
@@ -145,6 +154,8 @@ private:
     zwlr_layer_shell_v1 *m_layerShell = nullptr;
     KWayland::Client::PlasmaShell *m_plasmaShell = nullptr;
     KWayland::Client::PlasmaWindowManagement *m_windowManagement = nullptr;
+    KWayland::Client::PlasmaVirtualDesktopManagement *m_virtualDesktopManagement = nullptr;
+    QString m_activeDesktopId;
     QHash<quint64, KWinWaylandClient> m_clients;
     QHash<quint64, KWayland::Client::PlasmaWindow *> m_windows;
     quint64 m_activeWindow = 0;

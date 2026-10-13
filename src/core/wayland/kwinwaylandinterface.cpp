@@ -13,6 +13,7 @@
 
 #include "layershell.h"
 #include <KWayland/Client/plasmawindowmanagement.h>
+#include <KWayland/Client/plasmavirtualdesktop.h>
 #include <KWayland/Client/registry.h>
 
 using namespace KWayland::Client;
@@ -54,6 +55,8 @@ KWinWaylandInterface::KWinWaylandInterface(QObject *parent)
     });
     connect(m_registry, &Registry::plasmaWindowManagementAnnounced,
             this, &KWinWaylandInterface::setupWindowManagement);
+    connect(m_registry, &Registry::plasmaVirtualDesktopManagementAnnounced,
+            this, &KWinWaylandInterface::setupVirtualDesktopManagement);
     m_registry->setup();
 
     // The panels ask for their plasma-shell surface while they are being
@@ -211,6 +214,8 @@ void KWinWaylandInterface::setupWindowManagement(quint32 name, quint32 version)
             this, &KWinWaylandInterface::addWindow);
     connect(m_windowManagement, &PlasmaWindowManagement::activeWindowChanged,
             this, &KWinWaylandInterface::updateActiveWindow);
+    connect(m_windowManagement, &PlasmaWindowManagement::showingDesktopChanged,
+            this, &KWinWaylandInterface::refresh);
 
     for (PlasmaWindow *window : m_windowManagement->windows())
         addWindow(window);
@@ -218,6 +223,44 @@ void KWinWaylandInterface::setupWindowManagement(quint32 name, quint32 version)
     emit windowManagementReady();
     qInfo() << "KWin PlasmaWindowManagement connected with"
             << m_windows.size() << "windows";
+}
+
+void KWinWaylandInterface::setupVirtualDesktopManagement(quint32 name, quint32 version)
+{
+    if (m_virtualDesktopManagement)
+        return;
+
+    m_virtualDesktopManagement = m_registry->createPlasmaVirtualDesktopManagement(name, version, this);
+    if (!m_virtualDesktopManagement || !m_virtualDesktopManagement->isValid()) {
+        delete m_virtualDesktopManagement;
+        m_virtualDesktopManagement = nullptr;
+        return;
+    }
+
+    auto updateDesktops = [this]() {
+        for (PlasmaVirtualDesktop *desktop : m_virtualDesktopManagement->desktops()) {
+            if (desktop->isActive()) {
+                m_activeDesktopId = desktop->id();
+            }
+            connect(desktop, &PlasmaVirtualDesktop::activated, this, [this, desktop]() {
+                m_activeDesktopId = desktop->id();
+                refresh();
+            }, Qt::UniqueConnection);
+            connect(desktop, &PlasmaVirtualDesktop::deactivated, this, [this]() {
+                refresh();
+            }, Qt::UniqueConnection);
+        }
+    };
+
+    connect(m_virtualDesktopManagement, &PlasmaVirtualDesktopManagement::desktopCreated, this, [updateDesktops](const QString &, quint32) {
+        updateDesktops();
+    });
+    connect(m_virtualDesktopManagement, &PlasmaVirtualDesktopManagement::desktopRemoved, this, [this, updateDesktops](const QString &) {
+        updateDesktops();
+        refresh();
+    });
+
+    updateDesktops();
 }
 
 KWinWaylandClient KWinWaylandInterface::toClient(PlasmaWindow *window) const
@@ -234,6 +277,8 @@ KWinWaylandClient KWinWaylandInterface::toClient(PlasmaWindow *window) const
     client.initialTitle = client.title;
     client.pid = window->pid();
     client.geometry = window->geometry();
+    client.plasmaVirtualDesktops = window->plasmaVirtualDesktops();
+    client.onAllDesktops = window->isOnAllDesktops();
     client.hidden = window->isMinimized();
     client.skipTaskbar = window->skipTaskbar();
     client.skipSwitcher = window->skipSwitcher();
@@ -272,6 +317,9 @@ void KWinWaylandInterface::addWindow(PlasmaWindow *window)
     connect(window, &PlasmaWindow::geometryChanged, this, [this, window] { updateWindow(window); });
     connect(window, &PlasmaWindow::skipTaskbarChanged, this, [this, window] { updateWindow(window); });
     connect(window, &PlasmaWindow::applicationMenuChanged, this, [this, window] { updateWindow(window); });
+    connect(window, &PlasmaWindow::plasmaVirtualDesktopEntered, this, [this, window] { updateWindow(window); });
+    connect(window, &PlasmaWindow::plasmaVirtualDesktopLeft, this, [this, window] { updateWindow(window); });
+    connect(window, &PlasmaWindow::onAllDesktopsChanged, this, [this, window] { updateWindow(window); });
     connect(window, &PlasmaWindow::unmapped, this, [this, id] { removeWindow(id); });
 
     emit clientAdded(id);
@@ -374,9 +422,45 @@ void KWinWaylandInterface::startMove(quint64 id)
         target->requestMove();
 }
 
+bool KWinWaylandInterface::isOnCurrentDesktop(const KWinWaylandClient &client) const
+{
+    if (client.onAllDesktops || client.plasmaVirtualDesktops.isEmpty() || m_activeDesktopId.isEmpty())
+        return true;
+    return client.plasmaVirtualDesktops.contains(m_activeDesktopId);
+}
+
+bool KWinWaylandInterface::hasFullscreenWindow(const QRect &screenRect) const
+{
+    if (m_windowManagement && m_windowManagement->isShowingDesktop())
+        return false;
+
+    for (const auto &client : m_clients) {
+        if (!isAcceptableWindow(client.id))
+            continue;
+        if (!client.mapped || client.hidden || client.skipTaskbar)
+            continue;
+        if (!isOnCurrentDesktop(client))
+            continue;
+
+        if (client.fullscreen != 0) {
+            if (!screenRect.isEmpty() && client.geometry.isValid() && !client.geometry.isEmpty()) {
+                if (client.geometry.intersects(screenRect))
+                    return true;
+            } else {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 bool KWinWaylandInterface::hasWindowTouching(const QRect &rect) const
 {
     if (rect.isEmpty())
+        return false;
+
+    if (m_windowManagement && m_windowManagement->isShowingDesktop())
         return false;
 
     // Direct intersection with dock window bounding rect + 4px margin
@@ -387,10 +471,18 @@ bool KWinWaylandInterface::hasWindowTouching(const QRect &rect) const
             continue;
         if (!client.mapped || client.hidden || client.skipTaskbar)
             continue;
+        if (!isOnCurrentDesktop(client))
+            continue;
 
-        // Maximized or fullscreen window covers the dock area
-        if (client.maximized || client.fullscreen)
-            return true;
+        // If client is fullscreen on this output, it covers the dock area
+        if (client.fullscreen != 0) {
+            if (client.geometry.isValid() && !client.geometry.isEmpty()) {
+                if (client.geometry.intersects(touchRect))
+                    return true;
+            } else {
+                return true;
+            }
+        }
 
         if (client.geometry.isValid() && !client.geometry.isEmpty()) {
             if (client.geometry.intersects(touchRect)) {
@@ -401,3 +493,4 @@ bool KWinWaylandInterface::hasWindowTouching(const QRect &rect) const
 
     return false;
 }
+
