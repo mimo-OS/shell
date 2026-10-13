@@ -5,21 +5,35 @@
 #include <QDir>
 #include <QUrl>
 
-const QString TrashDir = QDir::homePath() + "/.local/share/Trash";
-const QDir::Filters ItemsShouldCount = QDir::AllEntries | QDir::Hidden | QDir::System | QDir::NoDotAndDotDot;
+#include <QStandardPaths>
+
+static QString trashDir()
+{
+    return QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + QLatin1String("/Trash");
+}
+
+static const QDir::Filters ItemsShouldCount = QDir::AllEntries | QDir::Hidden | QDir::System | QDir::NoDotAndDotDot;
 
 TrashManager::TrashManager(QObject *parent)
     : QObject(parent),
       m_filesWatcher(new QFileSystemWatcher(this)),
       m_count(0)
 {
+    const QString base = trashDir();
+    m_filesWatcher->addPath(base);
+    const QString files = base + QLatin1String("/files");
+    if (QDir(files).exists()) {
+        m_filesWatcher->addPath(files);
+    }
+
     onDirectoryChanged();
     connect(m_filesWatcher, &QFileSystemWatcher::directoryChanged, this, &TrashManager::onDirectoryChanged, Qt::QueuedConnection);
 }
 
-void TrashManager::moveToTrash(QList<QUrl> urls)
+void TrashManager::moveToTrash(const QList<QUrl> &urls)
 {
     QStringList paths;
+    paths.reserve(urls.size());
 
     for (const QUrl &url : urls) {
         if (!url.isLocalFile())
@@ -27,26 +41,29 @@ void TrashManager::moveToTrash(QList<QUrl> urls)
         paths.append(url.toLocalFile());
     }
 
-    QProcess::startDetached("cutefish-filemanager", QStringList() << "--move-to-trash" << paths);
+    QProcess::startDetached(QStringLiteral("cutefish-filemanager"), QStringList() << QStringLiteral("--move-to-trash") << paths);
 }
 
 void TrashManager::emptyTrash()
 {
-    QProcess::startDetached("cutefish-filemanager", QStringList() << "-e");
+    QProcess::startDetached(QStringLiteral("cutefish-filemanager"), QStringList() << QStringLiteral("-e"));
 }
 
 void TrashManager::openTrash()
 {
-    QProcess::startDetached("cutefish-filemanager", QStringList() << "trash:///");
+    QProcess::startDetached(QStringLiteral("cutefish-filemanager"), QStringList() << QStringLiteral("trash:///"));
 }
 
 void TrashManager::onDirectoryChanged()
 {
-    m_filesWatcher->addPath(TrashDir);
+    const QString filesPath = trashDir() + QLatin1String("/files");
+    const QDir files(filesPath);
 
-    if (QDir(TrashDir + "/files").exists()) {
-        m_filesWatcher->addPath(TrashDir + "/files");
-        m_count = QDir(TrashDir + "/files").entryList(ItemsShouldCount).count();
+    if (files.exists()) {
+        if (!m_filesWatcher->directories().contains(filesPath)) {
+            m_filesWatcher->addPath(filesPath);
+        }
+        m_count = files.entryList(ItemsShouldCount).count();
     } else {
         m_count = 0;
     }
