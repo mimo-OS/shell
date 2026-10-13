@@ -448,8 +448,8 @@ void ApplicationModel::move(int from, int to)
 
 ApplicationItem *ApplicationModel::findItemByWId(quint64 wid)
 {
-    for (ApplicationItem *item : m_appItems) {
-        for (quint64 winId : item->wids) {
+    for (ApplicationItem *item : std::as_const(m_appItems)) {
+        for (quint64 winId : std::as_const(item->wids)) {
             if (winId == wid)
                 return item;
         }
@@ -460,9 +460,24 @@ ApplicationItem *ApplicationModel::findItemByWId(quint64 wid)
 
 ApplicationItem *ApplicationModel::findItemById(const QString &id)
 {
-    for (ApplicationItem *item : m_appItems) {
-        if (item->id == id)
+    if (id.isEmpty())
+        return nullptr;
+
+    const QString cleanId = id.section('.', -1).toLower();
+
+    for (ApplicationItem *item : std::as_const(m_appItems)) {
+        if (item->id.compare(id, Qt::CaseInsensitive) == 0)
             return item;
+
+        const QString itemCleanId = item->id.section('.', -1).toLower();
+        if (itemCleanId.compare(cleanId, Qt::CaseInsensitive) == 0)
+            return item;
+
+        if (!item->desktopPath.isEmpty()) {
+            const QString baseName = QFileInfo(item->desktopPath).completeBaseName().toLower();
+            if (baseName.compare(cleanId, Qt::CaseInsensitive) == 0 || baseName.compare(id, Qt::CaseInsensitive) == 0)
+                return item;
+        }
     }
 
     return nullptr;
@@ -474,7 +489,7 @@ ApplicationItem *ApplicationModel::findItemByDesktop(const QString &desktop)
         return nullptr;
 
     const QString normalizedDesktop = QFileInfo(desktop).absoluteFilePath();
-    for (ApplicationItem *item : m_appItems) {
+    for (ApplicationItem *item : std::as_const(m_appItems)) {
         if (!item->desktopPath.isEmpty()
             && QFileInfo(item->desktopPath).absoluteFilePath() == normalizedDesktop)
             return item;
@@ -485,19 +500,14 @@ ApplicationItem *ApplicationModel::findItemByDesktop(const QString &desktop)
 
 bool ApplicationModel::contains(const QString &id)
 {
-    for (ApplicationItem *item : std::as_const(m_appItems)) {
-        if (item->id == id)
-            return true;
-    }
-
-    return false;
+    return findItemById(id) != nullptr;
 }
 
 int ApplicationModel::indexOf(const QString &id)
 {
-    for (ApplicationItem *item : m_appItems) {
-        if (item->id == id)
-            return m_appItems.indexOf(item);
+    for (int i = 0; i < m_appItems.size(); ++i) {
+        if (m_appItems.at(i)->id == id)
+            return i;
     }
 
     return -1;
@@ -700,33 +710,22 @@ void ApplicationModel::onWindowAdded(quint64 wid)
     const bool active = m_kwin->activeWindow() == wid;
     const QString desktopPath = desktopPathFor(wid);
     DesktopEntry *entry = ApplicationRegistry::instance()->byPath(desktopPath);
-    ApplicationItem *desktopItem = findItemByDesktop(desktopPath);
+    ApplicationItem *matchedItem = findItemByDesktop(desktopPath);
 
-    // Use desktop find
-    if (!desktopPath.isEmpty() && desktopItem != nullptr) {
-        desktopItem->wids.append(wid);
-        // Need to update application active status.
-        desktopItem->isActive = active;
+    if (!matchedItem)
+        matchedItem = findItemById(id);
 
-        if (entry)
-            updateFromDesktopEntry(desktopItem, entry);
-        else if (desktopItem->id != id) {
-            desktopItem->id = id;
-            savePinAndUnPinList();
-        }
+    // Use matched item
+    if (matchedItem != nullptr) {
+        if (!matchedItem->wids.contains(wid))
+            matchedItem->wids.append(wid);
 
-        handleDataChangedFromItem(desktopItem);
-    }
-    // Find from id
-    else if (contains(id)) {
-        for (ApplicationItem *item : m_appItems) {
-            if (item->id == id) {
-                item->wids.append(wid);
-                // Need to update application active status.
-                item->isActive = active;
-                handleDataChangedFromItem(item);
-            }
-        }
+        matchedItem->isActive = active;
+
+        if (entry && matchedItem->desktopPath.isEmpty())
+            updateFromDesktopEntry(matchedItem, entry);
+
+        handleDataChangedFromItem(matchedItem);
     }
     // New item needs to be added.
     else {
