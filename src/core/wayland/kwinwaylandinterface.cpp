@@ -191,7 +191,19 @@ void KWinWaylandInterface::setupWindowManagement(quint32 name, quint32 version)
     m_windowManagement = m_registry->createPlasmaWindowManagement(name, qMin(version, quint32(20)), this);
     if (!m_windowManagement || !m_windowManagement->isValid()) {
         qWarning() << "KWin PlasmaWindowManagement is unavailable";
+        delete m_windowManagement;
         m_windowManagement = nullptr;
+
+        static int retryAttempts = 0;
+        if (retryAttempts < 3) {
+            ++retryAttempts;
+            QTimer::singleShot(500, this, [this, name, version]() {
+                if (!m_windowManagement) {
+                    qDebug() << "Retrying KWin PlasmaWindowManagement connection...";
+                    setupWindowManagement(name, version);
+                }
+            });
+        }
         return;
     }
 
@@ -212,6 +224,7 @@ KWinWaylandClient KWinWaylandInterface::toClient(PlasmaWindow *window) const
 {
     KWinWaylandClient client;
     client.id = idFor(window);
+    client.mapped = true;
     client.className = window->appId();
     client.resourceName = window->resourceName();
     if (client.className.isEmpty())
@@ -375,8 +388,8 @@ bool KWinWaylandInterface::hasWindowTouching(const QRect &rect) const
         if (!client.mapped || client.hidden || client.skipTaskbar)
             continue;
 
-        // Fullscreen window on the dock's screen covers the dock
-        if (client.fullscreen)
+        // Maximized or fullscreen window covers the dock area
+        if (client.maximized || client.fullscreen)
             return true;
 
         if (client.geometry.isValid() && !client.geometry.isEmpty()) {
