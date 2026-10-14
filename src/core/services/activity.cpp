@@ -67,6 +67,7 @@ void Activity::updateExistsWindowMaximized()
     bool existsWindowMaximized = false;
     for (const KWinWaylandClient &client : kwin->clients()) {
         if (!client.hidden && client.mapped && !client.skipTaskbar
+                && kwin->isOnCurrentDesktop(client)
                 && (client.maximized || client.fullscreen != 0)
                 && kwin->isAcceptableWindow(client.id)) {
             existsWindowMaximized = true;

@@ -29,6 +29,7 @@ class Surface;
 struct KWinWaylandClient
 {
     quint64 id = 0;
+    QString uuid;
     QString className;
     QString initialClass;
     QString resourceName;
@@ -53,7 +54,8 @@ struct KWinWaylandClient
 
     bool operator==(const KWinWaylandClient &other) const
     {
-        return id == other.id && className == other.className
+        return id == other.id && uuid == other.uuid
+            && className == other.className
             && initialClass == other.initialClass && title == other.title
             && resourceName == other.resourceName
             && initialTitle == other.initialTitle && pid == other.pid

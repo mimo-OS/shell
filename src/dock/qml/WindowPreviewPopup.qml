@@ -10,6 +10,8 @@ import QtQuick.Layouts 1.12
 import QtQuick.Controls 2.12
 import FishUI 1.0 as FishUI
 import Cutefish.Dock 1.0
+import org.kde.taskmanager 0.1 as TaskManager
+import org.kde.pipewire 1.0 as PipeWire
 
 Window {
     id: previewPopup
@@ -21,7 +23,7 @@ Window {
     property string appName: ""
     property var windows: []
     property point popupPosition: Qt.point(0, 0)
-    property bool containsCursor: hoverHandler.hovered
+    property bool containsCursor: popupMouseArea.containsMouse
 
     signal windowActivated(string wid)
     signal windowClosed(string wid)
@@ -48,8 +50,11 @@ Window {
         windowRadius: mainCard.radius
     }
 
-    HoverHandler {
-        id: hoverHandler
+    MouseArea {
+        id: popupMouseArea
+        anchors.fill: parent
+        hoverEnabled: true
+        acceptedButtons: Qt.NoButton
     }
 
     onPopupPositionChanged: adjustCorrectLocation()
@@ -60,23 +65,18 @@ Window {
         var posX = previewPopup.popupPosition.x
         var posY = previewPopup.popupPosition.y
 
-        if (windowHelper.wayland) {
-            previewPopup.x = posX
-            previewPopup.y = posY
-            return
-        }
-
-        if (posX <= Screen.virtualX)
+        // Bounds checking against virtual desktop/screen coordinates
+        if (posX <= Screen.virtualX + FishUI.Units.smallSpacing)
             posX = Screen.virtualX + FishUI.Units.smallSpacing
 
-        if (posY <= Screen.virtualY)
+        if (posY <= Screen.virtualY + FishUI.Units.smallSpacing)
             posY = Screen.virtualY + FishUI.Units.smallSpacing
 
         if (posX + previewPopup.width > Screen.virtualX + Screen.width)
-            posX = Screen.virtualX + Screen.width - previewPopup.width - 1
+            posX = Screen.virtualX + Screen.width - previewPopup.width - FishUI.Units.smallSpacing
 
         if (posY + previewPopup.height > Screen.virtualY + Screen.height)
-            posY = Screen.virtualY + Screen.height - previewPopup.height - 1
+            posY = Screen.virtualY + Screen.height - previewPopup.height - FishUI.Units.smallSpacing
 
         previewPopup.x = posX
         previewPopup.y = posY
@@ -100,10 +100,10 @@ Window {
 
         radius: 12
         color: FishUI.Theme.darkMode
-               ? Qt.rgba(0.12, 0.12, 0.16, FishUI.Theme.blurEnabled ? 0.78 : 0.96)
-               : Qt.rgba(0.96, 0.96, 0.98, FishUI.Theme.blurEnabled ? 0.82 : 0.98)
+               ? Qt.rgba(0.12, 0.12, 0.16, FishUI.Theme.blurEnabled ? 0.82 : 0.96)
+               : Qt.rgba(0.96, 0.96, 0.98, FishUI.Theme.blurEnabled ? 0.86 : 0.98)
         border.width: 1 / FishUI.Dpi.ratio
-        border.color: FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.15)
+        border.color: FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.16)
                                             : Qt.rgba(0, 0, 0, 0.12)
 
         // Simple text label when no running windows exist
@@ -129,8 +129,8 @@ Window {
 
                 Item {
                     id: tileItem
-                    width: 176
-                    height: 116
+                    width: 200
+                    height: 142
 
                     readonly property var winData: modelData || {}
                     readonly property bool isCurrentActive: winData ? (winData.active === true) : false
@@ -227,33 +227,63 @@ Window {
                                 }
                             }
 
-                            // Body: Miniature window canvas preview
+                            // Body: Hardware-accelerated live PipeWire window canvas preview
                             Rectangle {
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
-                                radius: 5
-                                color: FishUI.Theme.darkMode ? Qt.rgba(0, 0, 0, 0.40) : Qt.rgba(1, 1, 1, 0.65)
+                                radius: 6
+                                clip: true
+                                color: FishUI.Theme.darkMode ? "#141416" : "#E8E8ED"
                                 border.width: 1
                                 border.color: FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.08) : Qt.rgba(0, 0, 0, 0.06)
 
+                                TaskManager.ScreencastingRequest {
+                                    id: scRequest
+                                    uuid: (winData && winData.uuid) ? winData.uuid : ""
+                                }
+
+                                // Live Wayland window stream via PipeWire
+                                PipeWire.PipeWireSourceItem {
+                                    id: pipewireItem
+                                    anchors.fill: parent
+                                    anchors.margins: 2
+                                    nodeId: scRequest.nodeId
+                                    visible: scRequest.nodeId > 0 && !tileItem.isMinimized
+                                }
+
+                                // Fallback placeholder with centered app icon when stream is initializing or window is minimized
                                 ColumnLayout {
                                     anchors.centerIn: parent
                                     spacing: 4
+                                    visible: tileItem.isMinimized || scRequest.nodeId === 0 || !pipewireItem.ready
 
                                     FishUI.IconItem {
                                         Layout.alignment: Qt.AlignHCenter
-                                        Layout.preferredWidth: 32
-                                        Layout.preferredHeight: 32
+                                        Layout.preferredWidth: 38
+                                        Layout.preferredHeight: 38
                                         source: (winData && winData.iconName) ? winData.iconName : "application-x-desktop"
-                                        opacity: tileItem.isMinimized ? 0.45 : 0.85
+                                        opacity: tileItem.isMinimized ? 0.50 : 0.85
                                     }
+                                }
+
+                                // Minimized status badge pill
+                                Rectangle {
+                                    visible: tileItem.isMinimized
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    anchors.bottom: parent.bottom
+                                    anchors.bottomMargin: 8
+                                    height: 18
+                                    width: minLabel.implicitWidth + 14
+                                    radius: 9
+                                    color: FishUI.Theme.darkMode ? Qt.rgba(0, 0, 0, 0.75) : Qt.rgba(0.2, 0.2, 0.2, 0.65)
 
                                     Label {
-                                        Layout.alignment: Qt.AlignHCenter
-                                        visible: tileItem.isMinimized
+                                        id: minLabel
+                                        anchors.centerIn: parent
                                         text: qsTr("Minimized")
                                         font.pixelSize: 9
-                                        color: FishUI.Theme.disabledTextColor
+                                        font.weight: Font.Medium
+                                        color: "#FFFFFF"
                                     }
                                 }
                             }

@@ -80,6 +80,7 @@ Item {
             windowPreviewPopup.appName = appName
             windowPreviewPopup.windows = wins
             item.updateWindowPreviewPosition()
+            dock.previewOpen = true
             windowPreviewPopup.show()
             return true
         }
@@ -140,6 +141,7 @@ Item {
         onWindowActivated: function(wid) {
             appModel.activateWindow(wid)
             windowPreviewPopup.hide()
+            dock.previewOpen = false
         }
 
         onWindowClosed: function(wid) {
@@ -149,17 +151,25 @@ Item {
                 windowPreviewPopup.windows = updated
             } else {
                 windowPreviewPopup.hide()
+                dock.previewOpen = false
+            }
+        }
+
+        onVisibleChanged: {
+            if (!visible) {
+                dock.previewOpen = false
             }
         }
     }
 
     Timer {
         id: previewDismissTimer
-        interval: 260
+        interval: 280
         repeat: false
         onTriggered: {
             if (!windowPreviewPopup.containsCursor) {
                 windowPreviewPopup.hide()
+                dock.previewOpen = false
             }
         }
     }
@@ -175,6 +185,21 @@ Item {
         }
     }
 
+    Connections {
+        target: popupTips
+        function onVisibleChanged() {
+            dock.popupTipsOpen = popupTips.visible
+        }
+    }
+
+    HoverHandler {
+        id: rootHoverHandler
+        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad | PointerDevice.Stylus
+        onHoveredChanged: {
+            dock.setMouseOverDock(hovered)
+        }
+    }
+
     // Non-blocking hover tracker for continuous magnification wave across dock
     MouseArea {
         id: backgroundHoverArea
@@ -186,9 +211,11 @@ Item {
             root.hoverPos = root.isHorizontal ? p.x : p.y
             root.isHovered = true
             hoverResetTimer.restart()
+            dock.setMouseOverDock(true)
         }
         onExited: {
             hoverResetTimer.restart()
+            dock.setMouseOverDock(false)
         }
     }
 
@@ -378,7 +405,8 @@ Item {
 
         function onDirectionChanged() {
             popupTips.hide()
-            windowPreviewPopup.visible = false
+            windowPreviewPopup.hide()
+            dock.previewOpen = false
         }
     }
 
@@ -387,7 +415,8 @@ Item {
 
         function onVisibleChanged() {
             popupTips.hide()
-            windowPreviewPopup.visible = false
+            windowPreviewPopup.hide()
+            dock.previewOpen = false
         }
     }
 }

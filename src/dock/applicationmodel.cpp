@@ -364,6 +364,7 @@ QVariantList ApplicationModel::windowsForApp(const QString &appId)
         KWinWaylandClient c = m_kwin->client(wid);
         QVariantMap map;
         map[QStringLiteral("wid")] = QString::number(wid);
+        map[QStringLiteral("uuid")] = c.uuid;
         map[QStringLiteral("title")] = c.title.trimmed().isEmpty() ? item->visibleName : c.title.trimmed();
         map[QStringLiteral("active")] = (wid == activeWid);
         map[QStringLiteral("minimized")] = c.hidden;

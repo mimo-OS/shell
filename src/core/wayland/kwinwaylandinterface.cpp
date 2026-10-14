@@ -267,6 +267,7 @@ KWinWaylandClient KWinWaylandInterface::toClient(PlasmaWindow *window) const
 {
     KWinWaylandClient client;
     client.id = idFor(window);
+    client.uuid = QString::fromUtf8(window->uuid());
     client.mapped = true;
     client.className = window->appId();
     client.resourceName = window->resourceName();
@@ -474,14 +475,9 @@ bool KWinWaylandInterface::hasWindowTouching(const QRect &rect) const
         if (!isOnCurrentDesktop(client))
             continue;
 
-        // If client is fullscreen on this output, it covers the dock area
-        if (client.fullscreen != 0) {
-            if (client.geometry.isValid() && !client.geometry.isEmpty()) {
-                if (client.geometry.intersects(touchRect))
-                    return true;
-            } else {
-                return true;
-            }
+        // If client is fullscreen or maximized on this output, it covers the dock area
+        if (client.fullscreen != 0 || client.maximized) {
+            return true;
         }
 
         if (client.geometry.isValid() && !client.geometry.isEmpty()) {

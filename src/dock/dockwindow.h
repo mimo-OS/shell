@@ -22,7 +22,8 @@ class DockWindow : public ShellSurface
     Q_OBJECT
     Q_PROPERTY(QRect primaryGeometry READ primaryGeometry NOTIFY primaryGeometryChanged)
     Q_PROPERTY(int direction READ direction NOTIFY directionChanged)
-    Q_PROPERTY(int visibility READ visibility NOTIFY visibilityChanged)
+    Q_PROPERTY(int visibility READ visibility WRITE setVisibility NOTIFY visibilityChanged)
+    Q_PROPERTY(bool previewOpen READ previewOpen WRITE setPreviewOpen NOTIFY previewOpenChanged)
     Q_PROPERTY(QVariantMap metrics READ metrics NOTIFY metricsChanged)
     Q_PROPERTY(qreal geometryAnimationProgress READ geometryAnimationProgress
                NOTIFY geometryAnimationProgressChanged)
@@ -31,6 +32,7 @@ class DockWindow : public ShellSurface
     Q_PROPERTY(int geometryAnimationToken READ geometryAnimationToken
                NOTIFY geometryAnimationTokenChanged)
     Q_PROPERTY(bool menuOpen READ isMenuOpen WRITE setMenuOpen NOTIFY menuOpenChanged)
+    Q_PROPERTY(bool popupTipsOpen READ popupTipsOpen WRITE setPopupTipsOpen NOTIFY popupTipsOpenChanged)
 
 public:
     explicit DockWindow(QQmlEngine *engine);
@@ -38,6 +40,12 @@ public:
 
     bool isMenuOpen() const { return m_menuOpen; }
     void setMenuOpen(bool open);
+
+    bool previewOpen() const { return m_previewOpen; }
+    bool popupTipsOpen() const { return m_popupTipsOpen; }
+    void setPopupTipsOpen(bool open);
+
+    Q_INVOKABLE void setMouseOverDock(bool over);
 
     // DBus interface
     void add(const QString &desktop);
@@ -53,13 +61,16 @@ public:
     bool geometryAnimationAdding() const;
     int geometryAnimationToken() const;
 
-    void setDirection(int direction);
-    void setIconSize(int iconSize);
-    void setVisibility(int visibility);
     void setLauncher(Launcher *launcher);
 
     Q_INVOKABLE void updateIconGeometry(QQuickItem *item,
                                         const QStringList &windowIds);
+
+public slots:
+    void setDirection(int direction);
+    void setIconSize(int iconSize);
+    void setVisibility(int visibility);
+    void setPreviewOpen(bool open);
 
 signals:
     void resizingFished();
@@ -68,11 +79,13 @@ signals:
     void directionChanged();
     void primaryGeometryChanged();
     void visibilityChanged();
+    void previewOpenChanged();
     void metricsChanged();
     void geometryAnimationProgressChanged();
     void geometryAnimationAddingChanged();
     void geometryAnimationTokenChanged();
     void menuOpenChanged();
+    void popupTipsOpenChanged();
 
 private:
     bool m_menuOpen = false;
@@ -81,6 +94,7 @@ private:
     //! updateMetrics() first.
     QRect windowRect() const;
     QRect hiddenWindowRect() const;
+    QRect targetWindowRect() const;
     void slideToHide();
     void slideToShow();
     void animateToGeometry(const QRect &rect);
@@ -117,9 +131,14 @@ private:
     StrutSpacer *m_strutSpacer;
     TrashManager *m_trashManager;
 
-    bool m_hideBlocked;
+    bool isHovered() const;
+    bool shouldHide() const;
+
     bool m_mouseOverDock = false;
     bool m_mouseOverTrigger = false;
+    bool m_dragActive = false;
+    bool m_previewOpen = false;
+    bool m_popupTipsOpen = false;
     bool m_windowTouchingDock = false;
 
     enum SlideState {

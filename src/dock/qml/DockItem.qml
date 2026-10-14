@@ -342,6 +342,7 @@ Item {
             root.hoverPos = root.isHorizontal ? p.x : p.y
             root.isHovered = true
             hoverResetTimer.restart()
+            dock.setMouseOverDock(true)
 
             if (pressed) {
                 if (control.draggable && mouse.source !== Qt.MouseEventSynthesizedByQt) {

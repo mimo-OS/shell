@@ -103,8 +103,10 @@ void ShellSurface::setSurfacePosition(const QPoint &position, bool requestRepain
     // KWin applies the position with the next commit of the surface, and a
     // panel that only moves has nothing new to draw: the dock kept landing
     // where the *previous* screen change had put it, one resolution behind.
-    if (moved && requestRepaint)
+    if (moved && requestRepaint) {
         requestUpdate();
+        update();
+    }
 
     if (moved)
         emit surfacePositionChanged();
