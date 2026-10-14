@@ -184,14 +184,14 @@ Item {
         var targetY = 0
 
         if (Settings.direction === DockSettings.Left) {
-            targetX = root.mapToGlobal(root.width, 0).x + FishUI.Units.largeSpacing + magOffset
+            targetX = root.mapToGlobal(root.width, 0).x + FishUI.Units.largeSpacing + 4 + magOffset
             targetY = controlPosition.y + (control.height / 2 - windowPreviewPopup.height / 2)
         } else if (Settings.direction === DockSettings.Right) {
-            targetX = root.mapToGlobal(0, 0).x - windowPreviewPopup.width - FishUI.Units.largeSpacing - magOffset
+            targetX = root.mapToGlobal(0, 0).x - windowPreviewPopup.width - FishUI.Units.largeSpacing - 4 - magOffset
             targetY = controlPosition.y + (control.height / 2 - windowPreviewPopup.height / 2)
         } else {
             targetX = controlPosition.x + (control.width / 2 - windowPreviewPopup.width / 2)
-            targetY = root.mapToGlobal(0, 0).y - windowPreviewPopup.height - FishUI.Units.smallSpacing - magOffset
+            targetY = root.mapToGlobal(0, 0).y - windowPreviewPopup.height - FishUI.Units.largeSpacing - 4 - magOffset
         }
 
         windowPreviewPopup.popupPosition = Qt.point(targetX, targetY)
