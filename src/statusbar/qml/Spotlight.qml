@@ -224,7 +224,7 @@ PopupWindow {
         border.color: FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.18) : Qt.rgba(255, 255, 255, 0.60)
         antialiasing: true
 
-        // macOS Sequoia Inner Specular Glass Highlight
+        // Inner Specular Glass Highlight
         Rectangle {
             anchors.fill: parent
             anchors.margins: 1

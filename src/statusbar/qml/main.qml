@@ -114,7 +114,7 @@ Item {
             anchors.right: parent.right
             anchors.bottom: parent.bottom
             height: 1 / FishUI.Dpi.ratio
-            color: rootItem.darkMode ? Qt.rgba(255, 255, 255, 0.15) : Qt.rgba(0, 0, 0, 0.10)
+            color: rootItem.darkMode ? Qt.rgba(255, 255, 255, 0.12) : Qt.rgba(0, 0, 0, 0.08)
         }
     }
 
@@ -481,6 +481,11 @@ Item {
             }
 
             function toggleDialog() {
+                if (!spotlight.active) {
+                    spotlight.active = true
+                    return
+                }
+
                 if (!spotlight.item)
                     return
 
@@ -552,6 +557,11 @@ Item {
             }
 
             function toggleDialog() {
+                if (!notificationCenter.active) {
+                    notificationCenter.active = true
+                    return
+                }
+
                 if (!notificationCenter.item)
                     return
 
@@ -692,6 +702,7 @@ Item {
     // so it comes in by URL rather than as an inline component.
     Loader {
         id: notificationCenter
+        active: false
         source: "qrc:/notification/qml/NotificationCenter.qml"
         asynchronous: true
 
@@ -700,7 +711,12 @@ Item {
         // ordinary toplevel, which KWin then decorates and places itself -
         // exactly what the notification centre used to look like when it lived
         // in its own process.
-        onLoaded: item.transientParent = rootItem.Window.window
+        onLoaded: {
+            item.transientParent = rootItem.Window.window
+            item.position = Qt.point(0, 0)
+            item.position = datetimeItem.mapToGlobal(0, 0)
+            item.open()
+        }
     }
 
     // `cutefish-notificationd -s` used to pop the window up from another
@@ -728,11 +744,13 @@ Item {
 
     Loader {
         id: spotlight
+        active: false
         sourceComponent: Spotlight {}
         asynchronous: true
 
         onLoaded: {
             item.transientParent = rootItem.Window.window
+            item.open()
         }
     }
 
@@ -766,6 +784,7 @@ Item {
 
     Loader {
         id: overviewOverlayLoader
+        active: false
         sourceComponent: OverviewOverlay {}
         asynchronous: true
 
@@ -775,56 +794,60 @@ Item {
         }
     }
 
+    function toggleOverview() {
+        if (!overviewOverlayLoader.active) {
+            overviewOverlayLoader.active = true
+            return
+        }
+
+        if (overviewOverlayLoader.item) {
+            if (overviewOverlayLoader.item.visible)
+                overviewOverlayLoader.item.close()
+            else
+                overviewOverlayLoader.item.open()
+        }
+    }
+
     Shortcut {
         sequence: "F9"
-        onActivated: {
-            if (overviewOverlayLoader.item) {
-                if (overviewOverlayLoader.item.visible)
-                    overviewOverlayLoader.item.close()
-                else
-                    overviewOverlayLoader.item.open()
-            }
-        }
+        onActivated: toggleOverview()
     }
 
     Shortcut {
         sequence: "Meta+Tab"
-        onActivated: {
-            if (overviewOverlayLoader.item) {
-                if (overviewOverlayLoader.item.visible)
-                    overviewOverlayLoader.item.close()
-                else
-                    overviewOverlayLoader.item.open()
-            }
-        }
+        onActivated: toggleOverview()
     }
 
     Loader {
         id: stageManagerLoader
+        active: false
         source: "qrc:/statusbar/qml/StageManager.qml"
         asynchronous: true
 
         onLoaded: {
-            item.enabled = false
+            item.enabled = true
+        }
+    }
+
+    function toggleStageManager() {
+        if (!stageManagerLoader.active) {
+            stageManagerLoader.active = true
+            return
+        }
+
+        if (stageManagerLoader.item) {
+            stageManagerLoader.item.enabled = !stageManagerLoader.item.enabled
         }
     }
 
     Shortcut {
         sequence: "F10"
-        onActivated: {
-            if (stageManagerLoader.item) {
-                stageManagerLoader.item.enabled = !stageManagerLoader.item.enabled
-            }
-        }
+        onActivated: toggleStageManager()
     }
 
     Shortcut {
         sequence: "Meta+S"
-        onActivated: {
-            if (stageManagerLoader.item) {
-                stageManagerLoader.item.enabled = !stageManagerLoader.item.enabled
-            }
-        }
+        onActivated: toggleStageManager()
     }
 
 

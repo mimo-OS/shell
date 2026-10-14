@@ -543,8 +543,6 @@ void ApplicationModel::initPinnedApplications()
         finderItem->visibleName = tr("Finder");
         finderItem->fixed = true;
     }
-    // Keep Finder's full-colour artwork instead of inheriting a generic file-manager glyph.
-    finderItem->iconName = "cutefish-filemanager";
     m_appItems.append(finderItem);
 
     // Pinned apps. Older configurations store an absolute path, while newer

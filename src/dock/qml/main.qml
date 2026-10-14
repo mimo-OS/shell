@@ -87,24 +87,13 @@ Item {
                : Qt.rgba(0.96, 0.96, 0.98, FishUI.Theme.blurEnabled ? 0.72 : 0.98)
         border.width: 1 / FishUI.Dpi.ratio
         border.pixelAligned: FishUI.Dpi.ratio > 1 ? false : true
-        border.color: FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.20)
-                                            : Qt.rgba(255, 255, 255, 0.65)
-
-        // macOS Sequoia Specular Inner Glass Highlight Rim
-        Rectangle {
-            anchors.fill: parent
-            anchors.margins: 1
-            radius: Math.max(0, root.windowRadius - 1)
-            color: "transparent"
-            border.width: 1 / FishUI.Dpi.ratio
-            border.color: FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.08)
-                                                : Qt.rgba(255, 255, 255, 0.40)
-        }
+        border.color: FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.12)
+                                            : Qt.rgba(0, 0, 0, 0.08)
     }
 
     FishUI.WindowShadow {
         view: dock
-        strength: 0.55
+        strength: 0.35
         radius: _background.radius + 4
     }
 

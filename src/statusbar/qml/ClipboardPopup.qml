@@ -55,6 +55,7 @@ PopupWindow {
     FishUI.WindowShadow {
         view: control
         radius: _background.radius
+        strength: 0.35
     }
 
     Rectangle {
@@ -66,7 +67,7 @@ PopupWindow {
                : Qt.rgba(0.96, 0.96, 0.98, FishUI.Theme.blurEnabled ? 0.76 : 1.0)
         antialiasing: true
         border.width: 1 / FishUI.Dpi.ratio
-        border.color: FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.15) : Qt.rgba(0, 0, 0, 0.12)
+        border.color: FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.10) : Qt.rgba(0, 0, 0, 0.06)
     }
 
     ColumnLayout {

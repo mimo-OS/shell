@@ -78,6 +78,7 @@ PopupWindow {
     FishUI.WindowShadow {
         view: control
         radius: _background.radius
+        strength: 0.60
     }
 
     FishUI.WindowBlur {
@@ -102,7 +103,7 @@ PopupWindow {
         spacing: 12
 
         // ==========================================
-        // 1. macOS Date Header & Calendar Widget Card
+        // 1. Date Header & Calendar Widget Card
         // ==========================================
         ColumnLayout {
             Layout.fillWidth: true
@@ -112,9 +113,9 @@ PopupWindow {
                 id: dateHeaderLabel
                 text: new Date().toLocaleDateString(Qt.locale(), "dddd, MMMM d").toUpperCase()
                 font.weight: Font.DemiBold
-                font.pointSize: 8
-                font.letterSpacing: 0.3
-                renderType: Text.NativeRendering
+                font.pointSize: 7.5
+                font.letterSpacing: 0.4
+                renderType: FishUI.Theme.renderType
                 color: FishUI.Theme.disabledTextColor
                 Layout.leftMargin: 4
             }
@@ -122,11 +123,11 @@ PopupWindow {
             // Calendar Widget Card
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 68
-                radius: 14
-                color: FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(1, 1, 1, 0.75)
+                Layout.preferredHeight: 64
+                radius: 12
+                color: FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(1, 1, 1, 0.60)
                 border.width: 1 / FishUI.Dpi.ratio
-                border.color: FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.10) : Qt.rgba(0, 0, 0, 0.05)
+                border.color: FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.08) : Qt.rgba(0, 0, 0, 0.06)
                 antialiasing: true
 
                 RowLayout {
@@ -136,26 +137,29 @@ PopupWindow {
 
                     // Mini Calendar Icon
                     Rectangle {
-                        width: 48
-                        height: 48
-                        radius: 10
-                        color: "#FFFFFF"
+                        width: 44
+                        height: 44
+                        radius: 8
+                        color: FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(0, 0, 0, 0.04)
+                        border.width: 1 / FishUI.Dpi.ratio
+                        border.color: FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.08) : Qt.rgba(0, 0, 0, 0.06)
                         clip: true
                         antialiasing: true
 
-                        // Red top ribbon
+                        // Flat top ribbon
                         Rectangle {
                             anchors.top: parent.top
                             anchors.left: parent.left
                             anchors.right: parent.right
-                            height: 14
-                            color: "#FF3B30"
+                            height: 13
+                            color: "#E0443E"
 
                             Label {
                                 anchors.centerIn: parent
                                 text: new Date().toLocaleDateString(Qt.locale(), "MMM").toUpperCase()
-                                font.bold: true
+                                font.weight: Font.DemiBold
                                 font.pointSize: 6.5
+                                renderType: FishUI.Theme.renderType
                                 color: "#FFFFFF"
                             }
                         }
@@ -163,30 +167,32 @@ PopupWindow {
                         // Day number
                         Label {
                             anchors.centerIn: parent
-                            anchors.verticalCenterOffset: 6
+                            anchors.verticalCenterOffset: 5
                             text: new Date().getDate()
-                            font.bold: true
-                            font.family: "SF Pro Rounded"
-                            font.pointSize: 16
-                            color: "#1D1D1F"
+                            font.weight: Font.DemiBold
+                            font.pointSize: 15
+                            renderType: FishUI.Theme.renderType
+                            color: FishUI.Theme.textColor
                         }
                     }
 
                     ColumnLayout {
                         Layout.fillWidth: true
-                        spacing: 1
+                        spacing: 2
                         Layout.alignment: Qt.AlignVCenter
 
                         Label {
                             text: new Date().toLocaleDateString(Qt.locale(), "dddd")
-                            font.bold: true
-                            font.pointSize: 10
+                            font.weight: Font.DemiBold
+                            font.pointSize: 9.5
+                            renderType: FishUI.Theme.renderType
                             color: FishUI.Theme.textColor
                         }
 
                         Label {
                             text: qsTr("No Upcoming Events")
                             font.pointSize: 8
+                            renderType: FishUI.Theme.renderType
                             color: FishUI.Theme.disabledTextColor
                         }
                     }
@@ -205,9 +211,9 @@ PopupWindow {
             Label {
                 text: qsTr("Notifications")
                 font.weight: Font.DemiBold
-                font.pointSize: 13
+                font.pointSize: 12
                 font.letterSpacing: 0.2
-                renderType: Text.NativeRendering
+                renderType: FishUI.Theme.renderType
                 color: FishUI.Theme.textColor
                 Layout.fillWidth: true
 
@@ -223,25 +229,30 @@ PopupWindow {
                 }
             }
 
-            // macOS Style Clear All Pill Button
+            // Flat Clear All Button
             Rectangle {
                 visible: _view.count > 0
                 Layout.preferredHeight: 22
-                Layout.preferredWidth: clearLabel.implicitWidth + 16
-                radius: 11
-                color: clearMouse.pressed ? (FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.25) : Qt.rgba(0, 0, 0, 0.15))
-                                          : (clearMouse.containsMouse ? (FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.18) : Qt.rgba(0, 0, 0, 0.08))
-                                                                      : (FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.10) : Qt.rgba(0, 0, 0, 0.05)))
+                Layout.preferredWidth: clearLabel.implicitWidth + 14
+                radius: 6
+                color: clearMouse.pressed ? (FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.16) : Qt.rgba(0, 0, 0, 0.10))
+                                          : (clearMouse.containsMouse ? (FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.10) : Qt.rgba(0, 0, 0, 0.06))
+                                                                      : (FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(0, 0, 0, 0.03)))
                 border.width: 1 / FishUI.Dpi.ratio
-                border.color: FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.10) : Qt.rgba(0, 0, 0, 0.05)
+                border.color: FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.08) : Qt.rgba(0, 0, 0, 0.06)
                 antialiasing: true
+
+                Behavior on color {
+                    ColorAnimation { duration: 120 }
+                }
 
                 Label {
                     id: clearLabel
                     anchors.centerIn: parent
                     text: qsTr("Clear All")
-                    font.bold: true
+                    font.weight: Font.Medium
                     font.pointSize: 7.5
+                    renderType: FishUI.Theme.renderType
                     color: FishUI.Theme.textColor
                 }
 
@@ -301,11 +312,17 @@ PopupWindow {
                     id: notifCard
                     width: ListView.view.width
                     implicitHeight: cardContent.implicitHeight + 20
-                    radius: 14
-                    color: FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(1, 1, 1, 0.80)
+                    radius: 12
+                    color: cardHoverArea.containsMouse
+                           ? (FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(1, 1, 1, 0.85))
+                           : (FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.05) : Qt.rgba(1, 1, 1, 0.65))
                     border.width: 1 / FishUI.Dpi.ratio
-                    border.color: FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.10) : Qt.rgba(0, 0, 0, 0.05)
+                    border.color: FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.08) : Qt.rgba(0, 0, 0, 0.06)
                     antialiasing: true
+
+                    Behavior on color {
+                        ColorAnimation { duration: 150 }
+                    }
 
                     MouseArea {
                         id: cardHoverArea
@@ -350,8 +367,9 @@ PopupWindow {
 
                             Label {
                                 text: (model.appName && model.appName.length > 0) ? model.appName : qsTr("Notification")
-                                font.bold: true
+                                font.weight: Font.DemiBold
                                 font.pointSize: 8.5
+                                renderType: FishUI.Theme.renderType
                                 color: FishUI.Theme.textColor
                                 Layout.alignment: Qt.AlignVCenter
                             }
@@ -361,26 +379,34 @@ PopupWindow {
                             Label {
                                 text: model.created ? model.created : ""
                                 font.pointSize: 7.5
+                                renderType: FishUI.Theme.renderType
                                 color: FishUI.Theme.disabledTextColor
                                 Layout.alignment: Qt.AlignVCenter
                             }
 
                             // Dismiss button
                             Rectangle {
-                                width: 16
-                                height: 16
-                                radius: 8
-                                color: closeMouse.containsMouse ? (FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.25) : Qt.rgba(0, 0, 0, 0.15))
-                                                                : (FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.10) : Qt.rgba(0, 0, 0, 0.06))
+                                width: 18
+                                height: 18
+                                radius: 9
+                                color: closeMouse.pressed ? (FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.20) : Qt.rgba(0, 0, 0, 0.14))
+                                                          : (closeMouse.containsMouse ? (FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.12) : Qt.rgba(0, 0, 0, 0.08))
+                                                                                      : (FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.06) : Qt.rgba(0, 0, 0, 0.04)))
+                                border.width: 1 / FishUI.Dpi.ratio
+                                border.color: FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.08) : Qt.rgba(0, 0, 0, 0.06)
                                 visible: cardHoverArea.containsMouse
                                 antialiasing: true
+
+                                Behavior on color {
+                                    ColorAnimation { duration: 100 }
+                                }
 
                                 Text {
                                     anchors.centerIn: parent
                                     text: "×"
                                     font.pixelSize: 12
-                                    font.bold: true
-                                    color: FishUI.Theme.textColor
+                                    font.weight: Font.Medium
+                                    color: closeMouse.containsMouse ? FishUI.Theme.textColor : FishUI.Theme.disabledTextColor
                                 }
 
                                 MouseArea {
@@ -396,8 +422,9 @@ PopupWindow {
                         Label {
                             text: model.summary
                             visible: text.length > 0
-                            font.bold: true
+                            font.weight: Font.DemiBold
                             font.pointSize: 9
+                            renderType: FishUI.Theme.renderType
                             color: FishUI.Theme.textColor
                             Layout.fillWidth: true
                             elide: Text.ElideRight
@@ -407,8 +434,9 @@ PopupWindow {
                             text: model.body
                             visible: text.length > 0
                             font.pointSize: 8
+                            renderType: FishUI.Theme.renderType
                             color: FishUI.Theme.textColor
-                            opacity: 0.8
+                            opacity: 0.78
                             Layout.fillWidth: true
                             wrapMode: Text.Wrap
                             maximumLineCount: 3

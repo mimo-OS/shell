@@ -299,6 +299,33 @@ PopupWindow {
                 width: 32
                 height: 32
                 radius: 16
+                color: lockMouse.pressed ? (FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.2) : Qt.rgba(0, 0, 0, 0.12))
+                                        : (lockMouse.containsMouse ? (FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.12) : Qt.rgba(0, 0, 0, 0.06)) : "transparent")
+                antialiasing: true
+
+                Image {
+                    anchors.centerIn: parent
+                    width: 16
+                    height: 16
+                    sourceSize: Qt.size(32, 32)
+                    source: "qrc:/statusbar/images/" + control.iconDir + "lock.svg"
+                }
+
+                MouseArea {
+                    id: lockMouse
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    onClicked: {
+                        control.close()
+                        powerActions.lockScreen()
+                    }
+                }
+            }
+
+            Rectangle {
+                width: 32
+                height: 32
+                radius: 16
                 color: setMouse.pressed ? (FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.2) : Qt.rgba(0, 0, 0, 0.12))
                                         : (setMouse.containsMouse ? (FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.12) : Qt.rgba(0, 0, 0, 0.06)) : "transparent")
                 antialiasing: true
@@ -367,6 +394,9 @@ PopupWindow {
                         width: 42
                         height: 42
                         radius: 21
+                        Layout.preferredWidth: 42
+                        Layout.preferredHeight: 42
+                        Layout.alignment: Qt.AlignVCenter
                         color: control._wifiActive ? "#007AFF" : control.inactiveCircleColor
                         border.width: control._wifiActive ? 0 : (!FishUI.Theme.darkMode ? 1 / FishUI.Dpi.ratio : 0)
                         border.color: control.inactiveCircleBorderColor
@@ -383,16 +413,20 @@ PopupWindow {
 
                     ColumnLayout {
                         Layout.fillWidth: true
+                        Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
                         spacing: 2
 
                         Label {
+                            Layout.fillWidth: true
                             text: qsTr("Wi-Fi")
                             font.bold: true
                             font.pixelSize: 12
                             color: FishUI.Theme.textColor
+                            elide: Text.ElideRight
                         }
 
                         Label {
+                            Layout.fillWidth: true
                             text: (typeof activeConnection !== "undefined" && activeConnection && activeConnection.wirelessName)
                                 ? activeConnection.wirelessName
                                 : (control._wifiActive ? qsTr("On") : qsTr("Off"))
@@ -435,6 +469,9 @@ PopupWindow {
                         width: 42
                         height: 42
                         radius: 21
+                        Layout.preferredWidth: 42
+                        Layout.preferredHeight: 42
+                        Layout.alignment: Qt.AlignVCenter
                         color: !control.bluetoothDisConnected ? "#007AFF" : control.inactiveCircleColor
                         border.width: !control.bluetoothDisConnected ? 0 : (!FishUI.Theme.darkMode ? 1 / FishUI.Dpi.ratio : 0)
                         border.color: control.inactiveCircleBorderColor
@@ -451,16 +488,20 @@ PopupWindow {
 
                     ColumnLayout {
                         Layout.fillWidth: true
+                        Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
                         spacing: 2
 
                         Label {
+                            Layout.fillWidth: true
                             text: qsTr("Bluetooth")
                             font.bold: true
                             font.pixelSize: 12
                             color: FishUI.Theme.textColor
+                            elide: Text.ElideRight
                         }
 
                         Label {
+                            Layout.fillWidth: true
                             text: !control.bluetoothDisConnected ? qsTr("On") : qsTr("Off")
                             font.pixelSize: 11
                             color: FishUI.Theme.disabledTextColor
@@ -494,6 +535,9 @@ PopupWindow {
                         width: 42
                         height: 42
                         radius: 21
+                        Layout.preferredWidth: 42
+                        Layout.preferredHeight: 42
+                        Layout.alignment: Qt.AlignVCenter
                         color: control._airdropActive ? "#007AFF" : control.inactiveCircleColor
                         border.width: control._airdropActive ? 0 : (!FishUI.Theme.darkMode ? 1 / FishUI.Dpi.ratio : 0)
                         border.color: control.inactiveCircleBorderColor
@@ -510,16 +554,20 @@ PopupWindow {
 
                     ColumnLayout {
                         Layout.fillWidth: true
+                        Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
                         spacing: 2
 
                         Label {
+                            Layout.fillWidth: true
                             text: qsTr("Wireless Share")
                             font.bold: true
                             font.pixelSize: 12
                             color: FishUI.Theme.textColor
+                            elide: Text.ElideRight
                         }
 
                         Label {
+                            Layout.fillWidth: true
                             text: control._airdropActive ? qsTr("On") : qsTr("Off")
                             font.pixelSize: 11
                             color: FishUI.Theme.disabledTextColor
@@ -548,6 +596,9 @@ PopupWindow {
                         width: 42
                         height: 42
                         radius: 21
+                        Layout.preferredWidth: 42
+                        Layout.preferredHeight: 42
+                        Layout.alignment: Qt.AlignVCenter
                         color: continuity.isConnected ? "#34C759" : (FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.15) : Qt.rgba(0, 0, 0, 0.08))
                         antialiasing: true
 
@@ -570,16 +621,20 @@ PopupWindow {
 
                     ColumnLayout {
                         Layout.fillWidth: true
+                        Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
                         spacing: 2
 
                         Label {
+                            Layout.fillWidth: true
                             text: qsTr("KDE Connect")
                             font.bold: true
                             font.pixelSize: 12
                             color: FishUI.Theme.textColor
+                            elide: Text.ElideRight
                         }
 
                         Label {
+                            Layout.fillWidth: true
                             text: continuity.isConnected ? (continuity.deviceName.length > 0 ? continuity.deviceName : qsTr("Not Connected")) : qsTr("Not Connected")
                             font.pixelSize: 11
                             color: FishUI.Theme.disabledTextColor

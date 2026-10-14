@@ -26,6 +26,7 @@ NotificationPopup {
     FishUI.WindowShadow {
         view: control
         radius: _background.radius
+        strength: 0.35
     }
 
     FishUI.WindowBlur {
@@ -41,11 +42,11 @@ NotificationPopup {
         Rectangle {
             id: _background
             anchors.fill: parent
-            radius: 16
-            color: FishUI.Theme.darkMode ? Qt.rgba(0.14, 0.14, 0.16, FishUI.Theme.blurEnabled ? 0.76 : 1.0)
-                                         : Qt.rgba(0.96, 0.96, 0.98, FishUI.Theme.blurEnabled ? 0.78 : 1.0)
+            radius: 14
+            color: FishUI.Theme.darkMode ? Qt.rgba(0.12, 0.12, 0.15, FishUI.Theme.blurEnabled ? 0.78 : 0.98)
+                                         : Qt.rgba(0.96, 0.96, 0.98, FishUI.Theme.blurEnabled ? 0.78 : 0.98)
             border.width: 1 / FishUI.Dpi.ratio
-            border.color: FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.15) : Qt.rgba(0, 0, 0, 0.10)
+            border.color: FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.10) : Qt.rgba(0, 0, 0, 0.06)
         }
 
         MouseArea {
@@ -156,20 +157,27 @@ NotificationPopup {
 
             // Close button
             Rectangle {
-                width: 16
-                height: 16
-                radius: 8
-                color: _closeBtnArea.containsMouse ? (FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.25) : Qt.rgba(0, 0, 0, 0.15))
-                                                   : (FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.10) : Qt.rgba(0, 0, 0, 0.06))
+                width: 18
+                height: 18
+                radius: 9
+                color: _closeBtnArea.pressed ? (FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.20) : Qt.rgba(0, 0, 0, 0.14))
+                                             : (_closeBtnArea.containsMouse ? (FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.12) : Qt.rgba(0, 0, 0, 0.08))
+                                                                            : (FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.06) : Qt.rgba(0, 0, 0, 0.04)))
+                border.width: 1 / FishUI.Dpi.ratio
+                border.color: FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.08) : Qt.rgba(0, 0, 0, 0.06)
                 visible: _mouseArea.containsMouse || _closeBtnArea.containsMouse
                 antialiasing: true
+
+                Behavior on color {
+                    ColorAnimation { duration: 100 }
+                }
 
                 Text {
                     anchors.centerIn: parent
                     text: "×"
                     font.pixelSize: 12
-                    font.bold: true
-                    color: FishUI.Theme.textColor
+                    font.weight: Font.Medium
+                    color: _closeBtnArea.containsMouse ? FishUI.Theme.textColor : FishUI.Theme.disabledTextColor
                 }
 
                 MouseArea {
@@ -186,8 +194,9 @@ NotificationPopup {
         Label {
             text: model.summary
             visible: text.length > 0
-            font.bold: true
+            font.weight: Font.DemiBold
             font.pointSize: 9
+            renderType: FishUI.Theme.renderType
             color: FishUI.Theme.textColor
             Layout.fillWidth: true
             elide: Text.ElideRight
@@ -198,8 +207,9 @@ NotificationPopup {
             text: model.body
             visible: text.length > 0
             font.pointSize: 8
+            renderType: FishUI.Theme.renderType
             color: FishUI.Theme.textColor
-            opacity: 0.8
+            opacity: 0.78
             maximumLineCount: 2
             elide: Text.ElideRight
             wrapMode: Text.Wrap

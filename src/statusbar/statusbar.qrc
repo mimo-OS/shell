@@ -74,6 +74,7 @@
         <file>images/dark/network-wireless-connected-75.svg</file>
         <file>images/dark/restore_normal.svg</file>
         <file>images/dark/settings.svg</file>
+        <file>images/dark/lock.svg</file>
         <file>images/dark/phone.svg</file>
         <file>images/dark/system-shutdown-symbolic.svg</file>
         <file>images/light/audio-volume-high-symbolic.svg</file>
@@ -143,6 +144,7 @@
         <file>images/light/network-wireless-connected-75.svg</file>
         <file>images/light/restore_normal.svg</file>
         <file>images/light/settings.svg</file>
+        <file>images/light/lock.svg</file>
         <file>images/light/phone.svg</file>
         <file>images/light/system-shutdown-symbolic.svg</file>
         <file>images/media-playback-pause-symbolic.svg</file>
