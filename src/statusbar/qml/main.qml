@@ -256,7 +256,7 @@ Item {
             }
 
             BarIcon {
-                id: cutefishLogo
+                id: mimoLogo
                 anchors.centerIn: parent
                 width: rootItem.iconSize
                 height: width
@@ -265,7 +265,7 @@ Item {
                 mipmap: true
                 smooth: true
                 antialiasing: true
-                source: "qrc:/statusbar/images/" + (rootItem.darkMode ? "dark/" : "light/") + "cutefish.svg"
+                source: "qrc:/statusbar/images/" + (rootItem.darkMode ? "dark/" : "light/") + "mimo.svg"
                 dropShadow: rootItem.darkMode
             }
         }

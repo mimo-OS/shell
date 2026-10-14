@@ -7,6 +7,8 @@
         <file>qml/QMenuPopup.qml</file>
         <file>images/dark/cutefish.svg</file>
         <file>images/light/cutefish.svg</file>
+        <file>images/dark/mimo.svg</file>
+        <file>images/light/mimo.svg</file>
         <file>images/dark/audio-volume-high-symbolic.svg</file>
         <file>images/dark/audio-volume-low-symbolic.svg</file>
         <file>images/dark/audio-volume-medium-symbolic.svg</file>

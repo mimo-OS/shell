@@ -69,7 +69,7 @@ PopupWindow {
         { id: "battery", name: qsTr("Battery & Power"), keywords: "battery power energy sleep charge percentage", icon: "battery-level-100-symbolic" },
         { id: "datetime", name: qsTr("Date & Time"), keywords: "date time clock timezone calendar 24-hour", icon: "settings" },
         { id: "user", name: qsTr("Users & Accounts"), keywords: "user account password avatar login admin", icon: "settings" },
-        { id: "about", name: qsTr("About This Computer"), keywords: "about system specs version cutefish os info", icon: "settings" }
+        { id: "about", name: qsTr("About This Computer"), keywords: "about system specs version mimo os cutefish info", icon: "settings" }
     ]
 
     // System Power Commands Definition

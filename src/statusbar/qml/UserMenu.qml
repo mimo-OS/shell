@@ -34,7 +34,7 @@ FishUI.DesktopMenu {
     }
 
     FishUI.MenuItem {
-        text: qsTr("About This Mac")
+        text: qsTr("About mimo OS")
         onTriggered: process.startDetached("cutefish-settings", ["-m", "about"])
     }
 
