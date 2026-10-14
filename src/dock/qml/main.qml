@@ -71,14 +71,29 @@ Item {
                        rect.width, rect.height)
     }
 
+    function areWindowListsEqual(a, b) {
+        if (!a || !b || a.length !== b.length)
+            return false
+        for (var i = 0; i < a.length; ++i) {
+            if (!a[i] || !b[i])
+                return false
+            if (a[i].wid !== b[i].wid || a[i].uuid !== b[i].uuid || a[i].minimized !== b[i].minimized || a[i].title !== b[i].title)
+                return false
+        }
+        return true
+    }
+
     function showWindowPreview(appId, appName, item) {
         var wins = appModel.windowsForApp(appId)
         if (wins && wins.length > 0) {
             previewDismissTimer.stop()
             popupTips.hide()
-            windowPreviewPopup.appId = appId
+            windowPreviewPopup.currentItem = item
             windowPreviewPopup.appName = appName
-            windowPreviewPopup.windows = wins
+            if (windowPreviewPopup.appId !== appId || !areWindowListsEqual(windowPreviewPopup.windows, wins)) {
+                windowPreviewPopup.appId = appId
+                windowPreviewPopup.windows = wins
+            }
             item.updateWindowPreviewPosition()
             dock.previewOpen = true
             windowPreviewPopup.show()
@@ -137,6 +152,7 @@ Item {
 
     WindowPreviewPopup {
         id: windowPreviewPopup
+        transientParent: dock
 
         onWindowActivated: function(wid) {
             appModel.activateWindow(wid)
@@ -158,6 +174,7 @@ Item {
         onVisibleChanged: {
             if (!visible) {
                 dock.previewOpen = false
+                windowPreviewPopup.currentItem = null
             }
         }
     }

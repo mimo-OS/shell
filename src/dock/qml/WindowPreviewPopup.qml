@@ -23,7 +23,13 @@ Window {
     property string appName: ""
     property var windows: []
     property point popupPosition: Qt.point(0, 0)
-    property bool containsCursor: popupMouseArea.containsMouse
+    property var currentItem: null
+
+    HoverHandler {
+        id: popupHoverHandler
+    }
+
+    property bool containsCursor: popupHoverHandler.hovered || popupMouseArea.containsMouse
 
     signal windowActivated(string wid)
     signal windowClosed(string wid)
@@ -58,12 +64,30 @@ Window {
     }
 
     onPopupPositionChanged: adjustCorrectLocation()
-    onWidthChanged: adjustCorrectLocation()
-    onHeightChanged: adjustCorrectLocation()
+    onWidthChanged: {
+        if (currentItem)
+            currentItem.updateWindowPreviewPosition()
+        else
+            adjustCorrectLocation()
+    }
+    onHeightChanged: {
+        if (currentItem)
+            currentItem.updateWindowPreviewPosition()
+        else
+            adjustCorrectLocation()
+    }
 
     function adjustCorrectLocation() {
         var posX = previewPopup.popupPosition.x
         var posY = previewPopup.popupPosition.y
+
+        // On Wayland, positions are relative to parent surface; clamping to Screen coordinates
+        // forces the preview into the panel area and causes severe blinking.
+        if (windowHelper.wayland) {
+            previewPopup.x = posX
+            previewPopup.y = posY
+            return
+        }
 
         // Bounds checking against virtual desktop/screen coordinates
         if (posX <= Screen.virtualX + FishUI.Units.smallSpacing)
@@ -242,20 +266,12 @@ Window {
                                     uuid: (winData && winData.uuid) ? winData.uuid : ""
                                 }
 
-                                // Live Wayland window stream via PipeWire
-                                PipeWire.PipeWireSourceItem {
-                                    id: pipewireItem
-                                    anchors.fill: parent
-                                    anchors.margins: 2
-                                    nodeId: scRequest.nodeId
-                                    visible: scRequest.nodeId > 0 && !tileItem.isMinimized
-                                }
-
-                                // Fallback placeholder with centered app icon when stream is initializing or window is minimized
+                                // Fallback placeholder with centered app icon
                                 ColumnLayout {
                                     anchors.centerIn: parent
                                     spacing: 4
-                                    visible: tileItem.isMinimized || scRequest.nodeId === 0 || !pipewireItem.ready
+                                    opacity: (!pipewireItem.ready || tileItem.isMinimized) ? 1.0 : 0.0
+                                    Behavior on opacity { NumberAnimation { duration: 150 } }
 
                                     FishUI.IconItem {
                                         Layout.alignment: Qt.AlignHCenter
@@ -264,6 +280,17 @@ Window {
                                         source: (winData && winData.iconName) ? winData.iconName : "application-x-desktop"
                                         opacity: tileItem.isMinimized ? 0.50 : 0.85
                                     }
+                                }
+
+                                // Live Wayland window stream via PipeWire
+                                PipeWire.PipeWireSourceItem {
+                                    id: pipewireItem
+                                    anchors.fill: parent
+                                    anchors.margins: 2
+                                    nodeId: scRequest.nodeId
+                                    visible: scRequest.nodeId > 0 && !tileItem.isMinimized
+                                    opacity: ready ? 1.0 : 0.0
+                                    Behavior on opacity { NumberAnimation { duration: 150 } }
                                 }
 
                                 // Minimized status badge pill
