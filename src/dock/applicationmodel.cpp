@@ -351,6 +351,47 @@ void ApplicationModel::closeAllByAppId(const QString &appId)
     }
 }
 
+QVariantList ApplicationModel::windowsForApp(const QString &appId)
+{
+    QVariantList list;
+    ApplicationItem *item = findItemById(appId);
+    if (!item || !m_kwin)
+        return list;
+
+    const quint64 activeWid = m_kwin->activeWindow();
+
+    for (quint64 wid : item->wids) {
+        KWinWaylandClient c = m_kwin->client(wid);
+        QVariantMap map;
+        map[QStringLiteral("wid")] = QString::number(wid);
+        map[QStringLiteral("title")] = c.title.trimmed().isEmpty() ? item->visibleName : c.title.trimmed();
+        map[QStringLiteral("active")] = (wid == activeWid);
+        map[QStringLiteral("minimized")] = c.hidden;
+        map[QStringLiteral("iconName")] = item->iconName;
+        list.append(map);
+    }
+    return list;
+}
+
+void ApplicationModel::activateWindow(const QString &widStr)
+{
+    bool ok = false;
+    quint64 wid = widStr.toULongLong(&ok);
+    if (ok && m_kwin) {
+        m_kwin->restoreWindow(wid);
+        m_kwin->focusWindow(wid);
+    }
+}
+
+void ApplicationModel::closeWindow(const QString &widStr)
+{
+    bool ok = false;
+    quint64 wid = widStr.toULongLong(&ok);
+    if (ok && m_kwin) {
+        m_kwin->closeWindow(wid);
+    }
+}
+
 void ApplicationModel::quit(const QString &appId)
 {
     ApplicationItem *item = findItemById(appId);

@@ -13,6 +13,7 @@ import FishUI 1.0 as FishUI
 DockItem {
     id: appItem
 
+    appId: (model && model.appId) ? model.appId : ""
     windowCount: (model && model.windowCount !== undefined) ? model.windowCount : 0
     property var windowIds: model.windowIds
     property var dragSource: null

@@ -48,6 +48,11 @@ constexpr const char *s_translationCatalogues[] = {
 
 } // namespace
 
+#if defined(__linux__)
+#include <malloc.h>
+#endif
+#include <QTimer>
+
 Shell::Shell(QObject *parent)
     : QObject(parent)
     , m_engine(new QQmlEngine(this))
@@ -58,6 +63,17 @@ Shell::Shell(QObject *parent)
     , m_notifications(nullptr)
 {
     QPixmapCache::setCacheLimit(2048);
+
+#if defined(__linux__)
+    QTimer *trimTimer = new QTimer(this);
+    connect(trimTimer, &QTimer::timeout, this, []() {
+        malloc_trim(0);
+    });
+    trimTimer->start(45000);
+    QTimer::singleShot(3000, this, []() {
+        malloc_trim(0);
+    });
+#endif
 
     registerQmlTypes();
     loadTranslations();

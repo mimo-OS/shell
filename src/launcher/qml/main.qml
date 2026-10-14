@@ -140,7 +140,7 @@ Item {
         asynchronous: false
         cache: false
         smooth: true
-        visible: backend.type === 0
+        visible: root.showed && backend.type === 0
 
         onSourceChanged: launcher.clearPixmapCache()
     }
@@ -151,7 +151,7 @@ Item {
         radius: 48
         source: wallpaperImage
         cached: true
-        visible: wallpaperImage.visible
+        visible: root.showed && wallpaperImage.visible
     }
 
     Rectangle {
@@ -159,7 +159,7 @@ Item {
         anchors.fill: parent
         color: "#000000"
         opacity: backend.dimsWallpaper ? 0.5 : 0.4
-        visible: wallpaperImage.visible
+        visible: root.showed && wallpaperImage.visible
     }
 
     LauncherModel {

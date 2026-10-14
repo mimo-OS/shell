@@ -34,12 +34,11 @@ Item {
         visible: settings.backgroundVisible && settings.type === 0
     }
 
-    ColorOverlay {
+    Rectangle {
         anchors.fill: image
-        source: image
-        visible: image.visible
         color: "#000000"
         opacity: settings.darkMode && settings.dimsWallpaper ? 0.4 : 0.0
+        visible: image.visible && opacity > 0.0
 
         Behavior on opacity {
             NumberAnimation {

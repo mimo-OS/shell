@@ -288,9 +288,22 @@ void StatusNotifierItemSource::refreshCallback(QDBusPendingCallWatcher *call)
         m_iconName.clear();
         m_icon = QIcon();
 
-        auto loadIconByName = [](const QString &name) {
+        auto loadIconByName = [iconThemePath](const QString &name) {
             if (name.isEmpty())
                 return QString();
+
+            if (QFile::exists(name))
+                return name;
+
+            if (!iconThemePath.isEmpty()) {
+                const QString customPath = iconThemePath + QLatin1Char('/') + name;
+                if (QFile::exists(customPath))
+                    return customPath;
+                if (QFile::exists(customPath + QStringLiteral(".png")))
+                    return customPath + QStringLiteral(".png");
+                if (QFile::exists(customPath + QStringLiteral(".svg")))
+                    return customPath + QStringLiteral(".svg");
+            }
 
             QIcon icon = QIcon::fromTheme(name);
             if (icon.isNull() && !name.endsWith(QStringLiteral("-symbolic"))) {
@@ -310,17 +323,25 @@ void StatusNotifierItemSource::refreshCallback(QDBusPendingCallWatcher *call)
         if (m_iconName.isEmpty())
             m_iconName = loadIconByName(m_appId);
 
+        if (m_icon.isNull() && !m_iconName.isEmpty() && QFile::exists(m_iconName)) {
+            m_icon = QIcon(m_iconName);
+        }
+
         // ToolTip
-        KDbusToolTipStruct toolTip;
-        properties[QStringLiteral("ToolTip")].value<QDBusArgument>() >> toolTip;
-        m_tooltip = toolTip.title;
-        m_subTitle = toolTip.subTitle;
+        if (properties.contains(QStringLiteral("ToolTip")) && properties[QStringLiteral("ToolTip")].canConvert<QDBusArgument>()) {
+            KDbusToolTipStruct toolTip;
+            properties[QStringLiteral("ToolTip")].value<QDBusArgument>() >> toolTip;
+            m_tooltip = toolTip.title;
+            m_subTitle = toolTip.subTitle;
+        }
 
         // Icon
-        KDbusImageVector image;
-        properties[QStringLiteral("IconPixmap")].value<QDBusArgument>() >> image;
-        if (m_icon.isNull() && !image.isEmpty()) {
-            m_icon = imageVectorToPixmap(image);
+        if (properties.contains(QStringLiteral("IconPixmap")) && properties[QStringLiteral("IconPixmap")].canConvert<QDBusArgument>()) {
+            KDbusImageVector image;
+            properties[QStringLiteral("IconPixmap")].value<QDBusArgument>() >> image;
+            if (m_icon.isNull() && !image.isEmpty()) {
+                m_icon = imageVectorToPixmap(image);
+            }
         }
 
         // Some tray clients do not expose a usable SNI icon. Try the icon

@@ -56,25 +56,23 @@ Item {
 
     onDraggingChanged: control.iconPressed = false
 
-    FishUI.IconItem {
+    Image {
         id: icon
 
         width: control.iconSize
         height: control.iconSize
+        sourceSize: Qt.size(control.iconSize, control.iconSize)
 
         x: Math.round((control.width - width) / 2)
         y: Math.round((control.height - height - control.labelHeight - control.spacing) / 2)
 
-        source: model.iconName
+        source: model.iconName ? (model.iconName.indexOf("/") === 0 ? "file://" + model.iconName : "image://icontheme/" + model.iconName) : ""
         visible: !control.dragging
-
-        ColorOverlay {
-            anchors.fill: icon
-            source: icon
-            color: "#000000"
-            opacity: 0.5
-            visible: control.iconPressed && !control.dragging
-        }
+        opacity: control.iconPressed && !control.dragging ? 0.6 : 1.0
+        fillMode: Image.PreserveAspectFit
+        asynchronous: true
+        smooth: true
+        mipmap: true
     }
 
     DropArea {

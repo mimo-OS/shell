@@ -45,6 +45,7 @@ Item {
     property bool isActive: false
     property int windowCount: 0
 
+    property string appId: ""
     property var popupText
 
     property double iconSizeRatio: 0.82
@@ -171,6 +172,30 @@ Item {
         else
             popupTips.position = Qt.point(controlPosition.x + (control.width / 2 - popupTips.width / 2),
                                           root.mapToGlobal(0, 0).y - popupTips.height - FishUI.Units.smallSpacing - magOffset)
+    }
+
+    function updateWindowPreviewPosition() {
+        if (typeof windowPreviewPopup === "undefined" || !windowPreviewPopup)
+            return
+
+        var controlPosition = control.mapToGlobal(0, 0)
+        var magOffset = control.currentScale > 1.0 ? control.iconSize * (control.currentScale - 1.0) * 0.45 : 0
+        var targetX = 0
+        var targetY = 0
+
+        if (Settings.direction === DockSettings.Left) {
+            targetX = root.mapToGlobal(root.width, 0).x + FishUI.Units.largeSpacing + magOffset
+            targetY = controlPosition.y + (control.height / 2 - windowPreviewPopup.height / 2)
+        } else if (Settings.direction === DockSettings.Right) {
+            targetX = root.mapToGlobal(0, 0).x - windowPreviewPopup.width - FishUI.Units.largeSpacing - magOffset
+            targetY = controlPosition.y + (control.height / 2 - windowPreviewPopup.height / 2)
+        } else {
+            targetX = controlPosition.x + (control.width / 2 - windowPreviewPopup.width / 2)
+            targetY = root.mapToGlobal(0, 0).y - windowPreviewPopup.height - FishUI.Units.smallSpacing - magOffset
+        }
+
+        windowPreviewPopup.popupPosition = Qt.point(targetX, targetY)
+        windowPreviewPopup.adjustCorrectLocation()
     }
 
     function popupMenu(menu) {
@@ -308,6 +333,8 @@ Item {
         onPressed: function(mouse) {
             control.pressed(mouse)
             popupTips.hide()
+            if (typeof windowPreviewPopup !== "undefined" && windowPreviewPopup)
+                windowPreviewPopup.hide()
         }
 
         onPositionChanged: function(mouse) {
@@ -337,12 +364,24 @@ Item {
         }
 
         onContainsMouseChanged: {
-            if (containsMouse && control.popupText !== "") {
-                popupTips.popupText = control.popupText
-                popupPositionTimer.restart()
+            if (containsMouse) {
+                if (control.windowCount > 0 && control.appId) {
+                    if (root.showWindowPreview(control.appId, control.popupText, control)) {
+                        return
+                    }
+                }
+                if (control.popupText !== "") {
+                    if (typeof windowPreviewPopup !== "undefined" && windowPreviewPopup)
+                        windowPreviewPopup.hide()
+                    popupTips.popupText = control.popupText
+                    popupPositionTimer.restart()
+                }
             } else {
                 popupPositionTimer.stop()
                 popupTips.hide()
+                if (control.appId) {
+                    root.scheduleHideWindowPreview(control.appId)
+                }
             }
         }
     }
@@ -397,10 +436,10 @@ Item {
     // macOS Style Pearl Indicator Dot
     Item {
         id: activeDotContainer
-        z: 15
+        z: 100
 
-        width: 5
-        height: 5
+        width: (typeof root !== "undefined" && root.activeDotSize) ? Math.max(5, root.activeDotSize) : 5
+        height: width
 
         anchors.horizontalCenter: isBottom ? icon.horizontalCenter : undefined
         anchors.top: isBottom ? icon.bottom : undefined
@@ -431,18 +470,21 @@ Item {
             Behavior on visible { PropertyAnimation { duration: 200 } }
         }
 
-        // Crisp circular pearl dot
+        // Crisp circular pearl dot with subtle contrast rim
         Rectangle {
             id: activeDot
             anchors.fill: parent
             radius: width / 2
+            border.width: 0.5
+            border.color: FishUI.Theme.darkMode ? Qt.rgba(0, 0, 0, 0.35)
+                                                : Qt.rgba(255, 255, 255, 0.7)
             color: {
                 if (control.isActive) {
                     return FishUI.Theme.darkMode ? "#FFFFFF"
                                                  : "#1C1C1E"
                 } else {
-                    return FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.75)
-                                                 : Qt.rgba(0, 0, 0, 0.55)
+                    return FishUI.Theme.darkMode ? Qt.rgba(1, 1, 1, 0.85)
+                                                 : Qt.rgba(0, 0, 0, 0.65)
                 }
             }
 

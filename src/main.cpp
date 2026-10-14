@@ -3,9 +3,32 @@
 #include <QApplication>
 #include <QIcon>
 #include <QQuickWindow>
+#include <QFile>
+
+#if defined(__linux__)
+#include <malloc.h>
+#endif
 
 int main(int argc, char *argv[])
 {
+#if defined(__linux__)
+    mallopt(M_ARENA_MAX, 2);
+    mallopt(M_TRIM_THRESHOLD, 128 * 1024);
+    mallopt(M_MMAP_THRESHOLD, 64 * 1024);
+#endif
+
+    // If no NVIDIA GPU device exists, restrict EGL ICD loader to Mesa/system driver
+    // to prevent libglvnd from unconditionally mapping huge unused proprietary NVIDIA libraries.
+    if (!QFile::exists(QStringLiteral("/dev/nvidia0"))
+        && QFile::exists(QStringLiteral("/usr/share/glvnd/egl_vendor.d/50_mesa.json"))
+        && qEnvironmentVariableIsEmpty("__EGL_VENDOR_LIBRARY_FILENAMES")) {
+        qputenv("__EGL_VENDOR_LIBRARY_FILENAMES", "/usr/share/glvnd/egl_vendor.d/50_mesa.json");
+    }
+
+    if (qEnvironmentVariableIsEmpty("QSG_RENDER_LOOP")) {
+        qputenv("QSG_RENDER_LOOP", "basic");
+    }
+
     // Prevent fractional rounding artifacts on high-DPI and scaled displays
     QGuiApplication::setHighDpiScaleFactorRoundingPolicy(
         Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);

@@ -44,6 +44,7 @@ public:
         Panel,
         Dock,
         Launcher,
+        OnScreenDisplay,
     };
 
     //! What a Panel or Dock surface does about other windows. Ignored for the
@@ -106,6 +107,7 @@ signals:
 
 protected:
     void resizeEvent(QResizeEvent *e) override;
+    PlasmaSurface *plasmaSurface() const { return m_plasmaSurface; }
 
 private:
     void resizeRootItem();

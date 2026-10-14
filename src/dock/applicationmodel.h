@@ -56,6 +56,10 @@ public:
     Q_INVOKABLE void pin(const QString &appId);
     Q_INVOKABLE void unPin(const QString &appId);
 
+    Q_INVOKABLE QVariantList windowsForApp(const QString &appId);
+    Q_INVOKABLE void activateWindow(const QString &widStr);
+    Q_INVOKABLE void closeWindow(const QString &widStr);
+
     Q_INVOKABLE void move(int from, int to);
 
 signals:

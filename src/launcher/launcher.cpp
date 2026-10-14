@@ -41,7 +41,6 @@ Launcher::Launcher(QQmlEngine *engine, bool firstShow)
     setTitle(QStringLiteral("Launcher"));
     configureSurfaceRole(SurfaceRole::Launcher);
     setGeometry(m_screenRect);
-    setVisible(true);
     setVisible(firstShow);
 
     // Let the animation in qml be hidden after the execution is complete

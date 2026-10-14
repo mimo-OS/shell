@@ -33,7 +33,7 @@ Item {
             color: "black"
         }
 
-        layer.enabled: true
+        layer.enabled: control.dropShadow
         layer.effect: MultiEffect {
             blurEnabled: true
             blurMax: 6

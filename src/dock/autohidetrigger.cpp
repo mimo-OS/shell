@@ -23,8 +23,7 @@ AutoHideTrigger::AutoHideTrigger(DockSettings *settings, QWindow *parent)
     // size, which swallows the pointer and pops the dock straight back out.
 
     m_plasmaSurface->setPanelTakesFocus(false);
-    m_plasmaSurface->setRole(PlasmaSurface::Role::Panel);
-    m_plasmaSurface->setPanelBehavior(PlasmaSurface::PanelBehavior::WindowsGoBelow);
+    m_plasmaSurface->setRole(PlasmaSurface::Role::OnScreenDisplay);
 
     m_delayedMouseTimer.setSingleShot(true);
     m_delayedMouseTimer.setInterval(30);
@@ -72,7 +71,7 @@ void AutoHideTrigger::setContainsMouse(bool contains)
 
 void AutoHideTrigger::updateGeometry()
 {
-    const int length = 8;
+    const int length = 10;
     const QRect screenRect = screen() ? screen()->geometry()
                                       : qGuiApp->primaryScreen()->geometry();
     QRect newRect;

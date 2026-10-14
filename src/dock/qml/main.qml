@@ -71,6 +71,27 @@ Item {
                        rect.width, rect.height)
     }
 
+    function showWindowPreview(appId, appName, item) {
+        var wins = appModel.windowsForApp(appId)
+        if (wins && wins.length > 0) {
+            previewDismissTimer.stop()
+            popupTips.hide()
+            windowPreviewPopup.appId = appId
+            windowPreviewPopup.appName = appName
+            windowPreviewPopup.windows = wins
+            item.updateWindowPreviewPosition()
+            windowPreviewPopup.show()
+            return true
+        }
+        return false
+    }
+
+    function scheduleHideWindowPreview(appId) {
+        if (windowPreviewPopup.visible && windowPreviewPopup.appId === appId) {
+            previewDismissTimer.restart()
+        }
+    }
+
     DropArea {
         anchors.fill: parent
         enabled: true
@@ -111,6 +132,47 @@ Item {
         borderColor: FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.20)
                                            : Qt.rgba(0, 0, 0, 0.15)
         blurEnabled: FishUI.Theme.blurEnabled
+    }
+
+    WindowPreviewPopup {
+        id: windowPreviewPopup
+
+        onWindowActivated: function(wid) {
+            appModel.activateWindow(wid)
+            windowPreviewPopup.hide()
+        }
+
+        onWindowClosed: function(wid) {
+            appModel.closeWindow(wid)
+            var updated = appModel.windowsForApp(windowPreviewPopup.appId)
+            if (updated && updated.length > 0) {
+                windowPreviewPopup.windows = updated
+            } else {
+                windowPreviewPopup.hide()
+            }
+        }
+    }
+
+    Timer {
+        id: previewDismissTimer
+        interval: 260
+        repeat: false
+        onTriggered: {
+            if (!windowPreviewPopup.containsCursor) {
+                windowPreviewPopup.hide()
+            }
+        }
+    }
+
+    Connections {
+        target: windowPreviewPopup
+        function onContainsCursorChanged() {
+            if (!windowPreviewPopup.containsCursor) {
+                previewDismissTimer.restart()
+            } else {
+                previewDismissTimer.stop()
+            }
+        }
     }
 
     // Non-blocking hover tracker for continuous magnification wave across dock
@@ -316,6 +378,7 @@ Item {
 
         function onDirectionChanged() {
             popupTips.hide()
+            windowPreviewPopup.visible = false
         }
     }
 
@@ -324,6 +387,7 @@ Item {
 
         function onVisibleChanged() {
             popupTips.hide()
+            windowPreviewPopup.visible = false
         }
     }
 }

@@ -42,9 +42,13 @@ PopupWindow {
         control.y = Math.round(posY)
     }
 
+    property var clipboardHelper: null
+
     ClipboardHelper {
-        id: clipboardHelper
+        id: _fallbackClipboardHelper
     }
+
+    readonly property var activeClipboardHelper: clipboardHelper ? clipboardHelper : _fallbackClipboardHelper
 
     FishUI.WindowBlur {
         view: control
@@ -107,7 +111,7 @@ PopupWindow {
                      : "transparent"
                 border.width: 1 / FishUI.Dpi.ratio
                 border.color: FishUI.Theme.darkMode ? Qt.rgba(255, 255, 255, 0.12) : Qt.rgba(0, 0, 0, 0.10)
-                visible: clipboardHelper.count > 0
+                visible: activeClipboardHelper.count > 0
 
                 Text {
                     id: clearTxt
@@ -124,7 +128,7 @@ PopupWindow {
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        clipboardHelper.clear()
+                        activeClipboardHelper.clear()
                     }
                 }
             }
@@ -210,7 +214,7 @@ PopupWindow {
                 boundsBehavior: Flickable.StopAtBounds
 
                 model: {
-                    var list = clipboardHelper.history
+                    var list = activeClipboardHelper.history
                     if (!control.searchQuery)
                         return list
                     var filtered = []
@@ -291,7 +295,7 @@ PopupWindow {
                                 hoverEnabled: true
                                 cursorShape: Qt.PointingHandCursor
                                 onClicked: {
-                                    clipboardHelper.remove(index)
+                                    activeClipboardHelper.remove(index)
                                 }
                             }
                         }
@@ -303,7 +307,7 @@ PopupWindow {
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
                         onClicked: {
-                            clipboardHelper.copy(modelData)
+                            activeClipboardHelper.copy(modelData)
                             control.close()
                         }
                     }

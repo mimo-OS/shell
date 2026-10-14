@@ -82,6 +82,11 @@ void PlasmaSurface::attach()
         return;
 
     if (native == m_wlSurface && m_surface) {
+        m_surface->setRole(m_role);
+        if (m_role == Role::Panel) {
+            m_surface->setPanelBehavior(m_panelBehavior);
+            m_surface->setPanelTakesFocus(m_panelTakesFocus);
+        }
         m_surface->setPosition(m_position);
         return;
     }

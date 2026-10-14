@@ -28,6 +28,7 @@ import Cutefish.Appearance 1.0 as Appearance
 import Cutefish.Shell 1.0
 import Cutefish.StatusBar 1.0
 import Cutefish.Network 1.0 as NM
+import Cutefish.Audio 1.0
 import FishUI 1.0 as FishUI
 
 Item {
@@ -37,6 +38,27 @@ Item {
 
     LayoutMirroring.enabled: Qt.application.layoutDirection === Qt.RightToLeft
     LayoutMirroring.childrenInherit: true
+
+    SinkModel {
+        id: paSinkModel
+    }
+
+    ClipboardHelper {
+        id: globalClipboardHelper
+    }
+
+    readonly property var defaultSink: paSinkModel.defaultSink
+    readonly property real defaultSinkValue: defaultSink ? defaultSink.volume / PulseAudio.NormalVolume * 100.0 : -1
+    readonly property string volumeIconName: {
+        if (!defaultSink || defaultSink.muted || defaultSinkValue <= 0)
+            return "audio-volume-muted-symbolic"
+        else if (defaultSinkValue <= 25)
+            return "audio-volume-low-symbolic"
+        else if (defaultSinkValue <= 75)
+            return "audio-volume-medium-symbolic"
+        else
+            return "audio-volume-high-symbolic"
+    }
 
     // True when the bar needs light contents, i.e. what is behind it is dark.
     property bool darkMode: bgHelper.valid ? bgHelper.useLightForeground
@@ -217,6 +239,11 @@ Item {
             Layout.preferredWidth: rootItem.iconSize + FishUI.Units.largeSpacing * 2
 
             onClicked: {
+                if (!userMenu.active) {
+                    userMenu.active = true
+                    return
+                }
+
                 if (!userMenu.item)
                     return
 
@@ -379,7 +406,7 @@ Item {
         // Sound Indicator
         StandardItem {
             id: soundStatusItem
-            visible: controlCenter.item && controlCenter.item.defaultSink
+            visible: !!rootItem.defaultSink
             Layout.fillHeight: true
             Layout.preferredWidth: rootItem.iconSize + 20
 
@@ -392,7 +419,7 @@ Item {
                 width: rootItem.iconSize
                 height: width
                 sourceSize: Qt.size(width, height)
-                source: "qrc:/statusbar/images/" + (rootItem.darkMode ? "dark/" : "light/") + (controlCenter.item ? controlCenter.item.volumeIconName : "audio-volume-high-symbolic") + ".svg"
+                source: "qrc:/statusbar/images/" + (rootItem.darkMode ? "dark/" : "light/") + rootItem.volumeIconName + ".svg"
                 antialiasing: true
             }
         }
@@ -445,6 +472,11 @@ Item {
             }
 
             function toggleDialog() {
+                if (!controlCenter.active) {
+                    controlCenter.active = true
+                    return
+                }
+
                 if (!controlCenter.item)
                     return
 
@@ -520,6 +552,11 @@ Item {
             }
 
             function toggleDialog() {
+                if (!clipboardPopup.active) {
+                    clipboardPopup.active = true
+                    return
+                }
+
                 if (!clipboardPopup.item)
                     return
 
@@ -693,9 +730,15 @@ Item {
     // Components
     Loader {
         id: controlCenter
+        active: false
         sourceComponent: ControlCenter {}
         asynchronous: true
-        onLoaded: item.transientParent = rootItem.Window.window
+        onLoaded: {
+            item.transientParent = rootItem.Window.window
+            item.position = Qt.point(0, 0)
+            item.position = controler.mapToGlobal(0, 0)
+            item.open()
+        }
     }
 
     // The notification centre lives in the notification component's resources,
@@ -731,6 +774,7 @@ Item {
 
     Loader {
         id: userMenu
+        active: false
         sourceComponent: UserMenu {}
         asynchronous: true
 
@@ -739,6 +783,8 @@ Item {
             item.availableGeometry = Qt.binding(function () {
                 return screenHelper.availableScreenRect
             })
+            var pos = userItem.mapToGlobal(0, userItem.height + FishUI.Units.smallSpacing)
+            item.showAt(pos.x, pos.y)
         }
     }
 
@@ -764,11 +810,17 @@ Item {
 
     Loader {
         id: clipboardPopup
-        sourceComponent: ClipboardPopup {}
+        active: false
+        sourceComponent: ClipboardPopup {
+            clipboardHelper: globalClipboardHelper
+        }
         asynchronous: true
 
         onLoaded: {
             item.transientParent = rootItem.Window.window
+            item.position = Qt.point(0, 0)
+            item.position = clipboardItem.mapToGlobal(0, 0)
+            item.open()
         }
     }
 

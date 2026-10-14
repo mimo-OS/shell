@@ -73,8 +73,10 @@ DockWindow::DockWindow(QQmlEngine *engine)
             });
     connect(m_slideAnimation, &QVariantAnimation::finished, this, [this] {
         if (m_slideState == SlidingOut) {
-            setVisible(false);
             m_slideState = Idle;
+            if (m_settings->visibility() == DockSettings::AlwaysShow) {
+                configureSurfaceRole(SurfaceRole::Dock);
+            }
         } else if (m_slideState == SlidingIn) {
             m_slideState = Idle;
         }
@@ -313,8 +315,8 @@ void DockWindow::slideToHide()
 
     m_slideState = SlidingOut;
     m_slideAnimation->stop();
-    m_slideAnimation->setDuration(280);
-    m_slideAnimation->setEasingCurve(QEasingCurve::InQuint);
+    m_slideAnimation->setDuration(240);
+    m_slideAnimation->setEasingCurve(QEasingCurve::InCubic);
     m_slideAnimation->setStartValue(m_currentGeometry.isValid() ? m_currentGeometry : windowRect());
     m_slideAnimation->setEndValue(hiddenWindowRect());
     m_slideAnimation->start();
@@ -328,13 +330,25 @@ void DockWindow::slideToShow()
     m_slideAnimation->stop();
     m_slideState = SlidingIn;
 
+    // Elevate role to OnScreenDisplay if fullscreen or in auto-hide mode so it appears above fullscreen windows
+    KWinWaylandInterface *kwin = KWinWaylandInterface::instance();
+    const QRect screenRect = screen() ? screen()->geometry()
+                                      : (qGuiApp->primaryScreen() ? qGuiApp->primaryScreen()->geometry() : QRect());
+    const bool isFullscreen = kwin && kwin->available() && kwin->hasFullscreenWindow(screenRect);
+
+    if (isFullscreen || m_settings->visibility() != DockSettings::AlwaysShow) {
+        configureSurfaceRole(SurfaceRole::OnScreenDisplay);
+    } else {
+        configureSurfaceRole(SurfaceRole::Dock);
+    }
+
     if (!isVisible()) {
         setDockGeometry(hiddenWindowRect(), false);
         setVisible(true);
     }
 
-    m_slideAnimation->setDuration(340);
-    m_slideAnimation->setEasingCurve(QEasingCurve::OutQuint);
+    m_slideAnimation->setDuration(260);
+    m_slideAnimation->setEasingCurve(QEasingCurve::OutCubic);
     m_slideAnimation->setStartValue(m_currentGeometry.isValid() ? m_currentGeometry : hiddenWindowRect());
     m_slideAnimation->setEndValue(windowRect());
     m_slideAnimation->start();
@@ -603,6 +617,7 @@ void DockWindow::onVisibilityChanged()
     } else {
         // Not hidden: show and reserve space
         m_hideTimer->stop();
+        configureSurfaceRole(SurfaceRole::Dock);
         slideToShow();
         updateViewStruts();
 

@@ -45,37 +45,59 @@ void StatusNotifierWatcher::RegisterStatusNotifierItem(const QString &serviceOrP
         service = message().service();
         path = serviceOrPath;
     } else {
-        service = serviceOrPath;
+        int slash = serviceOrPath.indexOf(QLatin1Char('/'));
+        if (slash != -1) {
+            service = serviceOrPath.left(slash);
+            path = serviceOrPath.mid(slash);
+        } else {
+            service = serviceOrPath;
+            path = QStringLiteral("/StatusNotifierItem");
+        }
+    }
+    if (service.isEmpty()) {
+        service = message().service();
+    }
+    if (path.isEmpty()) {
         path = QStringLiteral("/StatusNotifierItem");
     }
+
     QString notifierItemId = service + path;
     if (m_registeredServices.contains(notifierItemId)) {
         return;
     }
+
     m_serviceWatcher->addWatchedService(service);
-    if (QDBusConnection::sessionBus().interface()->isServiceRegistered(service).value()) {
-        // check if the service has registered a SystemTray object
+
+    bool registered = QDBusConnection::sessionBus().interface()->isServiceRegistered(service).value();
+    if (!registered && !message().service().isEmpty()) {
+        registered = QDBusConnection::sessionBus().interface()->isServiceRegistered(message().service()).value();
+        if (registered && !service.startsWith(QLatin1Char(':'))) {
+            m_serviceWatcher->addWatchedService(message().service());
+        }
+    }
+
+    if (registered) {
         org::kde::StatusNotifierItem trayclient(service, path, QDBusConnection::sessionBus());
         if (trayclient.isValid()) {
             qDebug() << "Registering" << notifierItemId << "to system tray";
             m_registeredServices.append(notifierItemId);
             emit StatusNotifierItemRegistered(notifierItemId);
-        } else {
-            m_serviceWatcher->removeWatchedService(service);
+            return;
         }
-    } else {
-        m_serviceWatcher->removeWatchedService(service);
     }
+
+    m_serviceWatcher->removeWatchedService(service);
 }
 
 void StatusNotifierWatcher::RegisterStatusNotifierHost(const QString &service)
 {
-    if (service.contains(QLatin1String("org.kde.StatusNotifierHost-")) && QDBusConnection::sessionBus().interface()->isServiceRegistered(service).value()
-        && !m_statusNotifierHostServices.contains(service)) {
-        qDebug() << "Registering" << service << "as system tray";
+    QString hostService = service.isEmpty() ? message().service() : service;
+    if (QDBusConnection::sessionBus().interface()->isServiceRegistered(hostService).value()
+        && !m_statusNotifierHostServices.contains(hostService)) {
+        qDebug() << "Registering" << hostService << "as system tray host";
 
-        m_statusNotifierHostServices.insert(service);
-        m_serviceWatcher->addWatchedService(service);
+        m_statusNotifierHostServices.insert(hostService);
+        m_serviceWatcher->addWatchedService(hostService);
         emit StatusNotifierHostRegistered();
     }
 }

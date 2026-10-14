@@ -17,7 +17,7 @@ namespace {
 // {sampled, mean relative luminance}
 using SampleResult = QPair<bool, double>;
 
-constexpr int SampleMaxDimension = 2048;
+constexpr int SampleMaxDimension = 256;
 // Mirrors the ColorOverlay opacity in desktop/qml/Wallpaper.qml.
 constexpr qreal WallpaperDimOpacity = 0.4;
 

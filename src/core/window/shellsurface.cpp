@@ -69,6 +69,10 @@ void ShellSurface::configureSurfaceRole(SurfaceRole role)
         m_plasmaSurface->setPanelTakesFocus(false);
         m_plasmaSurface->setRole(PlasmaSurface::Role::Panel);
         break;
+    case SurfaceRole::OnScreenDisplay:
+        m_plasmaSurface->setPanelTakesFocus(false);
+        m_plasmaSurface->setRole(PlasmaSurface::Role::OnScreenDisplay);
+        break;
     case SurfaceRole::Launcher:
         // An ordinary window keeps the launcher in the normal layer, below the
         // dock and the status bar, which both sit in KWin's "above" layer as
